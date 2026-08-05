@@ -1,0 +1,62 @@
+name: Update report
+
+on:
+  schedule:
+    # Every 6 hours, offset from the top of the hour to be polite to the
+    # public RPC and to GitHub's cron scheduler.
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: python3 -m unittest discover -s tests
+
+      # On push events only re-render from the committed snapshots; collecting
+      # and committing here would re-trigger this workflow in a loop.
+      - name: Collect live snapshot
+        if: github.event_name != 'push'
+        run: python3 collect.py
+
+      - name: Detect anomalies
+        run: python3 detect.py
+
+      - name: Render
+        run: python3 render.py
+
+      - name: Commit new snapshot
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "report-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add snapshots/
+          git diff --cached --quiet || {
+            git commit -m "snapshot: $(date -u +%FT%TZ) [skip ci]"
+            git push
+          }
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

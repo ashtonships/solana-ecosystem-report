@@ -20,3 +20,7 @@ dist/
 
 # Local editor / OS noise
 .DS_Store
+
+# Local submission runbook and staged license options — never ship publicly.
+SUBMISSION-PACKAGE.md
+.submission-staging/
