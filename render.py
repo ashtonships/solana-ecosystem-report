@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import charts as charts_module
 import delta as delta_module
 import detect
 import upgrades as upgrades_data
@@ -449,6 +450,7 @@ def render_markdown(
     snapshot: dict[str, Any],
     analysis: dict[str, Any] | None = None,
     comparison: dict[str, Any] | None = None,
+    history: list[dict[str, Any]] | None = None,
 ) -> str:
     network = snapshot.get("network", {})
     epoch = snapshot.get("epoch", {})
@@ -504,6 +506,9 @@ def render_markdown(
         ]
     else:
         lines += ["_Performance samples unavailable in this snapshot._", ""]
+
+    if history:
+        lines += charts_module.render_charts_markdown(history)
 
     lines += render_activity_markdown(snapshot)
 
@@ -683,10 +688,36 @@ tr:hover td { background: var(--panel-2); }
 .anomaly.info     { border-left: 3px solid var(--accent-2); }
 .anomaly.info .anomaly-sev { color: var(--accent-2); }
 .anomaly-nums { margin-left: auto; color: var(--dim); white-space: nowrap; }
+/* Charts. Small multiples: one series per plot, one y-axis per plot — two
+   scales on one pair of axes would invent a relationship the data lacks. */
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+              gap: 12px; }
+.chart { margin: 0; background: var(--panel); border: 1px solid var(--line);
+         border-radius: 12px; padding: 14px 16px 12px; }
+.chart-title { color: var(--text); font-size: 12px; font-weight: 600;
+               text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+.chart-unit { color: var(--dim); font-weight: 400; text-transform: none;
+              letter-spacing: 0; }
+.chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart-tick { fill: var(--dim); font-size: 9px;
+              font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+              font-variant-numeric: tabular-nums; }
+.chart-endlabel { fill: var(--text); font-size: 10px; font-weight: 600;
+                  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.chart-hit:hover { fill: rgba(255,255,255,0.04); }
+.chart-caption { color: var(--dim); font-size: 11px; margin: 8px 0 0; }
+.chart-note { color: var(--dim); font-size: 11px; margin: 4px 0 0; opacity: 0.8; }
+.basis-key { display: inline-block; width: 18px; height: 0; vertical-align: middle;
+             margin: 0 2px 3px 6px; }
+.basis-key.measured { border-top: 2px solid #0fbf76; }
+/* Dashed, and a different hue, and badged — three channels, so the sampled/
+   measured distinction survives colourblindness and greyscale printing. */
+.basis-key.sampled { border-top: 2px dashed #c98500; }
 .basis-badge { margin-left: 8px; padding: 1px 7px; border-radius: 999px;
                font-size: 10px; letter-spacing: 0.3px; vertical-align: middle; }
 /* Sampled and measured must never look alike — same rule as the charts. */
 .basis-badge.sampled { background: rgba(255,176,32,0.12); color: var(--warn); }
+.basis-badge.measured { background: rgba(20,241,149,0.12); color: var(--accent); }
 .delta-up { color: var(--accent); }
 .delta-down { color: var(--warn); }
 .delta-flat { color: var(--dim); }
@@ -865,6 +896,7 @@ def render_html(
     snapshot: dict[str, Any],
     analysis: dict[str, Any] | None = None,
     comparison: dict[str, Any] | None = None,
+    history: list[dict[str, Any]] | None = None,
 ) -> str:
     network = snapshot.get("network", {})
     epoch = snapshot.get("epoch", {})
@@ -924,6 +956,11 @@ def render_html(
         parts.append("</div>")
     else:
         parts.append("<p class='unavailable'>Performance samples unavailable in this snapshot.</p>")
+
+    # Trends across the committed snapshot history. Inline SVG, no script and
+    # no external asset, so the page still draws itself offline from file://.
+    if history:
+        parts.append(charts_module.render_charts_html(history))
 
     parts.append(render_activity_html(snapshot))
 
@@ -1088,12 +1125,19 @@ def main() -> int:
     html_path = args.out_dir / "index.html"
     json_path = args.out_dir / "report.json"
 
+    # Charts read the same committed history, cut off at this snapshot: a page
+    # about one moment must not plot points collected after it.
+    cutoff = snapshot.get("collected_at")
+    charted = ([s for s in history if s.get("collected_at", "") <= cutoff]
+               if isinstance(cutoff, str) and cutoff else history)
+
     markdown_path.write_text(
-        render_markdown(snapshot, analysis, comparison), encoding="utf-8")
+        render_markdown(snapshot, analysis, comparison, charted), encoding="utf-8")
     html_path.write_text(
-        render_html(snapshot, analysis, comparison), encoding="utf-8")
+        render_html(snapshot, analysis, comparison, charted), encoding="utf-8")
     json_path.write_text(
-        json.dumps({**snapshot, "anomalies": analysis, "delta": comparison}, indent=2) + "\n",
+        json.dumps({**snapshot, "anomalies": analysis, "delta": comparison,
+                    "history": charts_module.history_json(charted)}, indent=2) + "\n",
         encoding="utf-8",
     )
 
