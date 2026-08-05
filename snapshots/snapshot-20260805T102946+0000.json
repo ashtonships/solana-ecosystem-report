@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "collected_at": "2026-08-05T10:29:46+00:00",
+  "source": {
+    "endpoint": "https://api.mainnet-beta.solana.com",
+    "method": "solana json-rpc",
+    "requires_api_key": false
+  },
+  "network": {
+    "healthy": true,
+    "health_raw": "ok",
+    "slot": 437362179,
+    "block_time_unix": 1785925765
+  },
+  "epoch": {
+    "available": true,
+    "epoch": 1012,
+    "slot_index": 178179,
+    "slots_in_epoch": 432000,
+    "progress_pct": 41.25,
+    "absolute_slot": 437362179,
+    "block_height": 415416699,
+    "transaction_count": 535299868627
+  },
+  "performance": {
+    "available": true,
+    "samples_used": 8,
+    "latest_tps": 3174.37,
+    "mean_tps": 3080.47,
+    "peak_tps": 3334.67,
+    "mean_slot_time_secs": 0.422,
+    "samples": [
+      {
+        "slot": 437362172,
+        "tps": 3174.37,
+        "slot_time_secs": 0.423
+      },
+      {
+        "slot": 437362030,
+        "tps": 3088.6,
+        "slot_time_secs": 0.423
+      },
+      {
+        "slot": 437361888,
+        "tps": 3301.72,
+        "slot_time_secs": 0.423
+      },
+      {
+        "slot": 437361746,
+        "tps": 2911.5,
+        "slot_time_secs": 0.426
+      },
+      {
+        "slot": 437361605,
+        "tps": 2993.9,
+        "slot_time_secs": 0.411
+      },
+      {
+        "slot": 437361459,
+        "tps": 3334.67,
+        "slot_time_secs": 0.42
+      },
+      {
+        "slot": 437361316,
+        "tps": 2962.15,
+        "slot_time_secs": 0.432
+      },
+      {
+        "slot": 437361177,
+        "tps": 2876.87,
+        "slot_time_secs": 0.42
+      }
+    ]
+  },
+  "supply": {
+    "available": true,
+    "total_sol": 631630024.94,
+    "circulating_sol": 581307076.26,
+    "non_circulating_sol": 50322948.68,
+    "circulating_pct": 92.03
+  },
+  "validators": {
+    "available": true,
+    "active_count": 692,
+    "delinquent_count": 7,
+    "delinquent_pct": 1.0,
+    "active_stake_sol": 434421657.36,
+    "delinquent_stake_sol": 1825.62,
+    "nakamoto_coefficient": 18,
+    "top_validators": [
+      {
+        "identity": "Fd7btgySsrjuo25CJCj7oE7VPMyezDhnx7pZkj2v69Nk",
+        "stake_sol": 16808219.81,
+        "commission": 7,
+        "share_pct": 3.869
+      },
+      {
+        "identity": "HEL1USMZKAL2odpNBj2oCjffnFGaYwmbGmyewGv1e2TU",
+        "stake_sol": 16003204.52,
+        "commission": 0,
+        "share_pct": 3.684
+      },
+      {
+        "identity": "JUPiTERrZqgf1jUyR7dSkhMx4Kn2qJyekWsg3LT1h4b",
+        "stake_sol": 12472697.16,
+        "commission": 5,
+        "share_pct": 2.871
+      },
+      {
+        "identity": "DRpbCBMxVnDK7maPM5tGv6MvB3v1sRMC86PZ8okm21hy",
+        "stake_sol": 12265636.09,
+        "commission": 0,
+        "share_pct": 2.823
+      },
+      {
+        "identity": "C8Bey3LKVJHVqN6xPTeW8WJfUgFQAeGNBpT4Rp99JP1k",
+        "stake_sol": 9189333.01,
+        "commission": 7,
+        "share_pct": 2.115
+      },
+      {
+        "identity": "CAo1dCGYrB6NhHh5xb1cGjUiu86iyCfMTENxgHumSve4",
+        "stake_sol": 8837285.49,
+        "commission": 10,
+        "share_pct": 2.034
+      },
+      {
+        "identity": "E1r4Psq84tHfQ6aPTvvDka4U3u8zPVD7gEUrH25RdxHL",
+        "stake_sol": 8157243.65,
+        "commission": 0,
+        "share_pct": 1.878
+      },
+      {
+        "identity": "EvnRmnMrd69kFdbLMxWkTn1icZ7DCceRhvmb2SJXqDo4",
+        "stake_sol": 7899431.53,
+        "commission": 7,
+        "share_pct": 1.818
+      },
+      {
+        "identity": "9eGrDohdNTAo61DRHyfMuqKWXqYnA3i254Wiszxe8FoY",
+        "stake_sol": 7479271.15,
+        "commission": 5,
+        "share_pct": 1.722
+      },
+      {
+        "identity": "Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM",
+        "stake_sol": 6653304.21,
+        "commission": 0,
+        "share_pct": 1.532
+      }
+    ]
+  },
+  "economics": {
+    "available": true,
+    "sources": {
+      "tvl": {
+        "available": true,
+        "url": "https://api.llama.fi/v2/historicalChainTvl/Solana"
+      },
+      "price": {
+        "available": true,
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true"
+      },
+      "stablecoins": {
+        "available": true,
+        "url": "https://stablecoins.llama.fi/stablecoinchains"
+      },
+      "dex": {
+        "available": true,
+        "url": "https://api.llama.fi/overview/dexs/solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true"
+      }
+    },
+    "requires_api_key": false,
+    "tvl": {
+      "available": true,
+      "tvl_usd": 4797107540.0,
+      "as_of_unix": 1785888000,
+      "change_7d_pct": 0.4,
+      "history_points": 1968
+    },
+    "price": {
+      "available": true,
+      "price_usd": 74.0,
+      "market_cap_usd": 43019075422.87,
+      "volume_24h_usd": 1525455531.85,
+      "change_24h_pct": 1.26
+    },
+    "stablecoins": {
+      "available": true,
+      "stablecoin_usd": 15820740037.79,
+      "non_usd_pegged_usd": 62601000.08
+    },
+    "dex": {
+      "available": true,
+      "volume_24h_usd": 1738979711.93,
+      "volume_7d_usd": 11188344624.98,
+      "change_1d_pct": 1.54
+    }
+  }
+}

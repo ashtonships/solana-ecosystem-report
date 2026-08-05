@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "collected_at": "2026-08-05T09:42:41+00:00",
+  "source": {
+    "endpoint": "https://api.mainnet-beta.solana.com",
+    "method": "solana json-rpc",
+    "requires_api_key": false
+  },
+  "network": {
+    "healthy": true,
+    "health_raw": "ok",
+    "slot": 437355470,
+    "block_time_unix": 1785922941
+  },
+  "epoch": {
+    "available": true,
+    "epoch": 1012,
+    "slot_index": 171470,
+    "slots_in_epoch": 432000,
+    "progress_pct": 39.69,
+    "absolute_slot": 437355470,
+    "block_height": 415409999,
+    "transaction_count": 535291438773
+  },
+  "performance": {
+    "available": true,
+    "samples_used": 8,
+    "latest_tps": 3022.25,
+    "mean_tps": 2929.56,
+    "peak_tps": 3022.25,
+    "mean_slot_time_secs": 0.422,
+    "samples": [
+      {
+        "slot": 437355486,
+        "tps": 3022.25,
+        "slot_time_secs": 0.417
+      },
+      {
+        "slot": 437355342,
+        "tps": 2981.15,
+        "slot_time_secs": 0.417
+      },
+      {
+        "slot": 437355198,
+        "tps": 2996.97,
+        "slot_time_secs": 0.429
+      },
+      {
+        "slot": 437355058,
+        "tps": 2959.22,
+        "slot_time_secs": 0.42
+      },
+      {
+        "slot": 437354915,
+        "tps": 2873.92,
+        "slot_time_secs": 0.438
+      },
+      {
+        "slot": 437354778,
+        "tps": 2757.83,
+        "slot_time_secs": 0.417
+      },
+      {
+        "slot": 437354634,
+        "tps": 2906.05,
+        "slot_time_secs": 0.426
+      },
+      {
+        "slot": 437354493,
+        "tps": 2939.12,
+        "slot_time_secs": 0.414
+      }
+    ]
+  },
+  "supply": {
+    "available": true,
+    "total_sol": 631630048.13,
+    "circulating_sol": 509466487.54,
+    "non_circulating_sol": 122163560.59,
+    "circulating_pct": 80.66
+  },
+  "validators": {
+    "available": true,
+    "active_count": 692,
+    "delinquent_count": 7,
+    "delinquent_pct": 1.0,
+    "active_stake_sol": 434421657.36,
+    "delinquent_stake_sol": 1825.62,
+    "nakamoto_coefficient": 18,
+    "top_validators": [
+      {
+        "identity": "Fd7btgySsrjuo25CJCj7oE7VPMyezDhnx7pZkj2v69Nk",
+        "stake_sol": 16808219.81,
+        "commission": 7,
+        "share_pct": 3.869
+      },
+      {
+        "identity": "HEL1USMZKAL2odpNBj2oCjffnFGaYwmbGmyewGv1e2TU",
+        "stake_sol": 16003204.52,
+        "commission": 0,
+        "share_pct": 3.684
+      },
+      {
+        "identity": "JUPiTERrZqgf1jUyR7dSkhMx4Kn2qJyekWsg3LT1h4b",
+        "stake_sol": 12472697.16,
+        "commission": 5,
+        "share_pct": 2.871
+      },
+      {
+        "identity": "DRpbCBMxVnDK7maPM5tGv6MvB3v1sRMC86PZ8okm21hy",
+        "stake_sol": 12265636.09,
+        "commission": 0,
+        "share_pct": 2.823
+      },
+      {
+        "identity": "C8Bey3LKVJHVqN6xPTeW8WJfUgFQAeGNBpT4Rp99JP1k",
+        "stake_sol": 9189333.01,
+        "commission": 7,
+        "share_pct": 2.115
+      },
+      {
+        "identity": "CAo1dCGYrB6NhHh5xb1cGjUiu86iyCfMTENxgHumSve4",
+        "stake_sol": 8837285.49,
+        "commission": 10,
+        "share_pct": 2.034
+      },
+      {
+        "identity": "E1r4Psq84tHfQ6aPTvvDka4U3u8zPVD7gEUrH25RdxHL",
+        "stake_sol": 8157243.65,
+        "commission": 0,
+        "share_pct": 1.878
+      },
+      {
+        "identity": "EvnRmnMrd69kFdbLMxWkTn1icZ7DCceRhvmb2SJXqDo4",
+        "stake_sol": 7899431.53,
+        "commission": 7,
+        "share_pct": 1.818
+      },
+      {
+        "identity": "9eGrDohdNTAo61DRHyfMuqKWXqYnA3i254Wiszxe8FoY",
+        "stake_sol": 7479271.15,
+        "commission": 5,
+        "share_pct": 1.722
+      },
+      {
+        "identity": "Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM",
+        "stake_sol": 6653304.21,
+        "commission": 0,
+        "share_pct": 1.532
+      }
+    ]
+  }
+}

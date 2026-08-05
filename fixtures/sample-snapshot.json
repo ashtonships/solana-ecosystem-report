@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "collected_at": "2026-08-05T09:00:00+00:00",
+  "source": {
+    "endpoint": "https://api.mainnet-beta.solana.com",
+    "method": "solana json-rpc",
+    "requires_api_key": false
+  },
+  "network": {
+    "healthy": true,
+    "health_raw": "ok",
+    "slot": 302400000,
+    "block_time_unix": 1786000000
+  },
+  "epoch": {
+    "available": true,
+    "epoch": 700,
+    "slot_index": 216000,
+    "slots_in_epoch": 432000,
+    "progress_pct": 50.0,
+    "absolute_slot": 302400000,
+    "block_height": 280000000,
+    "transaction_count": 412000000000
+  },
+  "performance": {
+    "available": true,
+    "samples_used": 4,
+    "latest_tps": 4213.5,
+    "mean_tps": 3980.25,
+    "peak_tps": 4400.0,
+    "mean_slot_time_secs": 0.401,
+    "samples": [
+      { "slot": 302400000, "tps": 4213.5, "slot_time_secs": 0.4 },
+      { "slot": 302399850, "tps": 4400.0, "slot_time_secs": 0.398 },
+      { "slot": 302399700, "tps": 3600.0, "slot_time_secs": 0.404 },
+      { "slot": 302399550, "tps": 3707.5, "slot_time_secs": 0.402 }
+    ]
+  },
+  "supply": {
+    "available": true,
+    "total_sol": 600000000.0,
+    "circulating_sol": 480000000.0,
+    "non_circulating_sol": 120000000.0,
+    "circulating_pct": 80.0
+  },
+  "validators": {
+    "available": true,
+    "active_count": 1024,
+    "delinquent_count": 37,
+    "delinquent_pct": 3.49,
+    "active_stake_sol": 390000000.0,
+    "delinquent_stake_sol": 1200000.0,
+    "nakamoto_coefficient": 19,
+    "top_validators": [
+      { "identity": "va1idatorAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1", "stake_sol": 12000000.0, "commission": 5, "share_pct": 3.077 },
+      { "identity": "va1idatorBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB2", "stake_sol": 9500000.0, "commission": 7, "share_pct": 2.436 },
+      { "identity": "va1idatorCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC3", "stake_sol": 8100000.0, "commission": 0, "share_pct": 2.077 },
+      { "identity": "va1idatorDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD4", "stake_sol": 7300000.0, "commission": 10, "share_pct": 1.872 },
+      { "identity": "va1idatorEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE5", "stake_sol": 6800000.0, "commission": 5, "share_pct": 1.744 }
+    ]
+  }
+}

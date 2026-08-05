@@ -1,0 +1,12 @@
+{
+  "status": "ok",
+  "findings": [],
+  "snapshots_analysed": 6,
+  "baseline_size": 5,
+  "collected_at": "2026-08-05T10:36:01+00:00",
+  "counts": {
+    "critical": 0,
+    "warning": 0,
+    "info": 0
+  }
+}

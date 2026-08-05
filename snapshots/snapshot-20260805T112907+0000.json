@@ -1,0 +1,283 @@
+{
+  "schema_version": 2,
+  "collected_at": "2026-08-05T11:29:07+00:00",
+  "source": {
+    "endpoint": "https://api.mainnet-beta.solana.com",
+    "method": "solana json-rpc",
+    "requires_api_key": false
+  },
+  "network": {
+    "healthy": true,
+    "health_raw": "ok",
+    "slot": 437370578,
+    "block_time_unix": 1785929303
+  },
+  "epoch": {
+    "available": true,
+    "epoch": 1012,
+    "slot_index": 186578,
+    "slots_in_epoch": 432000,
+    "progress_pct": 43.19,
+    "absolute_slot": 437370578,
+    "block_height": 415425093,
+    "transaction_count": 535310817788
+  },
+  "performance": {
+    "available": true,
+    "samples_used": 8,
+    "latest_tps": 3221.57,
+    "mean_tps": 3156.32,
+    "peak_tps": 3284.87,
+    "mean_slot_time_secs": 0.42,
+    "samples": [
+      {
+        "slot": 437370482,
+        "tps": 3221.57,
+        "slot_time_secs": 0.42
+      },
+      {
+        "slot": 437370339,
+        "tps": 3264.33,
+        "slot_time_secs": 0.417
+      },
+      {
+        "slot": 437370195,
+        "tps": 3284.87,
+        "slot_time_secs": 0.42
+      },
+      {
+        "slot": 437370052,
+        "tps": 2952.77,
+        "slot_time_secs": 0.435
+      },
+      {
+        "slot": 437369914,
+        "tps": 3015.6,
+        "slot_time_secs": 0.417
+      },
+      {
+        "slot": 437369770,
+        "tps": 3175.27,
+        "slot_time_secs": 0.417
+      },
+      {
+        "slot": 437369626,
+        "tps": 3277.4,
+        "slot_time_secs": 0.42
+      },
+      {
+        "slot": 437369483,
+        "tps": 3058.73,
+        "slot_time_secs": 0.414
+      }
+    ]
+  },
+  "supply": {
+    "available": true,
+    "total_sol": 631629996.39,
+    "circulating_sol": 581307047.72,
+    "non_circulating_sol": 50322948.68,
+    "circulating_pct": 92.03
+  },
+  "validators": {
+    "available": true,
+    "active_count": 692,
+    "delinquent_count": 7,
+    "commission": {
+      "available": true,
+      "median_pct": 5.0,
+      "mean_pct": 12.07,
+      "zero_commission_count": 261,
+      "max_commission_count": 62
+    },
+    "delinquent_pct": 1.0,
+    "active_stake_sol": 434421657.36,
+    "delinquent_stake_sol": 1825.62,
+    "nakamoto_coefficient": 18,
+    "top_validators": [
+      {
+        "identity": "Fd7btgySsrjuo25CJCj7oE7VPMyezDhnx7pZkj2v69Nk",
+        "stake_sol": 16808219.81,
+        "commission": 7,
+        "share_pct": 3.869
+      },
+      {
+        "identity": "HEL1USMZKAL2odpNBj2oCjffnFGaYwmbGmyewGv1e2TU",
+        "stake_sol": 16003204.52,
+        "commission": 0,
+        "share_pct": 3.684
+      },
+      {
+        "identity": "JUPiTERrZqgf1jUyR7dSkhMx4Kn2qJyekWsg3LT1h4b",
+        "stake_sol": 12472697.16,
+        "commission": 5,
+        "share_pct": 2.871
+      },
+      {
+        "identity": "DRpbCBMxVnDK7maPM5tGv6MvB3v1sRMC86PZ8okm21hy",
+        "stake_sol": 12265636.09,
+        "commission": 0,
+        "share_pct": 2.823
+      },
+      {
+        "identity": "C8Bey3LKVJHVqN6xPTeW8WJfUgFQAeGNBpT4Rp99JP1k",
+        "stake_sol": 9189333.01,
+        "commission": 7,
+        "share_pct": 2.115
+      },
+      {
+        "identity": "CAo1dCGYrB6NhHh5xb1cGjUiu86iyCfMTENxgHumSve4",
+        "stake_sol": 8837285.49,
+        "commission": 10,
+        "share_pct": 2.034
+      },
+      {
+        "identity": "E1r4Psq84tHfQ6aPTvvDka4U3u8zPVD7gEUrH25RdxHL",
+        "stake_sol": 8157243.65,
+        "commission": 0,
+        "share_pct": 1.878
+      },
+      {
+        "identity": "EvnRmnMrd69kFdbLMxWkTn1icZ7DCceRhvmb2SJXqDo4",
+        "stake_sol": 7899431.53,
+        "commission": 7,
+        "share_pct": 1.818
+      },
+      {
+        "identity": "9eGrDohdNTAo61DRHyfMuqKWXqYnA3i254Wiszxe8FoY",
+        "stake_sol": 7479271.15,
+        "commission": 5,
+        "share_pct": 1.722
+      },
+      {
+        "identity": "Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM",
+        "stake_sol": 6653304.21,
+        "commission": 0,
+        "share_pct": 1.532
+      }
+    ]
+  },
+  "economics": {
+    "available": true,
+    "sources": {
+      "tvl": {
+        "available": true,
+        "url": "https://api.llama.fi/v2/historicalChainTvl/Solana"
+      },
+      "price": {
+        "available": true,
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true"
+      },
+      "stablecoins": {
+        "available": true,
+        "url": "https://stablecoins.llama.fi/stablecoinchains"
+      },
+      "dex": {
+        "available": true,
+        "url": "https://api.llama.fi/overview/dexs/solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true"
+      }
+    },
+    "requires_api_key": false,
+    "tvl": {
+      "available": true,
+      "tvl_usd": 4794880239.0,
+      "as_of_unix": 1785888000,
+      "change_7d_pct": 0.35,
+      "history_points": 1968
+    },
+    "price": {
+      "available": true,
+      "price_usd": 73.83,
+      "market_cap_usd": 42919634277.96,
+      "volume_24h_usd": 1513687190.86,
+      "change_24h_pct": 0.34
+    },
+    "stablecoins": {
+      "available": true,
+      "stablecoin_usd": 15614638702.36,
+      "non_usd_pegged_usd": 62594434.75
+    },
+    "dex": {
+      "available": true,
+      "volume_24h_usd": 1746976990.93,
+      "volume_7d_usd": 11353528965.98,
+      "change_1d_pct": 2.01
+    }
+  },
+  "activity": {
+    "available": true,
+    "requires_api_key": false,
+    "source": {
+      "endpoint": "https://api.mainnet-beta.solana.com",
+      "method": "getBlock (transactionDetails=accounts)"
+    },
+    "window": {
+      "slots": 216000,
+      "blocks_sampled": 16,
+      "blocks_requested": 16,
+      "truncated": false,
+      "production_rate": 0.9991,
+      "first_slot": 437154453,
+      "last_slot": 437370453,
+      "observed_seconds": 91395,
+      "sampling": "evenly spaced across the window"
+    },
+    "fees": {
+      "available": true,
+      "transactions_sampled": 23085,
+      "nonvote_transactions_sampled": 12280,
+      "vote_share_pct": 46.81,
+      "failure_rate_pct": 40.78,
+      "median_lamports": 5527,
+      "mean_lamports": 39231,
+      "p90_lamports": 19918,
+      "p99_lamports": 635912,
+      "min_lamports": 5000,
+      "max_lamports": 50005000,
+      "median_sol": 5.527e-06,
+      "basis": "non-vote transactions only"
+    },
+    "rev": {
+      "available": true,
+      "definition": "base fees + priority fees + Jito tips",
+      "sampled_sol": {
+        "base": 0.12289,
+        "priority": 0.413342,
+        "jito_tips": 0.095606,
+        "total": 0.631838
+      },
+      "per_block_sol": {
+        "mean": 0.03949,
+        "min": 0.011302,
+        "max": 0.252188
+      },
+      "estimated_24h_sol": 8522.16,
+      "estimated_24h_sol_low": 2492.52,
+      "estimated_24h_sol_high": 14551.79,
+      "confidence": "95% interval on the sample mean",
+      "estimated": true,
+      "blocks_in_window": 215806,
+      "method": "mean REV per sampled block x blocks produced in the window; block count from a measured production rate, not an assumed slot time"
+    },
+    "addresses": {
+      "available": true,
+      "unique_fee_payers_sampled": 4188,
+      "unique_accounts_sampled": 31904,
+      "mean_fee_payers_per_block": 375.4,
+      "blocks_sampled": 16,
+      "daily_active_addresses": null,
+      "daily_active_available": false,
+      "note": "Unique non-vote fee payers seen in the sampled blocks only, not a daily total. A true daily active address count is the union over every block in 24 hours; unique counts do not scale from a sample the way sums do, because samples overlap. Extrapolating this number would overstate it, so the daily figure is reported as unavailable instead.",
+      "basis": "non-vote transactions only"
+    },
+    "fee_split": {
+      "available": true,
+      "blocks_reconciled": 16,
+      "fees_sol": 0.536232,
+      "validator_reward_sol": 0.474747,
+      "burned_sol": 0.061485,
+      "burned_pct": 11.47,
+      "note": "Measured from each block's own fee reward entry; no burn rate assumed."
+    }
+  }
+}
