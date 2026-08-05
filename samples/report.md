@@ -1,51 +1,73 @@
 # Solana Ecosystem Report
 
-**Collected:** 2026-08-05T11:29:07+00:00  
+**Collected:** 2026-08-05T18:10:38+00:00  
 **Source:** `https://api.mainnet-beta.solana.com` (public JSON-RPC, no API key)  
 **Network health:** 🟢 healthy
 
 ## Anomalies
 
-🟢 **None detected** across 8 snapshots (baseline of 7).
+🟢 **None detected** across 10 snapshots (baseline of 9).
+
+## What changed since the last snapshot
+
+> `2026-08-05T13:36:49+00:00` → `2026-08-05T18:10:38+00:00` (4.6h apart). 0 metric(s) moved past threshold, 14 steady, 0 not comparable.
+
+🟢 **No metric moved past its threshold** across 14 compared metric(s).
 
 ## Network
 
 | Metric | Value |
 | --- | --- |
-| Current slot | 437,370,578 |
-| Block time | 2026-08-05T11:28:23+00:00 |
-| Block height | 415,425,093 |
-| Total transactions | 535,310,817,788 |
+| Current slot | 437,427,507 |
+| Block time | 2026-08-05T18:09:47+00:00 |
+| Block height | 415,481,975 |
+| Total transactions | 535,397,176,314 |
 
 ## Epoch
 
 | Metric | Value |
 | --- | --- |
 | Epoch | 1012 |
-| Progress | 43.19% |
-| Slot in epoch | 186,578 of 432,000 |
+| Progress | 56.37% |
+| Slot in epoch | 243,507 of 432,000 |
 
 ## Performance
 
 | Metric | Value |
 | --- | --- |
-| Latest TPS | 3,221.57 |
-| Mean TPS (8 samples) | 3,156.32 |
-| Peak TPS | 3,284.87 |
+| Latest TPS | 4,422.58 |
+| Mean TPS (8 samples) | 3,920.56 |
+| Peak TPS | 4,422.58 |
 | Mean slot time | 0.42s |
+
+## History
+
+Across 10 committed snapshot(s). Ranges are over real observations only — snapshots missing a metric are counted as missing, never as zero.
+
+| Series | Points | Missing | Gaps | Min | Max | Latest | Basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Transactions per second (TPS) | 10 | 0 | 4 | 2,935 | 4,423 | 4,423 | measured |
+| Mean slot time (s) | 10 | 0 | 4 | 0.420 | 0.433 | 0.422 | measured |
+| Validator delinquency (%) | 10 | 0 | 4 | 1.00 | 1.00 | 1.00 | measured |
+| SOL price (USD) | 6 | 4 | 2 | 73.37 | 74.42 | 74.42 | measured |
+| Total value locked (USD) | 6 | 4 | 2 | 4,788,941,147 | 4,800,643,250 | 4,800,643,250 | measured |
+| Median fee (non-vote) (lamports) | 4 | 6 | 0 | 5,469 | 5,608 | 5,514 | sampled |
+| REV 24h (estimated) (SOL) | 4 | 6 | 0 | 6,677 | 9,463 | 9,463 | sampled |
+
+A series with fewer than two points is charted nowhere and reported here as the count it actually has.
 
 ## Fees, REV and activity
 
-> Sampled from **16 blocks** evenly spaced across 25.4h of chain history (~215,806 blocks produced in that window). Public JSON-RPC `getBlock`, no API key.
+> Sampled from **16 blocks** evenly spaced across 25.4h of chain history (~215,741 blocks produced in that window). Public JSON-RPC `getBlock`, no API key.
 
 | Transaction fee | Value | USD |
 | --- | --- | --- |
-| Median | 5,527 lamports | $0.000408 |
-| Mean | 39,231 lamports | $0.002896 |
-| 90th percentile | 19,918 lamports | $0.001471 |
-| 99th percentile | 635,912 lamports | $0.05 |
+| Median | 5,514 lamports | $0.00041 |
+| Mean | 42,773 lamports | $0.003183 |
+| 90th percentile | 20,374 lamports | $0.001516 |
+| 99th percentile | 992,000 lamports | $0.07 |
 
-Measured over **12,280 non-vote transactions**. Vote transactions were 46.81% of all sampled traffic and are excluded — every vote pays exactly 5,000 lamports, so including them pins the median there and the figure stops describing what it costs anyone to use the network. 40.78% of non-vote transactions failed on-chain.
+Measured over **12,204 non-vote transactions**. Vote transactions were 47.38% of all sampled traffic and are excluded — every vote pays exactly 5,000 lamports, so including them pins the median there and the figure stops describing what it costs anyone to use the network. 44.40% of non-vote transactions failed on-chain.
 
 ### Real economic value
 
@@ -53,24 +75,24 @@ REV is **base fees + priority fees + Jito tips**.
 
 | Component | Sampled (SOL) | Share |
 | --- | --- | --- |
-| Base fees | 0.12 | 19.4% |
-| Priority fees | 0.41 | 65.4% |
-| Jito tips | 0.10 | 15.1% |
-| **Total sampled** | **0.63** | 100% |
+| Base fees | 0.12 | 17.3% |
+| Priority fees | 0.46 | 65.0% |
+| Jito tips | 0.12 | 17.7% |
+| **Total sampled** | **0.70** | 100% |
 
-**Estimated 24h REV: 8,522.16 SOL** ($629,191), 95% interval on the sample mean 2,492.52–14,551.79 SOL ($184,023–$1,074,359).
+**Estimated 24h REV: 9,463.20 SOL** ($704,251), 95% interval on the sample mean 6,939.44–11,986.96 SOL ($516,433–$892,070).
 
-Extrapolated, not measured: mean REV per sampled block x blocks produced in the window; block count from a measured production rate, not an assumed slot time. Per-block REV across the sample ranged 0.01 to 0.25 SOL (mean 0.04), so treat the daily figure as an order-of-magnitude estimate from a small sample, not a settled total.
+Extrapolated, not measured: mean REV per sampled block x blocks produced in the window; block count from a measured production rate, not an assumed slot time. Per-block REV across the sample ranged 0.01 to 0.11 SOL (mean 0.04), so treat the daily figure as an order-of-magnitude estimate from a small sample, not a settled total.
 
-Of the fees in the 16 reconciled blocks, **11.47% was burned** (0.06 SOL) and 0.47 SOL went to block leaders. Measured from each block's own fee reward entry — no burn rate is assumed, so this stays correct across a change to the fee split.
+Of the fees in the 16 reconciled blocks, **10.51% was burned** (0.06 SOL) and 0.52 SOL went to block leaders. Measured from each block's own fee reward entry — no burn rate is assumed, so this stays correct across a change to the fee split.
 
 ### Address activity
 
 | Metric | Value |
 | --- | --- |
-| Unique fee payers (sampled) | 4,188 |
-| Unique accounts touched (sampled) | 31,904 |
-| Mean fee payers per block | 375.40 |
+| Unique fee payers (sampled) | 3,784 |
+| Unique accounts touched (sampled) | 29,530 |
+| Mean fee payers per block | 343.60 |
 | **Daily active addresses** | **not derivable — see below** |
 
 ⚠️ Unique non-vote fee payers seen in the sampled blocks only, not a daily total. A true daily active address count is the union over every block in 24 hours; unique counts do not scale from a sample the way sums do, because samples overlap. Extrapolating this number would overstate it, so the daily figure is reported as unavailable instead.
@@ -79,12 +101,12 @@ Of the fees in the 16 reconciled blocks, **11.47% was burned** (0.06 SOL) and 0.
 
 | Metric | Value | Source |
 | --- | --- | --- |
-| SOL price | $73.83 (+0.34% 24h) | CoinGecko |
-| Market cap | $42,919,634,277.96 | CoinGecko |
-| 24h trading volume | $1,513,687,190.86 | CoinGecko |
-| Total value locked | $4,794,880,239 (+0.35% 7d) | DeFiLlama |
-| Stablecoin supply | $15,614,638,702.36 | DeFiLlama |
-| DEX volume 24h | $1,746,976,990.93 (+2.01% 1d) | DeFiLlama |
+| SOL price | $74.42 (+0.63% 24h) | CoinGecko |
+| Market cap | $43,263,136,838.12 | CoinGecko |
+| 24h trading volume | $1,692,014,761.35 | CoinGecko |
+| Total value locked | $4,800,643,250 (+0.47% 7d) | DeFiLlama |
+| Stablecoin supply | $15,661,470,128.03 | DeFiLlama |
+| DEX volume 24h | $1,747,556,147.93 (+2.04% 1d) | DeFiLlama |
 
 _All economic sources are public and keyless — no API key or account required._
 
@@ -92,8 +114,8 @@ _All economic sources are public and keyless — no API key or account required.
 
 | Metric | Value |
 | --- | --- |
-| Total supply | 631,629,996.39 SOL |
-| Circulating | 581,307,047.72 SOL |
+| Total supply | 631,629,703.86 SOL |
+| Circulating | 581,306,755.15 SOL |
 | Circulating share | 92.03% |
 
 ## Validators
@@ -104,7 +126,7 @@ _All economic sources are public and keyless — no API key or account required.
 | Delinquent validators | 7 (1%) |
 | Active stake | 434,421,657.36 SOL |
 | Nakamoto coefficient | 18 |
-| Median commission | 5% (mean 12.07%, 261 at 0%) |
+| Median commission | 5% (mean 12.36%, 259 at 0%) |
 
 ### Top validators by stake
 
@@ -120,6 +142,52 @@ _All economic sources are public and keyless — no API key or account required.
 | 8 | `EvnRmnMrd69kFdbLMxWkTn1icZ7DCceRhvmb2SJXqDo4` | 7,899,431.53 | 1.82% | 7% |
 | 9 | `9eGrDohdNTAo61DRHyfMuqKWXqYnA3i254Wiszxe8FoY` | 7,479,271.15 | 1.72% | 5% |
 | 10 | `Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM` | 6,653,304.21 | 1.53% | 0% |
+
+## Releases and announcements
+
+> Official first-party feeds, fetched without credentials and recorded into this snapshot, so the section re-renders offline unchanged. Feed contents are third-party statements reproduced verbatim, not claims made by this report.
+
+### Agave validator releases
+
+_Agave is the validator client most of the network runs. A release here is the software operators are about to be asked to run._
+
+| Published (UTC) | Entry |
+| --- | --- |
+| 2026-08-03T12:41:49Z | [Release v4.2.0-rc.1](https://github.com/anza-xyz/agave/releases/tag/v4.2.0-rc.1) |
+| 2026-07-27T15:24:59Z | [Release v4.2.0-rc.0](https://github.com/anza-xyz/agave/releases/tag/v4.2.0-rc.0) |
+| 2026-07-24T14:31:34Z | [Release v4.3.0-alpha.1](https://github.com/anza-xyz/agave/releases/tag/v4.3.0-alpha.1) |
+| 2026-07-24T14:31:17Z | [Release v4.3.0-alpha.2](https://github.com/anza-xyz/agave/releases/tag/v4.3.0-alpha.2) |
+| 2026-07-20T12:14:51Z | [Release v4.2.0-beta.2](https://github.com/anza-xyz/agave/releases/tag/v4.2.0-beta.2) |
+
+From `https://github.com/anza-xyz/agave/releases.atom` — anza-xyz/agave (GitHub), public and keyless, recorded at collection time.
+
+### SIMD proposal activity
+
+_Protocol changes are proposed and amended here before they ship. This is the commit feed, so it shows drafting activity, not acceptance — a commit is not a merged-and-agreed upgrade._
+
+| Published (UTC) | Entry |
+| --- | --- |
+| 2026-07-31T16:27:22Z | [re-amend SIMD-0340: additional inter- and intra- validation (#551)](https://github.com/solana-foundation/solana-improvement-documents/commit/fc519fb3d1ef0f7624b6232bda958438feba09ce) |
+| 2026-07-31T08:06:24Z | [SIMD-0433: Loader V3: Set Program Data to ELF Length (#433)](https://github.com/solana-foundation/solana-improvement-documents/commit/06bd4bd6b0b835d110bf4ccb0bc7c759ae88e997) |
+| 2026-07-23T01:49:14Z | [SIMD-0550: Double disinflation (#550)](https://github.com/solana-foundation/solana-improvement-documents/commit/b13be70e7454144becbe9c474b296d737d72df98) |
+| 2026-07-20T18:46:49Z | [SIMD-0553: Resource and Inclusion Fee (#553)](https://github.com/solana-foundation/solana-improvement-documents/commit/2e6243a5010255ed5b1592f42ebfc890a2c21d05) |
+| 2026-07-16T22:18:10Z | [SIMD-0392: Clarify included stake accounts and calculations (#572)](https://github.com/solana-foundation/solana-improvement-documents/commit/0c3548e91bc6553774607181446dd09b00e4a649) |
+
+From `https://github.com/solana-foundation/solana-improvement-documents/commits/main.atom` — solana-foundation/solana-improvement-documents (GitHub), public and keyless, recorded at collection time.
+
+### Network status history
+
+_The operator's own incident record. Entries are historical: an old newest-entry date means no incident has been posted since then, which is information in itself._
+
+| Published (UTC) | Entry |
+| --- | --- |
+| 2024-02-06T15:09:24Z | [mb-020624](https://status.solana.com/incidents/n5kcgs8dl9pj) |
+| 2023-02-26T15:48:39Z | [Cluster Instability](https://status.solana.com/incidents/ymr0gyj9xqyz) |
+| 2023-01-08T07:01:17Z | [Public Endpoints and Explorer offline](https://status.solana.com/incidents/mf9plxrkjhnk) |
+| 2022-10-01T07:06:06Z | [Degraded Performance](https://status.solana.com/incidents/kxsv0xcz9dn3) |
+| 2022-06-06T16:32:07Z | [Mainnet Beta Clock Drift](https://status.solana.com/incidents/f68wm876ph9m) |
+
+From `https://status.solana.com/history.atom` — status.solana.com (official status page), public and keyless, recorded at collection time.
 
 ## Upcoming upgrades
 

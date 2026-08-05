@@ -1,9 +1,9 @@
 {
   "status": "ok",
   "findings": [],
-  "snapshots_analysed": 8,
-  "baseline_size": 7,
-  "collected_at": "2026-08-05T11:29:07+00:00",
+  "snapshots_analysed": 10,
+  "baseline_size": 9,
+  "collected_at": "2026-08-05T18:10:38+00:00",
   "counts": {
     "critical": 0,
     "warning": 0,

@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "collected_at": "2026-08-05T11:29:07+00:00",
+  "schema_version": 3,
+  "collected_at": "2026-08-05T18:10:38+00:00",
   "source": {
     "endpoint": "https://api.mainnet-beta.solana.com",
     "method": "solana json-rpc",
@@ -9,74 +9,74 @@
   "network": {
     "healthy": true,
     "health_raw": "ok",
-    "slot": 437370578,
-    "block_time_unix": 1785929303
+    "slot": 437427507,
+    "block_time_unix": 1785953387
   },
   "epoch": {
     "available": true,
     "epoch": 1012,
-    "slot_index": 186578,
+    "slot_index": 243507,
     "slots_in_epoch": 432000,
-    "progress_pct": 43.19,
-    "absolute_slot": 437370578,
-    "block_height": 415425093,
-    "transaction_count": 535310817788
+    "progress_pct": 56.37,
+    "absolute_slot": 437427507,
+    "block_height": 415481975,
+    "transaction_count": 535397176314
   },
   "performance": {
     "available": true,
     "samples_used": 8,
-    "latest_tps": 3221.57,
-    "mean_tps": 3156.32,
-    "peak_tps": 3284.87,
-    "mean_slot_time_secs": 0.42,
+    "latest_tps": 4422.58,
+    "mean_tps": 3920.56,
+    "peak_tps": 4422.58,
+    "mean_slot_time_secs": 0.422,
     "samples": [
       {
-        "slot": 437370482,
-        "tps": 3221.57,
-        "slot_time_secs": 0.42
-      },
-      {
-        "slot": 437370339,
-        "tps": 3264.33,
-        "slot_time_secs": 0.417
-      },
-      {
-        "slot": 437370195,
-        "tps": 3284.87,
-        "slot_time_secs": 0.42
-      },
-      {
-        "slot": 437370052,
-        "tps": 2952.77,
-        "slot_time_secs": 0.435
-      },
-      {
-        "slot": 437369914,
-        "tps": 3015.6,
-        "slot_time_secs": 0.417
-      },
-      {
-        "slot": 437369770,
-        "tps": 3175.27,
-        "slot_time_secs": 0.417
-      },
-      {
-        "slot": 437369626,
-        "tps": 3277.4,
-        "slot_time_secs": 0.42
-      },
-      {
-        "slot": 437369483,
-        "tps": 3058.73,
+        "slot": 437427505,
+        "tps": 4422.58,
         "slot_time_secs": 0.414
+      },
+      {
+        "slot": 437427360,
+        "tps": 3687.48,
+        "slot_time_secs": 0.429
+      },
+      {
+        "slot": 437427220,
+        "tps": 4101.4,
+        "slot_time_secs": 0.417
+      },
+      {
+        "slot": 437427076,
+        "tps": 4132.88,
+        "slot_time_secs": 0.411
+      },
+      {
+        "slot": 437426930,
+        "tps": 3680.3,
+        "slot_time_secs": 0.429
+      },
+      {
+        "slot": 437426790,
+        "tps": 3441.45,
+        "slot_time_secs": 0.42
+      },
+      {
+        "slot": 437426647,
+        "tps": 3840.88,
+        "slot_time_secs": 0.432
+      },
+      {
+        "slot": 437426508,
+        "tps": 4057.52,
+        "slot_time_secs": 0.423
       }
     ]
   },
   "supply": {
     "available": true,
-    "total_sol": 631629996.39,
-    "circulating_sol": 581307047.72,
-    "non_circulating_sol": 50322948.68,
+    "total_sol": 631629703.86,
+    "circulating_sol": 581306755.15,
+    "non_circulating_sol": 50322948.71,
     "circulating_pct": 92.03
   },
   "validators": {
@@ -86,9 +86,9 @@
     "commission": {
       "available": true,
       "median_pct": 5.0,
-      "mean_pct": 12.07,
-      "zero_commission_count": 261,
-      "max_commission_count": 62
+      "mean_pct": 12.36,
+      "zero_commission_count": 259,
+      "max_commission_count": 64
     },
     "delinquent_pct": 1.0,
     "active_stake_sol": 434421657.36,
@@ -180,28 +180,28 @@
     "requires_api_key": false,
     "tvl": {
       "available": true,
-      "tvl_usd": 4794880239.0,
+      "tvl_usd": 4800643250.0,
       "as_of_unix": 1785888000,
-      "change_7d_pct": 0.35,
+      "change_7d_pct": 0.47,
       "history_points": 1968
     },
     "price": {
       "available": true,
-      "price_usd": 73.83,
-      "market_cap_usd": 42919634277.96,
-      "volume_24h_usd": 1513687190.86,
-      "change_24h_pct": 0.34
+      "price_usd": 74.42,
+      "market_cap_usd": 43263136838.12,
+      "volume_24h_usd": 1692014761.35,
+      "change_24h_pct": 0.63
     },
     "stablecoins": {
       "available": true,
-      "stablecoin_usd": 15614638702.36,
-      "non_usd_pegged_usd": 62594434.75
+      "stablecoin_usd": 15661470128.03,
+      "non_usd_pegged_usd": 64548099.37
     },
     "dex": {
       "available": true,
-      "volume_24h_usd": 1746976990.93,
-      "volume_7d_usd": 11353528965.98,
-      "change_1d_pct": 2.01
+      "volume_24h_usd": 1747556147.93,
+      "volume_7d_usd": 11363634839.98,
+      "change_1d_pct": 2.04
     }
   },
   "activity": {
@@ -216,54 +216,54 @@
       "blocks_sampled": 16,
       "blocks_requested": 16,
       "truncated": false,
-      "production_rate": 0.9991,
-      "first_slot": 437154453,
-      "last_slot": 437370453,
-      "observed_seconds": 91395,
+      "production_rate": 0.9988,
+      "first_slot": 437211376,
+      "last_slot": 437427376,
+      "observed_seconds": 91349,
       "sampling": "evenly spaced across the window"
     },
     "fees": {
       "available": true,
-      "transactions_sampled": 23085,
-      "nonvote_transactions_sampled": 12280,
-      "vote_share_pct": 46.81,
-      "failure_rate_pct": 40.78,
-      "median_lamports": 5527,
-      "mean_lamports": 39231,
-      "p90_lamports": 19918,
-      "p99_lamports": 635912,
+      "transactions_sampled": 23194,
+      "nonvote_transactions_sampled": 12204,
+      "vote_share_pct": 47.38,
+      "failure_rate_pct": 44.4,
+      "median_lamports": 5514,
+      "mean_lamports": 42773,
+      "p90_lamports": 20374,
+      "p99_lamports": 992000,
       "min_lamports": 5000,
-      "max_lamports": 50005000,
-      "median_sol": 5.527e-06,
+      "max_lamports": 33205000,
+      "median_sol": 5.514e-06,
       "basis": "non-vote transactions only"
     },
     "rev": {
       "available": true,
       "definition": "base fees + priority fees + Jito tips",
       "sampled_sol": {
-        "base": 0.12289,
-        "priority": 0.413342,
-        "jito_tips": 0.095606,
-        "total": 0.631838
+        "base": 0.121265,
+        "priority": 0.456174,
+        "jito_tips": 0.12438,
+        "total": 0.701819
       },
       "per_block_sol": {
-        "mean": 0.03949,
-        "min": 0.011302,
-        "max": 0.252188
+        "mean": 0.043864,
+        "min": 0.014591,
+        "max": 0.108402
       },
-      "estimated_24h_sol": 8522.16,
-      "estimated_24h_sol_low": 2492.52,
-      "estimated_24h_sol_high": 14551.79,
+      "estimated_24h_sol": 9463.2,
+      "estimated_24h_sol_low": 6939.44,
+      "estimated_24h_sol_high": 11986.96,
       "confidence": "95% interval on the sample mean",
       "estimated": true,
-      "blocks_in_window": 215806,
+      "blocks_in_window": 215741,
       "method": "mean REV per sampled block x blocks produced in the window; block count from a measured production rate, not an assumed slot time"
     },
     "addresses": {
       "available": true,
-      "unique_fee_payers_sampled": 4188,
-      "unique_accounts_sampled": 31904,
-      "mean_fee_payers_per_block": 375.4,
+      "unique_fee_payers_sampled": 3784,
+      "unique_accounts_sampled": 29530,
+      "mean_fee_payers_per_block": 343.6,
       "blocks_sampled": 16,
       "daily_active_addresses": null,
       "daily_active_available": false,
@@ -273,23 +273,771 @@
     "fee_split": {
       "available": true,
       "blocks_reconciled": 16,
-      "fees_sol": 0.536232,
-      "validator_reward_sol": 0.474747,
-      "burned_sol": 0.061485,
-      "burned_pct": 11.47,
+      "fees_sol": 0.577439,
+      "validator_reward_sol": 0.516747,
+      "burned_sol": 0.060693,
+      "burned_pct": 10.51,
       "note": "Measured from each block's own fee reward entry; no burn rate assumed."
     }
+  },
+  "news": {
+    "available": true,
+    "requires_api_key": false,
+    "sources": {
+      "agave_releases": {
+        "label": "Agave validator releases",
+        "publisher": "anza-xyz/agave (GitHub)",
+        "why": "Agave is the validator client most of the network runs. A release here is the software operators are about to be asked to run.",
+        "url": "https://github.com/anza-xyz/agave/releases.atom",
+        "requires_api_key": false,
+        "available": true,
+        "items": [
+          {
+            "title": "Release v4.2.0-rc.1",
+            "link": "https://github.com/anza-xyz/agave/releases/tag/v4.2.0-rc.1",
+            "published": "2026-08-03T12:41:49Z",
+            "author": "github-actions[bot]"
+          },
+          {
+            "title": "Release v4.2.0-rc.0",
+            "link": "https://github.com/anza-xyz/agave/releases/tag/v4.2.0-rc.0",
+            "published": "2026-07-27T15:24:59Z",
+            "author": "github-actions[bot]"
+          },
+          {
+            "title": "Release v4.3.0-alpha.1",
+            "link": "https://github.com/anza-xyz/agave/releases/tag/v4.3.0-alpha.1",
+            "published": "2026-07-24T14:31:34Z",
+            "author": "github-actions[bot]"
+          },
+          {
+            "title": "Release v4.3.0-alpha.2",
+            "link": "https://github.com/anza-xyz/agave/releases/tag/v4.3.0-alpha.2",
+            "published": "2026-07-24T14:31:17Z",
+            "author": "github-actions[bot]"
+          },
+          {
+            "title": "Release v4.2.0-beta.2",
+            "link": "https://github.com/anza-xyz/agave/releases/tag/v4.2.0-beta.2",
+            "published": "2026-07-20T12:14:51Z",
+            "author": "github-actions[bot]"
+          }
+        ],
+        "item_count": 5,
+        "latest_published": "2026-08-03T12:41:49Z"
+      },
+      "simd_proposals": {
+        "label": "SIMD proposal activity",
+        "publisher": "solana-foundation/solana-improvement-documents (GitHub)",
+        "why": "Protocol changes are proposed and amended here before they ship. This is the commit feed, so it shows drafting activity, not acceptance \u2014 a commit is not a merged-and-agreed upgrade.",
+        "url": "https://github.com/solana-foundation/solana-improvement-documents/commits/main.atom",
+        "requires_api_key": false,
+        "available": true,
+        "items": [
+          {
+            "title": "re-amend SIMD-0340: additional inter- and intra- validation (#551)",
+            "link": "https://github.com/solana-foundation/solana-improvement-documents/commit/fc519fb3d1ef0f7624b6232bda958438feba09ce",
+            "published": "2026-07-31T16:27:22Z",
+            "author": "lidatong"
+          },
+          {
+            "title": "SIMD-0433: Loader V3: Set Program Data to ELF Length (#433)",
+            "link": "https://github.com/solana-foundation/solana-improvement-documents/commit/06bd4bd6b0b835d110bf4ccb0bc7c759ae88e997",
+            "published": "2026-07-31T08:06:24Z",
+            "author": "buffalojoec"
+          },
+          {
+            "title": "SIMD-0550: Double disinflation (#550)",
+            "link": "https://github.com/solana-foundation/solana-improvement-documents/commit/b13be70e7454144becbe9c474b296d737d72df98",
+            "published": "2026-07-23T01:49:14Z",
+            "author": "lostintime101"
+          },
+          {
+            "title": "SIMD-0553: Resource and Inclusion Fee (#553)",
+            "link": "https://github.com/solana-foundation/solana-improvement-documents/commit/2e6243a5010255ed5b1592f42ebfc890a2c21d05",
+            "published": "2026-07-20T18:46:49Z",
+            "author": "cavemanloverboy"
+          },
+          {
+            "title": "SIMD-0392: Clarify included stake accounts and calculations (#572)",
+            "link": "https://github.com/solana-foundation/solana-improvement-documents/commit/0c3548e91bc6553774607181446dd09b00e4a649",
+            "published": "2026-07-16T22:18:10Z",
+            "author": "joncinque"
+          }
+        ],
+        "item_count": 5,
+        "latest_published": "2026-07-31T16:27:22Z"
+      },
+      "network_status": {
+        "label": "Network status history",
+        "publisher": "status.solana.com (official status page)",
+        "why": "The operator's own incident record. Entries are historical: an old newest-entry date means no incident has been posted since then, which is information in itself.",
+        "url": "https://status.solana.com/history.atom",
+        "requires_api_key": false,
+        "available": true,
+        "items": [
+          {
+            "title": "mb-020624",
+            "link": "https://status.solana.com/incidents/n5kcgs8dl9pj",
+            "published": "2024-02-06T15:09:24Z",
+            "author": null
+          },
+          {
+            "title": "Cluster Instability",
+            "link": "https://status.solana.com/incidents/ymr0gyj9xqyz",
+            "published": "2023-02-26T15:48:39Z",
+            "author": null
+          },
+          {
+            "title": "Public Endpoints and Explorer offline",
+            "link": "https://status.solana.com/incidents/mf9plxrkjhnk",
+            "published": "2023-01-08T07:01:17Z",
+            "author": null
+          },
+          {
+            "title": "Degraded Performance",
+            "link": "https://status.solana.com/incidents/kxsv0xcz9dn3",
+            "published": "2022-10-01T07:06:06Z",
+            "author": null
+          },
+          {
+            "title": "Mainnet Beta Clock Drift",
+            "link": "https://status.solana.com/incidents/f68wm876ph9m",
+            "published": "2022-06-06T16:32:07Z",
+            "author": null
+          }
+        ],
+        "item_count": 5,
+        "latest_published": "2024-02-06T15:09:24Z"
+      }
+    },
+    "note": "Official first-party feeds, fetched without credentials and recorded into this snapshot, so the section re-renders offline unchanged. Feed contents are third-party statements reproduced verbatim, not claims made by this report."
   },
   "anomalies": {
     "status": "ok",
     "findings": [],
-    "snapshots_analysed": 8,
-    "baseline_size": 7,
-    "collected_at": "2026-08-05T11:29:07+00:00",
+    "snapshots_analysed": 10,
+    "baseline_size": 9,
+    "collected_at": "2026-08-05T18:10:38+00:00",
     "counts": {
       "critical": 0,
       "warning": 0,
       "info": 0
+    }
+  },
+  "delta": {
+    "status": "ok",
+    "previous_collected_at": "2026-08-05T13:36:49+00:00",
+    "current_collected_at": "2026-08-05T18:10:38+00:00",
+    "elapsed_seconds": 16429,
+    "changes": [],
+    "steady": [
+      {
+        "key": "latest_tps",
+        "label": "Latest TPS",
+        "unit": " TPS",
+        "basis": "measured",
+        "previous": 4020.83,
+        "current": 4422.58,
+        "change": 401.75,
+        "change_pct": 9.99,
+        "direction": "up",
+        "identifier": false
+      },
+      {
+        "key": "mean_slot_time_secs",
+        "label": "Mean slot time",
+        "unit": "s",
+        "basis": "measured",
+        "previous": 0.433,
+        "current": 0.422,
+        "change": -0.011,
+        "change_pct": -2.54,
+        "direction": "down",
+        "identifier": false
+      },
+      {
+        "key": "delinquent_pct",
+        "label": "Validator delinquency",
+        "unit": "%",
+        "basis": "measured",
+        "previous": 1.0,
+        "current": 1.0,
+        "change": 0.0,
+        "change_pct": 0.0,
+        "direction": "flat",
+        "identifier": false
+      },
+      {
+        "key": "active_count",
+        "label": "Active validators",
+        "unit": "",
+        "basis": "measured",
+        "previous": 692,
+        "current": 692,
+        "change": 0,
+        "change_pct": 0.0,
+        "direction": "flat",
+        "identifier": false
+      },
+      {
+        "key": "nakamoto_coefficient",
+        "label": "Nakamoto coefficient",
+        "unit": " validators",
+        "basis": "measured",
+        "previous": 18,
+        "current": 18,
+        "change": 0,
+        "change_pct": 0.0,
+        "direction": "flat",
+        "identifier": false
+      },
+      {
+        "key": "active_stake_sol",
+        "label": "Active stake",
+        "unit": " SOL",
+        "basis": "measured",
+        "previous": 434421657.36,
+        "current": 434421657.36,
+        "change": 0.0,
+        "change_pct": 0.0,
+        "direction": "flat",
+        "identifier": false
+      },
+      {
+        "key": "circulating_sol",
+        "label": "Circulating supply",
+        "unit": " SOL",
+        "basis": "measured",
+        "previous": 581306981.34,
+        "current": 581306755.15,
+        "change": -226.19,
+        "change_pct": -0.0,
+        "direction": "down",
+        "identifier": false
+      },
+      {
+        "key": "epoch",
+        "label": "Epoch",
+        "unit": "",
+        "basis": "measured",
+        "previous": 1012,
+        "current": 1012,
+        "change": 0,
+        "change_pct": 0.0,
+        "direction": "flat",
+        "identifier": true
+      },
+      {
+        "key": "price_usd",
+        "label": "SOL price",
+        "unit": " USD",
+        "basis": "measured",
+        "previous": 73.37,
+        "current": 74.42,
+        "change": 1.05,
+        "change_pct": 1.43,
+        "direction": "up",
+        "identifier": false
+      },
+      {
+        "key": "tvl_usd",
+        "label": "Total value locked",
+        "unit": " USD",
+        "basis": "measured",
+        "previous": 4788941147.0,
+        "current": 4800643250.0,
+        "change": 11702103.0,
+        "change_pct": 0.24,
+        "direction": "up",
+        "identifier": false
+      },
+      {
+        "key": "stablecoin_usd",
+        "label": "Stablecoin supply",
+        "unit": " USD",
+        "basis": "measured",
+        "previous": 15589742526.38,
+        "current": 15661470128.03,
+        "change": 71727601.65,
+        "change_pct": 0.46,
+        "direction": "up",
+        "identifier": false
+      },
+      {
+        "key": "dex_volume_24h_usd",
+        "label": "DEX volume 24h",
+        "unit": " USD",
+        "basis": "measured",
+        "previous": 1747556147.93,
+        "current": 1747556147.93,
+        "change": 0.0,
+        "change_pct": 0.0,
+        "direction": "flat",
+        "identifier": false
+      },
+      {
+        "key": "median_fee_lamports",
+        "label": "Median fee (non-vote)",
+        "unit": " lamports",
+        "basis": "sampled",
+        "previous": 5608,
+        "current": 5514,
+        "change": -94,
+        "change_pct": -1.68,
+        "direction": "down",
+        "identifier": false
+      },
+      {
+        "key": "estimated_24h_rev_sol",
+        "label": "REV 24h (estimated)",
+        "unit": " SOL",
+        "basis": "sampled",
+        "previous": 8130.39,
+        "current": 9463.2,
+        "change": 1332.81,
+        "change_pct": 16.39,
+        "direction": "up",
+        "identifier": false
+      }
+    ],
+    "not_comparable": [],
+    "counts": {
+      "changed": 0,
+      "steady": 14,
+      "not_comparable": 0
+    }
+  },
+  "history": {
+    "snapshots": 10,
+    "series": {
+      "latest_tps": {
+        "label": "Transactions per second",
+        "unit": "TPS",
+        "basis": "measured",
+        "charted": true,
+        "stats": {
+          "points": 10,
+          "snapshots": 10,
+          "missing": 0,
+          "gaps": 4,
+          "min": 2935.22,
+          "max": 4422.58,
+          "first": 3022.25,
+          "last": 4422.58,
+          "first_at": "2026-08-05T09:42:41+00:00",
+          "last_at": "2026-08-05T18:10:38+00:00",
+          "chartable": true
+        },
+        "points": [
+          {
+            "collected_at": "2026-08-05T09:42:41+00:00",
+            "value": 3022.25
+          },
+          {
+            "collected_at": "2026-08-05T10:21:23+00:00",
+            "value": 2935.22
+          },
+          {
+            "collected_at": "2026-08-05T10:21:49+00:00",
+            "value": 2942.83
+          },
+          {
+            "collected_at": "2026-08-05T10:22:17+00:00",
+            "value": 2942.83
+          },
+          {
+            "collected_at": "2026-08-05T10:29:46+00:00",
+            "value": 3174.37
+          },
+          {
+            "collected_at": "2026-08-05T10:36:01+00:00",
+            "value": 3006.85
+          },
+          {
+            "collected_at": "2026-08-05T11:24:35+00:00",
+            "value": 3277.4
+          },
+          {
+            "collected_at": "2026-08-05T11:29:07+00:00",
+            "value": 3221.57
+          },
+          {
+            "collected_at": "2026-08-05T13:36:49+00:00",
+            "value": 4020.83
+          },
+          {
+            "collected_at": "2026-08-05T18:10:38+00:00",
+            "value": 4422.58
+          }
+        ]
+      },
+      "mean_slot_time_secs": {
+        "label": "Mean slot time",
+        "unit": "s",
+        "basis": "measured",
+        "charted": true,
+        "stats": {
+          "points": 10,
+          "snapshots": 10,
+          "missing": 0,
+          "gaps": 4,
+          "min": 0.42,
+          "max": 0.433,
+          "first": 0.422,
+          "last": 0.422,
+          "first_at": "2026-08-05T09:42:41+00:00",
+          "last_at": "2026-08-05T18:10:38+00:00",
+          "chartable": true
+        },
+        "points": [
+          {
+            "collected_at": "2026-08-05T09:42:41+00:00",
+            "value": 0.422
+          },
+          {
+            "collected_at": "2026-08-05T10:21:23+00:00",
+            "value": 0.421
+          },
+          {
+            "collected_at": "2026-08-05T10:21:49+00:00",
+            "value": 0.421
+          },
+          {
+            "collected_at": "2026-08-05T10:22:17+00:00",
+            "value": 0.421
+          },
+          {
+            "collected_at": "2026-08-05T10:29:46+00:00",
+            "value": 0.422
+          },
+          {
+            "collected_at": "2026-08-05T10:36:01+00:00",
+            "value": 0.423
+          },
+          {
+            "collected_at": "2026-08-05T11:24:35+00:00",
+            "value": 0.423
+          },
+          {
+            "collected_at": "2026-08-05T11:29:07+00:00",
+            "value": 0.42
+          },
+          {
+            "collected_at": "2026-08-05T13:36:49+00:00",
+            "value": 0.433
+          },
+          {
+            "collected_at": "2026-08-05T18:10:38+00:00",
+            "value": 0.422
+          }
+        ]
+      },
+      "delinquent_pct": {
+        "label": "Validator delinquency",
+        "unit": "%",
+        "basis": "measured",
+        "charted": true,
+        "stats": {
+          "points": 10,
+          "snapshots": 10,
+          "missing": 0,
+          "gaps": 4,
+          "min": 1.0,
+          "max": 1.0,
+          "first": 1.0,
+          "last": 1.0,
+          "first_at": "2026-08-05T09:42:41+00:00",
+          "last_at": "2026-08-05T18:10:38+00:00",
+          "chartable": true
+        },
+        "points": [
+          {
+            "collected_at": "2026-08-05T09:42:41+00:00",
+            "value": 1.0
+          },
+          {
+            "collected_at": "2026-08-05T10:21:23+00:00",
+            "value": 1.0
+          },
+          {
+            "collected_at": "2026-08-05T10:21:49+00:00",
+            "value": 1.0
+          },
+          {
+            "collected_at": "2026-08-05T10:22:17+00:00",
+            "value": 1.0
+          },
+          {
+            "collected_at": "2026-08-05T10:29:46+00:00",
+            "value": 1.0
+          },
+          {
+            "collected_at": "2026-08-05T10:36:01+00:00",
+            "value": 1.0
+          },
+          {
+            "collected_at": "2026-08-05T11:24:35+00:00",
+            "value": 1.0
+          },
+          {
+            "collected_at": "2026-08-05T11:29:07+00:00",
+            "value": 1.0
+          },
+          {
+            "collected_at": "2026-08-05T13:36:49+00:00",
+            "value": 1.0
+          },
+          {
+            "collected_at": "2026-08-05T18:10:38+00:00",
+            "value": 1.0
+          }
+        ]
+      },
+      "price_usd": {
+        "label": "SOL price",
+        "unit": "USD",
+        "basis": "measured",
+        "charted": true,
+        "stats": {
+          "points": 6,
+          "snapshots": 10,
+          "missing": 4,
+          "gaps": 2,
+          "min": 73.37,
+          "max": 74.42,
+          "first": 74.0,
+          "last": 74.42,
+          "first_at": "2026-08-05T10:29:46+00:00",
+          "last_at": "2026-08-05T18:10:38+00:00",
+          "chartable": true
+        },
+        "points": [
+          {
+            "collected_at": "2026-08-05T09:42:41+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:21:23+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:21:49+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:22:17+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:29:46+00:00",
+            "value": 74.0
+          },
+          {
+            "collected_at": "2026-08-05T10:36:01+00:00",
+            "value": 73.97
+          },
+          {
+            "collected_at": "2026-08-05T11:24:35+00:00",
+            "value": 73.87
+          },
+          {
+            "collected_at": "2026-08-05T11:29:07+00:00",
+            "value": 73.83
+          },
+          {
+            "collected_at": "2026-08-05T13:36:49+00:00",
+            "value": 73.37
+          },
+          {
+            "collected_at": "2026-08-05T18:10:38+00:00",
+            "value": 74.42
+          }
+        ]
+      },
+      "tvl_usd": {
+        "label": "Total value locked",
+        "unit": "USD",
+        "basis": "measured",
+        "charted": true,
+        "stats": {
+          "points": 6,
+          "snapshots": 10,
+          "missing": 4,
+          "gaps": 2,
+          "min": 4788941147.0,
+          "max": 4800643250.0,
+          "first": 4797107540.0,
+          "last": 4800643250.0,
+          "first_at": "2026-08-05T10:29:46+00:00",
+          "last_at": "2026-08-05T18:10:38+00:00",
+          "chartable": true
+        },
+        "points": [
+          {
+            "collected_at": "2026-08-05T09:42:41+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:21:23+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:21:49+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:22:17+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:29:46+00:00",
+            "value": 4797107540.0
+          },
+          {
+            "collected_at": "2026-08-05T10:36:01+00:00",
+            "value": 4797107540.0
+          },
+          {
+            "collected_at": "2026-08-05T11:24:35+00:00",
+            "value": 4796514692.0
+          },
+          {
+            "collected_at": "2026-08-05T11:29:07+00:00",
+            "value": 4794880239.0
+          },
+          {
+            "collected_at": "2026-08-05T13:36:49+00:00",
+            "value": 4788941147.0
+          },
+          {
+            "collected_at": "2026-08-05T18:10:38+00:00",
+            "value": 4800643250.0
+          }
+        ]
+      },
+      "median_fee_lamports": {
+        "label": "Median fee (non-vote)",
+        "unit": "lamports",
+        "basis": "sampled",
+        "charted": true,
+        "stats": {
+          "points": 4,
+          "snapshots": 10,
+          "missing": 6,
+          "gaps": 0,
+          "min": 5469.0,
+          "max": 5608.0,
+          "first": 5469.0,
+          "last": 5514.0,
+          "first_at": "2026-08-05T11:24:35+00:00",
+          "last_at": "2026-08-05T18:10:38+00:00",
+          "chartable": true
+        },
+        "points": [
+          {
+            "collected_at": "2026-08-05T09:42:41+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:21:23+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:21:49+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:22:17+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:29:46+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:36:01+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T11:24:35+00:00",
+            "value": 5469.0
+          },
+          {
+            "collected_at": "2026-08-05T11:29:07+00:00",
+            "value": 5527.0
+          },
+          {
+            "collected_at": "2026-08-05T13:36:49+00:00",
+            "value": 5608.0
+          },
+          {
+            "collected_at": "2026-08-05T18:10:38+00:00",
+            "value": 5514.0
+          }
+        ]
+      },
+      "estimated_24h_rev_sol": {
+        "label": "REV 24h (estimated)",
+        "unit": "SOL",
+        "basis": "sampled",
+        "charted": true,
+        "stats": {
+          "points": 4,
+          "snapshots": 10,
+          "missing": 6,
+          "gaps": 0,
+          "min": 6676.52,
+          "max": 9463.2,
+          "first": 6676.52,
+          "last": 9463.2,
+          "first_at": "2026-08-05T11:24:35+00:00",
+          "last_at": "2026-08-05T18:10:38+00:00",
+          "chartable": true
+        },
+        "points": [
+          {
+            "collected_at": "2026-08-05T09:42:41+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:21:23+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:21:49+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:22:17+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:29:46+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T10:36:01+00:00",
+            "value": null
+          },
+          {
+            "collected_at": "2026-08-05T11:24:35+00:00",
+            "value": 6676.52
+          },
+          {
+            "collected_at": "2026-08-05T11:29:07+00:00",
+            "value": 8522.16
+          },
+          {
+            "collected_at": "2026-08-05T13:36:49+00:00",
+            "value": 8130.39
+          },
+          {
+            "collected_at": "2026-08-05T18:10:38+00:00",
+            "value": 9463.2
+          }
+        ]
+      }
     }
   }
 }
