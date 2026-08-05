@@ -330,5 +330,4 @@ Deliberately not built, and why:
 
 ## License
 
-Not yet licensed. MIT is proposed; the final choice is the owner's, to be made
-at the public-release gate.
+MIT — see [LICENSE](LICENSE).
