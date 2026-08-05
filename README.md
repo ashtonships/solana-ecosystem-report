@@ -20,7 +20,7 @@ packages, no build step. `git clone` and run.
 python3 collect.py          # fetch live data → snapshots/
 python3 detect.py           # anomalies across accumulated history
 python3 render.py           # snapshot → dist/index.html, report.md, report.json
-open dist/index.html
+open dist/index.html        # macOS — xdg-open on Linux, start on Windows
 ```
 
 No install step. Requires Python 3.9+ (uses only `urllib`, `json`, `pathlib`,
@@ -308,14 +308,15 @@ health.
 
 ## Roadmap
 
-- **Anomaly detection** — TPS drops/spikes, slow slot times, validator
-  delinquency spikes, large supply moves. Reads accumulated snapshot history,
-  so it needs no new data source.
-- **Additional sources** — DeFiLlama and CoinGecko for TVL and price, Dune for
-  ecosystem dashboards. Each adds an external dependency, so each is gated
-  behind the no-API-key preference rather than assumed.
+Two items that started here are now built and documented above: **anomaly
+detection** (seven detectors over accumulated history) and the **keyless
+economic sources** (CoinGecko and DeFiLlama for price, market cap, TVL,
+stablecoin supply and DEX volume). Still open:
+
 - **Historical charts** — trends across snapshots, rendered inline with the
   same zero-dependency approach.
+- **Dune ecosystem dashboards** — requires an API key, so gated behind the
+  no-credential preference rather than assumed.
 
 Deliberately not built, and why:
 
@@ -329,4 +330,5 @@ Deliberately not built, and why:
 
 ## License
 
-Not yet licensed. To be decided before any public release.
+Not yet licensed. MIT is proposed; the final choice is the owner's, to be made
+at the public-release gate.

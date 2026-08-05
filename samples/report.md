@@ -1,49 +1,90 @@
 # Solana Ecosystem Report
 
-**Collected:** 2026-08-05T10:36:01+00:00  
+**Collected:** 2026-08-05T11:29:07+00:00  
 **Source:** `https://api.mainnet-beta.solana.com` (public JSON-RPC, no API key)  
 **Network health:** 🟢 healthy
 
 ## Anomalies
 
-🟢 **None detected** across 6 snapshots (baseline of 5).
+🟢 **None detected** across 8 snapshots (baseline of 7).
 
 ## Network
 
 | Metric | Value |
 | --- | --- |
-| Current slot | 437,363,069 |
-| Block time | 2026-08-05T10:35:40+00:00 |
-| Block height | 415,417,589 |
-| Total transactions | 535,301,001,929 |
+| Current slot | 437,370,578 |
+| Block time | 2026-08-05T11:28:23+00:00 |
+| Block height | 415,425,093 |
+| Total transactions | 535,310,817,788 |
 
 ## Epoch
 
 | Metric | Value |
 | --- | --- |
 | Epoch | 1012 |
-| Progress | 41.45% |
-| Slot in epoch | 179,069 of 432,000 |
+| Progress | 43.19% |
+| Slot in epoch | 186,578 of 432,000 |
 
 ## Performance
 
 | Metric | Value |
 | --- | --- |
-| Latest TPS | 3,006.85 |
-| Mean TPS (8 samples) | 3,066.77 |
-| Peak TPS | 3,204.77 |
+| Latest TPS | 3,221.57 |
+| Mean TPS (8 samples) | 3,156.32 |
+| Peak TPS | 3,284.87 |
 | Mean slot time | 0.42s |
+
+## Fees, REV and activity
+
+> Sampled from **16 blocks** evenly spaced across 25.4h of chain history (~215,806 blocks produced in that window). Public JSON-RPC `getBlock`, no API key.
+
+| Transaction fee | Value | USD |
+| --- | --- | --- |
+| Median | 5,527 lamports | $0.000408 |
+| Mean | 39,231 lamports | $0.002896 |
+| 90th percentile | 19,918 lamports | $0.001471 |
+| 99th percentile | 635,912 lamports | $0.05 |
+
+Measured over **12,280 non-vote transactions**. Vote transactions were 46.81% of all sampled traffic and are excluded — every vote pays exactly 5,000 lamports, so including them pins the median there and the figure stops describing what it costs anyone to use the network. 40.78% of non-vote transactions failed on-chain.
+
+### Real economic value
+
+REV is **base fees + priority fees + Jito tips**.
+
+| Component | Sampled (SOL) | Share |
+| --- | --- | --- |
+| Base fees | 0.12 | 19.4% |
+| Priority fees | 0.41 | 65.4% |
+| Jito tips | 0.10 | 15.1% |
+| **Total sampled** | **0.63** | 100% |
+
+**Estimated 24h REV: 8,522.16 SOL** ($629,191), 95% interval on the sample mean 2,492.52–14,551.79 SOL ($184,023–$1,074,359).
+
+Extrapolated, not measured: mean REV per sampled block x blocks produced in the window; block count from a measured production rate, not an assumed slot time. Per-block REV across the sample ranged 0.01 to 0.25 SOL (mean 0.04), so treat the daily figure as an order-of-magnitude estimate from a small sample, not a settled total.
+
+Of the fees in the 16 reconciled blocks, **11.47% was burned** (0.06 SOL) and 0.47 SOL went to block leaders. Measured from each block's own fee reward entry — no burn rate is assumed, so this stays correct across a change to the fee split.
+
+### Address activity
+
+| Metric | Value |
+| --- | --- |
+| Unique fee payers (sampled) | 4,188 |
+| Unique accounts touched (sampled) | 31,904 |
+| Mean fee payers per block | 375.40 |
+| **Daily active addresses** | **not derivable — see below** |
+
+⚠️ Unique non-vote fee payers seen in the sampled blocks only, not a daily total. A true daily active address count is the union over every block in 24 hours; unique counts do not scale from a sample the way sums do, because samples overlap. Extrapolating this number would overstate it, so the daily figure is reported as unavailable instead.
 
 ## Economic indicators
 
 | Metric | Value | Source |
 | --- | --- | --- |
-| SOL price | $73.97 (+1.20% 24h) | CoinGecko |
-| Market cap | $42,999,647,416.55 | CoinGecko |
-| 24h trading volume | $1,523,134,795.92 | CoinGecko |
-| Total value locked | $4,797,107,540 (+0.40% 7d) | DeFiLlama |
-| Stablecoin supply | $15,820,740,037.79 | DeFiLlama |
-| DEX volume 24h | $1,738,979,711.93 (+1.54% 1d) | DeFiLlama |
+| SOL price | $73.83 (+0.34% 24h) | CoinGecko |
+| Market cap | $42,919,634,277.96 | CoinGecko |
+| 24h trading volume | $1,513,687,190.86 | CoinGecko |
+| Total value locked | $4,794,880,239 (+0.35% 7d) | DeFiLlama |
+| Stablecoin supply | $15,614,638,702.36 | DeFiLlama |
+| DEX volume 24h | $1,746,976,990.93 (+2.01% 1d) | DeFiLlama |
 
 _All economic sources are public and keyless — no API key or account required._
 
@@ -51,8 +92,8 @@ _All economic sources are public and keyless — no API key or account required.
 
 | Metric | Value |
 | --- | --- |
-| Total supply | 631,630,021.99 SOL |
-| Circulating | 581,307,073.31 SOL |
+| Total supply | 631,629,996.39 SOL |
+| Circulating | 581,307,047.72 SOL |
 | Circulating share | 92.03% |
 
 ## Validators

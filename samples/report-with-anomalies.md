@@ -1,6 +1,6 @@
 # Solana Ecosystem Report
 
-**Collected:** 2026-08-05T10:30:00+00:00  
+**Collected:** 2026-08-05T12:45:00+00:00  
 **Source:** `https://api.mainnet-beta.solana.com` (public JSON-RPC, no API key)  
 **Network health:** 🔴 unhealthy
 
@@ -8,7 +8,7 @@
 
 | | Finding | Observed | Baseline |
 | --- | --- | --- | --- |
-| 🔴 critical | **Network reports unhealthy** — getHealth did not return ok. It was healthy at the previous snapshot. | unhealthy | — |
+| 🔴 critical | **Network reports unhealthy** — getHealth did not return ok. It was healthy at the previous snapshot. | error: node is behind | — |
 | 🔴 critical | **Transaction throughput dropped sharply** — TPS is 75.0% below the 4-snapshot median. | 735.71 | 2942.83 |
 | 🔴 critical | **Validator delinquency is elevated** — 8.40% of validators are delinquent, at or above the 5.0% threshold. | 8.4 | — |
 | 🔴 critical | **Slot did not advance** — The current slot is not ahead of the previous snapshot — the chain or the collector is stuck. | 437361107 | 437361112 |
@@ -42,6 +42,10 @@
 | Peak TPS | 3,184.72 |
 | Mean slot time | 0.95s |
 
+## Fees, REV and activity
+
+_Block sampling unavailable in this snapshot._
+
 ## Economic indicators
 
 _Economic sources unavailable in this snapshot._
@@ -62,6 +66,7 @@ _Economic sources unavailable in this snapshot._
 | Delinquent validators | 7 (8.40%) |
 | Active stake | 347,537,325.89 SOL |
 | Nakamoto coefficient | 18 |
+| Median commission | —% (mean —%, — at 0%) |
 
 ### Top validators by stake
 
@@ -77,6 +82,26 @@ _Economic sources unavailable in this snapshot._
 | 8 | `EvnRmnMrd69kFdbLMxWkTn1icZ7DCceRhvmb2SJXqDo4` | 7,899,431.53 | 1.82% | 7% |
 | 9 | `9eGrDohdNTAo61DRHyfMuqKWXqYnA3i254Wiszxe8FoY` | 7,479,271.15 | 1.72% | 5% |
 | 10 | `Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM` | 6,653,304.21 | 1.53% | 0% |
+
+## Upcoming upgrades
+
+> **Static reference data**, last checked 2026-08-05. Not a live feed — verify against the linked SIMD repository.
+
+### Alpenglow (Votor) — Review
+
+Changes the core consensus protocol from Proof of History and TowerBFT to Alpenglow — specifically the Votor parts. Current consensus finality time is 12.8 seconds. Rotor, the data-dissemination half of the Alpenglow white paper, is explicitly excluded from this SIMD: Turbine remains the dissemination protocol and Rotor will get its own proposal later.
+
+_Finality is the property most visible to users and applications, and this is the largest change to Solana consensus since launch. Alpenglow is a family rather than a single proposal — see also SIMD-0357 (validator admission ticket) and SIMD-0384 (migration)._
+
+Source: https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0326-alpenglow.md
+
+### Reduce Slot Times — Draft
+
+Reduces the target slot time from 400ms to 200ms in four feature-gated steps — 350ms, 300ms, 250ms, 200ms. Each step holds ticks_per_slot at 64 and leader windows at 4 slots, scaling per-slot work limits so wall-clock throughput is unchanged. Extends SIMD-0357.
+
+_This report already measures mean slot time against the current 400ms target. If this lands, that target halves in four observable steps — so the measurement above becomes the way to watch this roadmap item arrive._
+
+Source: https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0525-reduce-slot-times.md
 
 ---
 
