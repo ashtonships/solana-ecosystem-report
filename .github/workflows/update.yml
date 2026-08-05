@@ -33,8 +33,12 @@ jobs:
 
       # On push events only re-render from the committed snapshots; collecting
       # and committing here would re-trigger this workflow in a loop.
+      # continue-on-error: the public RPC throttles; a failed collection must
+      # degrade to re-rendering the committed snapshots, not to a red run that
+      # skips the deploy.
       - name: Collect live snapshot
         if: github.event_name != 'push'
+        continue-on-error: true
         run: python3 collect.py
 
       - name: Detect anomalies

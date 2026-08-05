@@ -48,6 +48,8 @@ def fmt_sol(value: Any, dash: str = "—") -> str:
     """Compact SOL for headline cards — a 9-digit figure is unreadable at a glance."""
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         return dash
+    if value >= 1_000_000_000:
+        return f"{value / 1_000_000_000:,.2f}B SOL"
     if value >= 1_000_000:
         return f"{value / 1_000_000:,.1f}M SOL"
     if value >= 1_000:
@@ -100,6 +102,19 @@ def hours(seconds: Any) -> str:
     if not isinstance(seconds, (int, float)) or isinstance(seconds, bool):
         return "—"
     return f"{seconds / 3600:.1f}h"
+
+
+def analysis_for(snapshot: dict[str, Any], history: list[dict[str, Any]]) -> dict[str, Any]:
+    """Anomalies for THIS snapshot: drop history collected after it.
+
+    Without the cutoff, re-rendering an older snapshot would wear the newest
+    snapshot's anomaly verdict — a page describing one moment with a panel
+    describing another.
+    """
+    cutoff = snapshot.get("collected_at")
+    if isinstance(cutoff, str) and cutoff:
+        history = [s for s in history if s.get("collected_at", "") <= cutoff]
+    return detect.analyse(history)
 
 
 def block_time_iso(snapshot: dict[str, Any]) -> str:
@@ -887,8 +902,9 @@ def main() -> int:
     snapshot = json.loads(args.snapshot.read_text(encoding="utf-8"))
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Anomaly detection reads the accumulated history — no network, no new source.
-    analysis = detect.analyse(detect.load_history(args.snapshot.parent))
+    # Anomaly detection reads the accumulated history — no network, no new
+    # source — restricted to what existed when this snapshot was collected.
+    analysis = analysis_for(snapshot, detect.load_history(args.snapshot.parent))
 
     markdown_path = args.out_dir / "report.md"
     html_path = args.out_dir / "index.html"

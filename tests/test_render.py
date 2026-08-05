@@ -268,6 +268,11 @@ class TestFormatting(unittest.TestCase):
         self.assertEqual(render.fmt_sol(42.5), "42.50 SOL")
         self.assertEqual(render.fmt_sol(None), "—")
 
+    def test_billion_scale_figures_get_their_own_tier(self):
+        # Market cap and TVL are USD billions; "$42,919.6M" is the amateur read.
+        self.assertEqual(render.fmt_sol(42_919_600_000), "42.92B SOL")
+        self.assertEqual(render.fmt_sol(999_999_999), "1,000.0M SOL")
+
     def test_html_keeps_the_exact_figure_alongside_the_compact_one(self):
         page = render.render_html(load_fixture())
         self.assertIn("600.0M SOL", page)      # compact headline
@@ -284,6 +289,39 @@ class TestFormatting(unittest.TestCase):
         snapshot["epoch"]["epoch"] = 1012
         self.assertIn("| Epoch | 1012 |", render.render_markdown(snapshot))
         self.assertIn("Epoch 1012", render.render_html(snapshot))
+
+
+class TestAnalysisSelection(unittest.TestCase):
+    """The anomaly panel must describe the snapshot being rendered.
+
+    Rendering an older snapshot with the newest snapshot's verdict is the
+    known_zero-class failure: a confident panel about the wrong moment.
+    """
+
+    @staticmethod
+    def snap(hour, slot):
+        return {
+            "collected_at": f"2026-08-05T0{hour}:00:00+00:00",
+            "network": {"healthy": True, "slot": slot},
+        }
+
+    def test_history_after_the_target_snapshot_is_excluded(self):
+        history = [self.snap(hour, 100 + hour) for hour in range(5)]
+        target = history[3]
+        analysis = render.analysis_for(target, history)
+        self.assertEqual(analysis["collected_at"], target["collected_at"])
+        self.assertEqual(analysis["snapshots_analysed"], 4)
+
+    def test_newest_snapshot_keeps_the_full_history(self):
+        history = [self.snap(hour, 100 + hour) for hour in range(5)]
+        analysis = render.analysis_for(history[-1], history)
+        self.assertEqual(analysis["collected_at"], history[-1]["collected_at"])
+        self.assertEqual(analysis["snapshots_analysed"], 5)
+
+    def test_snapshot_without_timestamp_falls_back_to_full_history(self):
+        history = [self.snap(hour, 100 + hour) for hour in range(5)]
+        analysis = render.analysis_for({"network": {}}, history)
+        self.assertEqual(analysis["snapshots_analysed"], 5)
 
 
 if __name__ == "__main__":
