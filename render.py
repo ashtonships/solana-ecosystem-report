@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import delta as delta_module
 import detect
 import upgrades as upgrades_data
 
@@ -161,6 +162,159 @@ def render_anomalies_markdown(analysis: dict[str, Any] | None) -> list[str]:
     return lines
 
 
+def fmt_delta_value(value: Any, unit: str = "", dash: str = "—") -> str:
+    """A delta figure printed with its unit, or a dash when it is genuinely absent."""
+    if value is None:
+        return dash
+    if isinstance(value, int):
+        return f"{value:,}{unit}"
+    if isinstance(value, float):
+        text = f"{value:,}"
+        return f"{text}{unit}"
+    return f"{value}{unit}"
+
+
+def fmt_delta_change(item: dict[str, Any]) -> str:
+    """Signed change with its percentage, or `n/a` when the percentage is undefined.
+
+    A move away from zero has no meaningful percentage. Printing one anyway —
+    or quietly dropping to `+0.00%` — is the classic way a delta table lies.
+    """
+    change = item.get("change")
+    unit = item.get("unit", "")
+    sign = "+" if isinstance(change, (int, float)) and change > 0 else ""
+    body = f"{sign}{fmt_delta_value(change, unit)}"
+    pct = item.get("change_pct")
+    if pct is None:
+        return f"{body} (% n/a from zero)"
+    return f"{body} ({pct:+.2f}%)"
+
+
+def render_delta_markdown(comparison: dict[str, Any] | None) -> list[str]:
+    """What changed since the previous snapshot. Deterministic, never narrated."""
+    if not comparison:
+        return []
+
+    lines = ["## What changed since the last snapshot", ""]
+
+    if comparison.get("status") != "ok":
+        lines += [f"⚪ **Not yet comparable** — {comparison.get('message', '')}", ""]
+        return lines
+
+    lines += [
+        f"> `{comparison.get('previous_collected_at')}` → "
+        f"`{comparison.get('current_collected_at')}` "
+        f"({delta_module.format_elapsed(comparison.get('elapsed_seconds'))} apart). "
+        f"{comparison['counts']['changed']} metric(s) moved past threshold, "
+        f"{comparison['counts']['steady']} steady, "
+        f"{comparison['counts']['not_comparable']} not comparable.",
+        "",
+    ]
+
+    changes = comparison.get("changes", [])
+    if changes:
+        lines += [
+            "| Metric | Previous | Current | Change | Basis |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+        for item in changes:
+            lines.append(
+                f"| {item['label']} | {fmt_delta_value(item['previous'], item['unit'])} "
+                f"| {fmt_delta_value(item['current'], item['unit'])} "
+                f"| {fmt_delta_change(item)} "
+                f"| {'sampled/extrapolated' if item['basis'] == 'sampled' else 'measured'} |"
+            )
+        lines.append("")
+        for item in changes:
+            lines += [
+                f"**{item['label']}** — {item['why_it_matters']}  ",
+                f"_Verify:_ {item['what_to_verify']}",
+                "",
+            ]
+    else:
+        lines += [
+            "🟢 **No metric moved past its threshold** across "
+            f"{comparison['counts']['steady']} compared metric(s).",
+            "",
+        ]
+
+    not_comparable = comparison.get("not_comparable", [])
+    if not_comparable:
+        lines += [
+            "Not comparable — reported as such rather than as a change of zero:",
+            "",
+        ]
+        lines += [f"- **{item['label']}** — {item['reason']}" for item in not_comparable]
+        lines.append("")
+
+    return lines
+
+
+def render_delta_html(comparison: dict[str, Any] | None) -> str:
+    """The same delta, as a panel. Same data, same determinism."""
+    if not comparison:
+        return ""
+
+    heading = ("<h2>What changed since the last snapshot "
+               "<span class='keyless'>deterministic</span></h2>")
+
+    if comparison.get("status") != "ok":
+        return (
+            heading
+            + "<div class='anomaly-note pending'><strong>Not yet comparable.</strong> "
+            + html.escape(str(comparison.get("message", ""))) + "</div>"
+        )
+
+    counts = comparison["counts"]
+    parts = [
+        heading,
+        f"<p class='unavailable'>{html.escape(str(comparison.get('previous_collected_at')))} → "
+        f"{html.escape(str(comparison.get('current_collected_at')))} · "
+        f"{delta_module.format_elapsed(comparison.get('elapsed_seconds'))} apart · "
+        f"{counts['changed']} moved · {counts['steady']} steady · "
+        f"{counts['not_comparable']} not comparable</p>",
+    ]
+
+    changes = comparison.get("changes", [])
+    if changes:
+        parts.append("<table><thead><tr><th>Metric</th><th>Previous</th><th>Current</th>"
+                     "<th>Change</th><th>Why it matters · what to verify</th>"
+                     "</tr></thead><tbody>")
+        for item in changes:
+            direction = item.get("direction", "flat")
+            badge = ("<span class='basis-badge sampled'>sampled</span>"
+                     if item["basis"] == "sampled" else "")
+            parts.append(
+                f"<tr><td>{html.escape(item['label'])}{badge}</td>"
+                f"<td class='mono'>{html.escape(fmt_delta_value(item['previous'], item['unit']))}</td>"
+                f"<td class='mono'>{html.escape(fmt_delta_value(item['current'], item['unit']))}</td>"
+                f"<td class='mono delta-{html.escape(direction)}'>"
+                f"{html.escape(fmt_delta_change(item))}</td>"
+                f"<td>{html.escape(item['why_it_matters'])}"
+                f"<small>Verify: {html.escape(item['what_to_verify'])}</small></td></tr>"
+            )
+        parts.append("</tbody></table>")
+    else:
+        parts.append(
+            "<div class='anomaly-note clear'><strong>No metric moved past its "
+            f"threshold</strong> across {counts['steady']} compared metric(s).</div>"
+        )
+
+    not_comparable = comparison.get("not_comparable", [])
+    if not_comparable:
+        items = "".join(
+            f"<li>{html.escape(item['label'])} — {html.escape(item['reason'])}</li>"
+            for item in not_comparable
+        )
+        parts.append(
+            "<div class='anomaly-note pending' style='margin-top:12px'>"
+            "<strong>Not comparable, so not reported as a change:</strong>"
+            f"<ul class='plain-list'>{items}</ul></div>"
+        )
+
+    return "".join(parts)
+
+
 def interval_suffix(rev: dict[str, Any], price: float | None) -> str:
     """The confidence interval printed beside the daily REV estimate.
 
@@ -291,7 +445,11 @@ def render_activity_markdown(snapshot: dict[str, Any]) -> list[str]:
     return lines
 
 
-def render_markdown(snapshot: dict[str, Any], analysis: dict[str, Any] | None = None) -> str:
+def render_markdown(
+    snapshot: dict[str, Any],
+    analysis: dict[str, Any] | None = None,
+    comparison: dict[str, Any] | None = None,
+) -> str:
     network = snapshot.get("network", {})
     epoch = snapshot.get("epoch", {})
     perf = snapshot.get("performance", {})
@@ -306,6 +464,7 @@ def render_markdown(snapshot: dict[str, Any], analysis: dict[str, Any] | None = 
         f"**Network health:** {'🟢 healthy' if network.get('healthy') else '🔴 unhealthy'}",
         "",
         *render_anomalies_markdown(analysis),
+        *render_delta_markdown(comparison),
         "## Network",
         "",
         "| Metric | Value |",
@@ -524,6 +683,16 @@ tr:hover td { background: var(--panel-2); }
 .anomaly.info     { border-left: 3px solid var(--accent-2); }
 .anomaly.info .anomaly-sev { color: var(--accent-2); }
 .anomaly-nums { margin-left: auto; color: var(--dim); white-space: nowrap; }
+.basis-badge { margin-left: 8px; padding: 1px 7px; border-radius: 999px;
+               font-size: 10px; letter-spacing: 0.3px; vertical-align: middle; }
+/* Sampled and measured must never look alike — same rule as the charts. */
+.basis-badge.sampled { background: rgba(255,176,32,0.12); color: var(--warn); }
+.delta-up { color: var(--accent); }
+.delta-down { color: var(--warn); }
+.delta-flat { color: var(--dim); }
+td small { display: block; color: var(--dim); font-size: 11px; margin-top: 3px; }
+.plain-list { list-style: none; margin: 8px 0 0; padding: 0; font-size: 12px; }
+.plain-list li { margin-top: 3px; }
 .static-badge { margin-left: 8px; padding: 2px 8px; border-radius: 999px;
                 background: rgba(255,176,32,0.12); color: var(--warn);
                 font-size: 10px; letter-spacing: 0.4px; text-transform: none; }
@@ -692,7 +861,11 @@ def render_activity_html(snapshot: dict[str, Any]) -> str:
     return "".join(parts)
 
 
-def render_html(snapshot: dict[str, Any], analysis: dict[str, Any] | None = None) -> str:
+def render_html(
+    snapshot: dict[str, Any],
+    analysis: dict[str, Any] | None = None,
+    comparison: dict[str, Any] | None = None,
+) -> str:
     network = snapshot.get("network", {})
     epoch = snapshot.get("epoch", {})
     perf = snapshot.get("performance", {})
@@ -714,6 +887,7 @@ def render_html(snapshot: dict[str, Any], analysis: dict[str, Any] | None = None
         "no API key required</div>",
         "</header>",
         render_anomalies_html(analysis),
+        render_delta_html(comparison),
     ]
 
     # Network + epoch
@@ -904,16 +1078,23 @@ def main() -> int:
 
     # Anomaly detection reads the accumulated history — no network, no new
     # source — restricted to what existed when this snapshot was collected.
-    analysis = analysis_for(snapshot, detect.load_history(args.snapshot.parent))
+    history = detect.load_history(args.snapshot.parent)
+    analysis = analysis_for(snapshot, history)
+    # Deterministic comparison against the previous snapshot, from the same
+    # committed history. Also no network, and also cut off at this snapshot.
+    comparison = delta_module.delta_for(snapshot, history)
 
     markdown_path = args.out_dir / "report.md"
     html_path = args.out_dir / "index.html"
     json_path = args.out_dir / "report.json"
 
-    markdown_path.write_text(render_markdown(snapshot, analysis), encoding="utf-8")
-    html_path.write_text(render_html(snapshot, analysis), encoding="utf-8")
+    markdown_path.write_text(
+        render_markdown(snapshot, analysis, comparison), encoding="utf-8")
+    html_path.write_text(
+        render_html(snapshot, analysis, comparison), encoding="utf-8")
     json_path.write_text(
-        json.dumps({**snapshot, "anomalies": analysis}, indent=2) + "\n", encoding="utf-8",
+        json.dumps({**snapshot, "anomalies": analysis, "delta": comparison}, indent=2) + "\n",
+        encoding="utf-8",
     )
 
     print(f"wrote {markdown_path}\nwrote {html_path}\nwrote {json_path}")

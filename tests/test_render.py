@@ -240,6 +240,119 @@ class TestActivityRendering(unittest.TestCase):
         self.assertIn("5,391 lamports", markdown)  # fees still render
 
 
+class TestDeltaRendering(unittest.TestCase):
+    """The delta panel in Markdown and HTML.
+
+    The rendering rules mirror the module's: a not-comparable metric never
+    appears as a change, a sampled metric never looks measured, and an absent
+    comparison degrades to a stated "not yet comparable" rather than silence.
+    """
+
+    @staticmethod
+    def comparison(**overrides):
+        body = {
+            "status": "ok",
+            "previous_collected_at": "2026-08-05T11:00:00+00:00",
+            "current_collected_at": "2026-08-05T17:00:00+00:00",
+            "elapsed_seconds": 21_600,
+            "changes": [{
+                "key": "latest_tps", "label": "Latest TPS", "unit": " TPS",
+                "basis": "measured", "previous": 3000.0, "current": 4000.0,
+                "change": 1000.0, "change_pct": 33.33, "direction": "up",
+                "identifier": False,
+                "why_it_matters": "Throughput is the headline liveness signal.",
+                "what_to_verify": "getRecentPerformanceSamples on the same endpoint.",
+            }],
+            "steady": [{
+                "key": "delinquent_pct", "label": "Validator delinquency", "unit": "%",
+                "basis": "measured", "previous": 1.0, "current": 1.0, "change": 0.0,
+                "change_pct": 0.0, "direction": "flat", "identifier": False,
+            }],
+            "not_comparable": [{
+                "key": "price_usd", "label": "SOL price",
+                "reason": "not present in the newer snapshot",
+                "previous": 74.0, "current": None,
+            }],
+            "counts": {"changed": 1, "steady": 1, "not_comparable": 1},
+        }
+        body.update(overrides)
+        return body
+
+    def test_markdown_prints_the_moved_metric_with_both_context_lines(self):
+        markdown = render.render_markdown(load_fixture(), None, self.comparison())
+        self.assertIn("## What changed since the last snapshot", markdown)
+        self.assertIn("| Latest TPS | 3,000.0 TPS | 4,000.0 TPS |", markdown)
+        self.assertIn("+1,000.0 TPS (+33.33%)", markdown)
+        self.assertIn("headline liveness signal", markdown)
+        self.assertIn("_Verify:_", markdown)
+
+    def test_a_not_comparable_metric_is_named_not_shown_as_a_change(self):
+        for text in (render.render_markdown(load_fixture(), None, self.comparison()),
+                     render.render_html(load_fixture(), None, self.comparison())):
+            self.assertIn("not present in the newer snapshot", text)
+        markdown = render.render_markdown(load_fixture(), None, self.comparison())
+        # It appears under the not-comparable list, never in the change table.
+        self.assertNotIn("| SOL price |", markdown)
+
+    def test_html_marks_a_sampled_metric_distinctly_from_a_measured_one(self):
+        sampled = self.comparison()
+        sampled["changes"][0]["basis"] = "sampled"
+        page = render.render_html(load_fixture(), None, sampled)
+        self.assertIn("basis-badge sampled", page)
+        self.assertNotIn("basis-badge sampled",
+                         render.render_html(load_fixture(), None, self.comparison()))
+
+    def test_markdown_names_the_basis_of_every_moved_metric(self):
+        self.assertIn("| measured |",
+                      render.render_markdown(load_fixture(), None, self.comparison()))
+        sampled = self.comparison()
+        sampled["changes"][0]["basis"] = "sampled"
+        self.assertIn("| sampled/extrapolated |",
+                      render.render_markdown(load_fixture(), None, sampled))
+
+    def test_no_movement_reads_as_no_movement_not_as_no_data(self):
+        quiet = self.comparison(changes=[], counts={"changed": 0, "steady": 12,
+                                                    "not_comparable": 0},
+                                not_comparable=[])
+        markdown = render.render_markdown(load_fixture(), None, quiet)
+        self.assertIn("No metric moved past its threshold", markdown)
+        self.assertIn("12 compared metric(s)", markdown)
+        self.assertIn("anomaly-note clear",
+                      render.render_html(load_fixture(), None, quiet))
+
+    def test_insufficient_history_is_stated_and_styled_as_pending(self):
+        pending = {"status": "insufficient_history",
+                   "message": "1 snapshot(s) on disk; two are needed.",
+                   "changes": [], "steady": [], "not_comparable": [],
+                   "counts": {"changed": 0, "steady": 0, "not_comparable": 0}}
+        markdown = render.render_markdown(load_fixture(), None, pending)
+        self.assertIn("Not yet comparable", markdown)
+        page = render.render_html(load_fixture(), None, pending)
+        # Grey, not green — "cannot compare" must not read as "nothing moved".
+        self.assertIn("anomaly-note pending", page)
+
+    def test_the_section_is_absent_entirely_when_no_comparison_is_supplied(self):
+        markdown = render.render_markdown(load_fixture())
+        self.assertNotIn("What changed since the last snapshot", markdown)
+        self.assertNotIn("What changed since the last snapshot",
+                         render.render_html(load_fixture()))
+
+    def test_a_percentage_against_zero_is_declared_rather_than_invented(self):
+        from_zero = self.comparison()
+        from_zero["changes"][0].update({"previous": 0.0, "current": 3.0,
+                                        "change": 3.0, "change_pct": None})
+        markdown = render.render_markdown(load_fixture(), None, from_zero)
+        self.assertIn("% n/a from zero", markdown)
+        self.assertNotIn("+0.00%", markdown)
+
+    def test_hostile_text_in_a_comparison_cannot_break_the_page(self):
+        hostile = self.comparison()
+        hostile["changes"][0]["label"] = "<script>alert(1)</script>"
+        page = render.render_html(load_fixture(), None, hostile)
+        self.assertNotIn("<script>alert(1)</script>", page)
+        self.assertIn("&lt;script&gt;", page)
+
+
 class TestFormatting(unittest.TestCase):
     def test_none_renders_as_a_dash_not_zero(self):
         # "unknown" and "zero" must not look the same on a dashboard.
