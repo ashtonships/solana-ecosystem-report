@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='utf-8'?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en-US">
+  <id>tag:github.com,2008:https://github.com/anza-xyz/agave/releases</id>
+  <link type="text/html" rel="alternate" href="https://github.com/anza-xyz/agave/releases" />
+  <link type="application/atom+xml" rel="self" href="https://github.com/anza-xyz/agave/releases.atom" />
+  <title>Release notes from agave</title>
+  <updated>2026-07-31T14:58:17Z</updated>
+  <entry>
+    <id>tag:github.com,2008:Repository/750164628/v4.2.0-rc.1</id>
+    <updated>2026-08-03T12:41:49Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/anza-xyz/agave/releases/tag/v4.2.0-rc.1" />
+    <title>Release v4.2.0-rc.1</title>
+    <author>
+      <name>github-actions[bot]</name>
+    </author>
+    </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/750164628/v4.2.0-rc.0</id>
+    <updated>2026-07-27T15:24:59Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/anza-xyz/agave/releases/tag/v4.2.0-rc.0" />
+    <title>Release v4.2.0-rc.0</title>
+    <author>
+      <name>github-actions[bot]</name>
+    </author>
+    </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/750164628/v4.3.0-alpha.2</id>
+    <updated>2026-07-24T14:31:17Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/anza-xyz/agave/releases/tag/v4.3.0-alpha.2" />
+    <title>Release v4.3.0-alpha.2</title>
+    <author>
+      <name>github-actions[bot]</name>
+    </author>
+    </entry>
+  </feed>

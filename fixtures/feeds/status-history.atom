@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en-US">
+  <id>tag:status.solana.com,2005:/history</id>
+  <link rel="alternate" type="text/html" href="https://status.solana.com" />
+  <link rel="self" type="application/atom+xml" href="https://status.solana.com/history.atom" />
+  <title>Solana Status - Incident History</title>
+  <updated>2026-08-05T17:39:24Z</updated>
+  <author>
+    <name>Solana</name>
+  </author>
+  <entry>
+    <id>tag:status.solana.com,2005:Incident/19920317</id>
+    <published>2024-02-06T15:09:24Z</published>
+    <updated>2024-02-06T15:09:24Z</updated>
+    <link rel="alternate" type="text/html" href="https://status.solana.com/incidents/n5kcgs8dl9pj" />
+    <title>mb-020624</title>
+    </entry>
+  <entry>
+    <id>tag:status.solana.com,2005:Incident/16274516</id>
+    <published>2023-02-26T02:09:04Z</published>
+    <updated>2023-02-26T15:48:39Z</updated>
+    <link rel="alternate" type="text/html" href="https://status.solana.com/incidents/ymr0gyj9xqyz" />
+    <title>Cluster Instability</title>
+    </entry>
+  <entry>
+    <id>tag:status.solana.com,2005:Incident/15794549</id>
+    <published>2023-01-08T07:01:17Z</published>
+    <updated>2023-01-08T07:01:17Z</updated>
+    <link rel="alternate" type="text/html" href="https://status.solana.com/incidents/mf9plxrkjhnk" />
+    <title>Public Endpoints and Explorer offline</title>
+    </entry>
+  </feed>

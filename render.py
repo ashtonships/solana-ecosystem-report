@@ -446,6 +446,130 @@ def render_activity_markdown(snapshot: dict[str, Any]) -> list[str]:
     return lines
 
 
+def render_news_markdown(snapshot: dict[str, Any]) -> list[str]:
+    """Releases and announcements, replayed from what the snapshot recorded.
+
+    Three states per feed, and they are not interchangeable: unavailable (the
+    fetch or the parse failed), published nothing, and a list of entries.
+    Collapsing the first two into an empty section would turn a failed request
+    into a claim that the ecosystem has been quiet.
+    """
+    news = snapshot.get("news")
+    lines = ["## Releases and announcements", ""]
+
+    if news is None:
+        # A snapshot older than the feature. Not the same as a failed fetch.
+        lines += ["_This snapshot predates the releases section and recorded no feeds._", ""]
+        return lines
+
+    if not news.get("available"):
+        lines += [
+            "_No feed was reachable when this snapshot was collected. This is a "
+            "statement about the fetch, not about the ecosystem._",
+            "",
+        ]
+        return lines
+
+    lines += [f"> {news.get('note', '')}", ""]
+
+    for source in news.get("sources", {}).values():
+        lines += [f"### {source.get('label', '—')}", ""]
+        lines += [f"_{source.get('why', '')}_", ""]
+
+        if not source.get("available"):
+            lines += [
+                f"⚠️ **Unavailable** — {source.get('reason', 'source failed')}. "
+                f"Other feeds are unaffected. Source: {source.get('url', '—')}",
+                "",
+            ]
+            continue
+
+        items = source.get("items", [])
+        if not items:
+            lines += [
+                f"_The feed was read and published no entries — "
+                f"{source.get('reason', '')}._",
+                "",
+            ]
+            continue
+
+        lines += ["| Published (UTC) | Entry |", "| --- | --- |"]
+        for item in items:
+            title = item.get("title", "—")
+            link = item.get("link")
+            text = f"[{title}]({link})" if link else title
+            lines.append(f"| {item.get('published') or '—'} | {text} |")
+        lines += [
+            "",
+            f"From `{source.get('url', '—')}` — {source.get('publisher', '')}, "
+            "public and keyless, recorded at collection time.",
+            "",
+        ]
+
+    return lines
+
+
+def render_news_html(snapshot: dict[str, Any]) -> str:
+    """The same feeds as a panel, with the same three states kept distinct."""
+    news = snapshot.get("news")
+    heading = ("<h2>Releases and announcements "
+               "<span class='keyless'>keyless official feeds</span></h2>")
+
+    if news is None:
+        return (heading + "<p class='unavailable'>This snapshot predates the releases "
+                "section and recorded no feeds.</p>")
+
+    if not news.get("available"):
+        return (
+            heading
+            + "<p class='unavailable'>No feed was reachable when this snapshot was "
+            "collected. That is a statement about the fetch, not about the ecosystem.</p>"
+        )
+
+    parts = [heading, f"<p class='unavailable'>{html.escape(str(news.get('note', '')))}</p>",
+             "<div class='news-grid'>"]
+
+    for source in news.get("sources", {}).values():
+        body: str
+        if not source.get("available"):
+            body = ("<p class='unavailable'>Unavailable — "
+                    f"{html.escape(str(source.get('reason', 'source failed')))}. "
+                    "Other feeds are unaffected.</p>")
+        elif not source.get("items"):
+            body = ("<p class='unavailable'>Read successfully; the feed published "
+                    "no entries.</p>")
+        else:
+            rows = []
+            for item in source["items"]:
+                title = html.escape(str(item.get("title", "—")))
+                link = item.get("link")
+                anchor = (f"<a href='{html.escape(link)}' target='_blank' "
+                          f"rel='noreferrer'>{title}</a>"
+                          if isinstance(link, str) else title)
+                author = item.get("author")
+                byline = (f" <span class='news-author'>{html.escape(str(author))}</span>"
+                          if author else "")
+                rows.append(
+                    f"<li><span class='news-date mono'>"
+                    f"{html.escape(str(item.get('published') or '—'))}</span>"
+                    f"<span class='news-title'>{anchor}{byline}</span></li>"
+                )
+            body = f"<ul class='news-list'>{''.join(rows)}</ul>"
+
+        parts.append(
+            "<section class='news-source'>"
+            f"<h3 class='news-heading'>{html.escape(str(source.get('label', '—')))}</h3>"
+            f"<p class='news-why'>{html.escape(str(source.get('why', '')))}</p>"
+            f"{body}"
+            f"<p class='chart-note'>{html.escape(str(source.get('publisher', '')))} · "
+            "no API key · recorded into the snapshot at collection time</p>"
+            "</section>"
+        )
+
+    parts.append("</div>")
+    return "".join(parts)
+
+
 def render_markdown(
     snapshot: dict[str, Any],
     analysis: dict[str, Any] | None = None,
@@ -582,6 +706,8 @@ def render_markdown(
         lines.append("")
     else:
         lines += ["_Validator data unavailable in this snapshot._", ""]
+
+    lines += render_news_markdown(snapshot)
 
     roadmap = upgrades_data.upgrade_section()
     if roadmap["available"]:
@@ -724,6 +850,21 @@ tr:hover td { background: var(--panel-2); }
 td small { display: block; color: var(--dim); font-size: 11px; margin-top: 3px; }
 .plain-list { list-style: none; margin: 8px 0 0; padding: 0; font-size: 12px; }
 .plain-list li { margin-top: 3px; }
+.news-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+             gap: 12px; }
+.news-source { background: var(--panel); border: 1px solid var(--line);
+               border-radius: 12px; padding: 14px 16px 12px; }
+.news-heading { margin: 0 0 4px; font-size: 12px; text-transform: uppercase;
+                letter-spacing: 0.6px; color: var(--text); }
+.news-why { margin: 0 0 10px; color: var(--dim); font-size: 11px; }
+.news-list { list-style: none; margin: 0; padding: 0; }
+.news-list li { display: flex; gap: 10px; align-items: baseline; font-size: 12px;
+                padding: 6px 0; border-bottom: 1px solid var(--line); }
+.news-list li:last-child { border-bottom: none; }
+.news-date { color: var(--dim); font-size: 10px; white-space: nowrap; }
+.news-title a { color: var(--text); text-decoration: none; }
+.news-title a:hover { color: var(--accent); }
+.news-author { color: var(--dim); font-size: 10px; }
 .static-badge { margin-left: 8px; padding: 2px 8px; border-radius: 999px;
                 background: rgba(255,176,32,0.12); color: var(--warn);
                 font-size: 10px; letter-spacing: 0.4px; text-transform: none; }
@@ -1069,6 +1210,8 @@ def render_html(
         parts.append("</tbody></table>")
     else:
         parts.append("<p class='unavailable'>Validator data unavailable in this snapshot.</p>")
+
+    parts.append(render_news_html(snapshot))
 
     roadmap = upgrades_data.upgrade_section()
     if roadmap["available"]:

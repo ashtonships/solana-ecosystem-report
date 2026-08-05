@@ -195,6 +195,25 @@ class TestBuildSnapshot(unittest.TestCase):
             self.assertFalse(snapshot[section]["available"])
 
 
+class TestNewsSection(unittest.TestCase):
+    """The feeds are recorded into the snapshot, on the same terms as economics."""
+
+    def test_a_snapshot_without_feeds_records_the_section_as_unavailable(self):
+        snapshot = collect.build_snapshot({}, "2026-08-05T00:00:00+00:00", "endpoint")
+        self.assertFalse(snapshot["news"]["available"])
+
+    def test_supplied_feeds_are_recorded_verbatim_for_offline_re_rendering(self):
+        feeds = {"available": True, "sources": {"agave_releases": {"available": True,
+                                                                   "items": [{"title": "Release v4.2.0"}]}}}
+        snapshot = collect.build_snapshot(
+            {}, "2026-08-05T00:00:00+00:00", "endpoint", news=feeds)
+        self.assertEqual(snapshot["news"], feeds)
+
+    def test_the_schema_version_moved_for_the_added_section(self):
+        # Additive only: an older snapshot must still render.
+        self.assertGreaterEqual(collect.SCHEMA_VERSION, 3)
+
+
 class TestSnapshotFilename(unittest.TestCase):
     def test_filename_is_filesystem_safe_and_sorts_chronologically(self):
         earlier = collect.snapshot_filename("2026-08-05T09:00:00+00:00")

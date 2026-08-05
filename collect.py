@@ -12,6 +12,7 @@ offline against fixtures.
     python3 collect.py --dry-run          # print, do not write
     python3 collect.py --endpoint <URL>   # use a different public RPC
     python3 collect.py --no-activity      # skip block sampling (much faster)
+    python3 collect.py --no-news          # skip the keyless release/status feeds
 """
 
 from __future__ import annotations
@@ -27,13 +28,14 @@ from typing import Any
 
 import blocks
 import economics
+import news as news_module
 
 DEFAULT_ENDPOINT = "https://api.mainnet-beta.solana.com"
 SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
 LAMPORTS_PER_SOL = 1_000_000_000
-# 2 added the `activity` section. Additive only — a v1 snapshot still reads,
-# and the detector looks up every field defensively.
-SCHEMA_VERSION = 2
+# 2 added the `activity` section; 3 added `news`. Additive only — a v1 snapshot
+# still reads, and every consumer looks up each field defensively.
+SCHEMA_VERSION = 3
 
 # One batched JSON-RPC request. Order matters: results come back positionally.
 RPC_CALLS: list[tuple[str, list[Any]]] = [
@@ -262,6 +264,7 @@ def build_snapshot(
     block_time: int | None = None,
     economics: dict[str, Any] | None = None,
     activity: dict[str, Any] | None = None,
+    news: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the machine-readable snapshot. Pure — no network, no clock."""
     health = indexed.get("getHealth")
@@ -284,6 +287,7 @@ def build_snapshot(
         "validators": summarize_validators(indexed.get("getVoteAccounts")),
         "economics": economics if economics is not None else {"available": False},
         "activity": activity if activity is not None else {"available": False},
+        "news": news if news is not None else {"available": False},
     }
 
 
@@ -298,6 +302,7 @@ def collect(
     endpoint: str = DEFAULT_ENDPOINT,
     with_economics: bool = True,
     with_activity: bool = True,
+    with_news: bool = True,
     samples: int = blocks.DEFAULT_SAMPLES,
 ) -> dict[str, Any]:
     batch = fetch_rpc(endpoint)
@@ -311,8 +316,12 @@ def collect(
     # against a rate-limited public endpoint. Same rule as economics: it fails
     # to `available: false` on its own and never takes the snapshot with it.
     activity = blocks.collect_activity(endpoint, samples) if with_activity else None
+    # Release and status feeds. Third-party and optional on exactly the same
+    # terms: recorded into the snapshot so rendering never re-fetches, and a
+    # broken feed costs this section alone.
+    feeds = news_module.collect_news() if with_news else None
     collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    return build_snapshot(indexed, collected_at, endpoint, block_time, econ, activity)
+    return build_snapshot(indexed, collected_at, endpoint, block_time, econ, activity, feeds)
 
 
 def main() -> int:
@@ -324,6 +333,8 @@ def main() -> int:
                         help="skip third-party economic sources (RPC only)")
     parser.add_argument("--no-activity", action="store_true",
                         help="skip block sampling for fees, REV and address activity")
+    parser.add_argument("--no-news", action="store_true",
+                        help="skip the keyless release, proposal and status feeds")
     parser.add_argument("--samples", type=int, default=blocks.DEFAULT_SAMPLES,
                         help=f"blocks to sample across ~24h (default {blocks.DEFAULT_SAMPLES})")
     args = parser.parse_args()
@@ -333,6 +344,7 @@ def main() -> int:
             args.endpoint,
             with_economics=not args.no_economics,
             with_activity=not args.no_activity,
+            with_news=not args.no_news,
             samples=args.samples,
         )
     except CollectionError as error:

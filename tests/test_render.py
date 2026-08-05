@@ -62,6 +62,22 @@ class TestHtml(unittest.TestCase):
         self.assertNotIn("<script src=", page)
         self.assertNotIn("https://cdn", page)
 
+    def test_the_page_fetches_no_subresource_of_any_kind(self):
+        """Charts, badges and feeds must not have introduced an external asset.
+
+        Anchors to primary sources are fine and wanted — they are citations a
+        reader follows deliberately. What must never appear is a tag the
+        browser fetches on its own: without the network, or from a file:// URL,
+        the page has to draw itself completely.
+        """
+        page = render.render_html(load_fixture())
+        for tag in ("<script", "<link", "<img", "<iframe", "<object", "<embed",
+                    "<use", "<image"):
+            self.assertNotIn(tag, page)
+        self.assertNotIn("@import", page)
+        self.assertNotIn("url(", page)          # no CSS-fetched font or image
+        self.assertNotIn("srcset", page)
+
     def test_dark_theme_is_applied(self):
         page = render.render_html(load_fixture())
         self.assertIn("--bg: #0b0d10", page)
@@ -351,6 +367,109 @@ class TestDeltaRendering(unittest.TestCase):
         page = render.render_html(load_fixture(), None, hostile)
         self.assertNotIn("<script>alert(1)</script>", page)
         self.assertIn("&lt;script&gt;", page)
+
+
+class TestNewsRendering(unittest.TestCase):
+    """The releases panel keeps three states apart, in both output formats."""
+
+    @staticmethod
+    def snapshot(**sources):
+        return {
+            "collected_at": "2026-08-05T00:00:00+00:00",
+            "source": {"endpoint": "x"},
+            "network": {"healthy": True},
+            "news": {
+                "available": any(s.get("available") for s in sources.values()),
+                "requires_api_key": False,
+                "note": "Official first-party feeds, fetched without credentials.",
+                "sources": sources,
+            },
+        }
+
+    @staticmethod
+    def source(available=True, items=None, reason="", label="Agave validator releases"):
+        body = {
+            "label": label, "publisher": "anza-xyz/agave (GitHub)",
+            "why": "Agave is the validator client most of the network runs.",
+            "url": "https://github.com/anza-xyz/agave/releases.atom",
+            "requires_api_key": False, "available": available,
+        }
+        if reason:
+            body["reason"] = reason
+        if items is not None:
+            body["items"] = items
+            body["item_count"] = len(items)
+        return body
+
+    ITEM = {"title": "Release v4.2.0-rc.1",
+            "link": "https://github.com/anza-xyz/agave/releases/tag/v4.2.0-rc.1",
+            "published": "2026-08-03T12:41:49Z", "author": "github-actions[bot]"}
+
+    def test_entries_render_with_their_dates_and_links(self):
+        snapshot = self.snapshot(agave_releases=self.source(items=[self.ITEM]))
+        markdown = render.render_markdown(snapshot)
+        self.assertIn("## Releases and announcements", markdown)
+        self.assertIn("Release v4.2.0-rc.1", markdown)
+        self.assertIn("2026-08-03T12:41:49Z", markdown)
+        page = render.render_html(snapshot)
+        self.assertIn("releases/tag/v4.2.0-rc.1", page)
+
+    def test_a_failed_feed_says_unavailable_and_never_implies_quiet(self):
+        # One feed up, one down — the down one must name its failure rather
+        # than render as a source with nothing to report.
+        snapshot = self.snapshot(
+            agave_releases=self.source(items=[self.ITEM]),
+            network_status=self.source(
+                available=False, label="Network status history",
+                reason="feed unreachable or not a parseable Atom document"),
+        )
+        for text in (render.render_markdown(snapshot), render.render_html(snapshot)):
+            self.assertIn("navailable", text)
+            self.assertIn("feed unreachable", text)
+            self.assertNotIn("no releases", text.lower())
+
+    def test_a_feed_that_published_nothing_reads_differently_from_one_that_failed(self):
+        empty = self.snapshot(agave_releases=self.source(items=[], reason="the feed parsed and published no entries"))
+        broken = self.snapshot(agave_releases=self.source(available=False, reason="feed unreachable"))
+        self.assertNotEqual(render.render_html(empty), render.render_html(broken))
+        self.assertIn("published no entries", render.render_html(empty))
+
+    def test_one_broken_feed_does_not_hide_a_working_one(self):
+        snapshot = self.snapshot(
+            agave_releases=self.source(items=[self.ITEM]),
+            network_status=self.source(available=False, reason="feed unreachable",
+                                       label="Network status history"),
+        )
+        for text in (render.render_markdown(snapshot), render.render_html(snapshot)):
+            self.assertIn("Release v4.2.0-rc.1", text)
+            self.assertIn("Network status history", text)
+
+    def test_every_feed_failing_states_it_is_about_the_fetch(self):
+        snapshot = self.snapshot(agave_releases=self.source(
+            available=False, reason="feed unreachable"))
+        snapshot["news"]["available"] = False
+        for text in (render.render_markdown(snapshot), render.render_html(snapshot)):
+            self.assertIn("statement about the fetch, not about the ecosystem", text)
+
+    def test_a_snapshot_predating_the_feature_says_so_rather_than_reporting_a_failure(self):
+        bare = {"collected_at": "2026-08-05T00:00:00+00:00",
+                "source": {"endpoint": "x"}, "network": {"healthy": True}}
+        for text in (render.render_markdown(bare), render.render_html(bare)):
+            self.assertIn("predates the releases section", text)
+
+    def test_feed_content_is_escaped_because_it_is_third_party_input(self):
+        hostile = self.snapshot(agave_releases=self.source(items=[{
+            **self.ITEM, "title": "<script>alert(1)</script>"}]))
+        page = render.render_html(hostile)
+        self.assertNotIn("<script>alert(1)</script>", page)
+        self.assertIn("&lt;script&gt;", page)
+
+    def test_an_entry_without_a_link_still_renders_its_title(self):
+        snapshot = self.snapshot(agave_releases=self.source(items=[{
+            **self.ITEM, "link": None}]))
+        for text in (render.render_markdown(snapshot), render.render_html(snapshot)):
+            self.assertIn("Release v4.2.0-rc.1", text)
+        self.assertNotIn("](None)", render.render_markdown(snapshot))
 
 
 class TestFormatting(unittest.TestCase):

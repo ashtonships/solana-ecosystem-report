@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='utf-8'?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en-US">
+  <id>tag:github.com,2008:/solana-foundation/solana-improvement-documents/commits/main</id>
+  <link type="text/html" rel="alternate" href="https://github.com/solana-foundation/solana-improvement-documents/commits/main" />
+  <link type="application/atom+xml" rel="self" href="https://github.com/solana-foundation/solana-improvement-documents/commits/main.atom" />
+  <title>Recent Commits to solana-improvement-documents:main</title>
+  <updated>2026-07-31T16:27:22Z</updated>
+  <entry>
+    <id>tag:github.com,2008:Grit::Commit/fc519fb3d1ef0f7624b6232bda958438feba09ce</id>
+    <link type="text/html" rel="alternate" href="https://github.com/solana-foundation/solana-improvement-documents/commit/fc519fb3d1ef0f7624b6232bda958438feba09ce" />
+    <title>
+        re-amend SIMD-0340: additional inter- and intra- validation (#551)
+    </title>
+    <updated>2026-07-31T16:27:22Z</updated>
+    <author>
+      <name>lidatong</name>
+      <uri>https://github.com/lidatong</uri>
+    </author>
+    </entry>
+  <entry>
+    <id>tag:github.com,2008:Grit::Commit/06bd4bd6b0b835d110bf4ccb0bc7c759ae88e997</id>
+    <link type="text/html" rel="alternate" href="https://github.com/solana-foundation/solana-improvement-documents/commit/06bd4bd6b0b835d110bf4ccb0bc7c759ae88e997" />
+    <title>
+        SIMD-0433: Loader V3: Set Program Data to ELF Length (#433)
+    </title>
+    <updated>2026-07-31T08:06:24Z</updated>
+    <author>
+      <name>buffalojoec</name>
+      <uri>https://github.com/buffalojoec</uri>
+    </author>
+    </entry>
+  <entry>
+    <id>tag:github.com,2008:Grit::Commit/b13be70e7454144becbe9c474b296d737d72df98</id>
+    <link type="text/html" rel="alternate" href="https://github.com/solana-foundation/solana-improvement-documents/commit/b13be70e7454144becbe9c474b296d737d72df98" />
+    <title>
+        SIMD-0550: Double disinflation (#550)
+    </title>
+    <updated>2026-07-23T01:49:14Z</updated>
+    <author>
+      <name>lostintime101</name>
+      <uri>https://github.com/lostintime101</uri>
+    </author>
+    </entry>
+  </feed>
