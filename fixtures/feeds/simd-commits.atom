@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Locally authored synthetic fixture. It models a multiline commit Atom feed and contains no copied proposal metadata. -->
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en-US">
+  <id>tag:example.test,2026:/synthetic-proposals/commits/main</id>
+  <link type="text/html" rel="alternate" href="https://example.com/synthetic-proposals/commits/main" />
+  <link type="application/atom+xml" rel="self" href="https://example.com/synthetic-proposals/commits/main.atom" />
+  <title>Synthetic proposal commits</title>
+  <updated>2026-08-03T16:27:22Z</updated>
+  <entry>
+    <id>tag:example.test,2026:Commit/1111111111111111111111111111111111111111</id>
+    <link type="text/html" rel="alternate" href="https://example.com/synthetic-proposals/commit/1111111111111111111111111111111111111111" />
+    <title>
+      Proposal-0101: clarify the synthetic timing contract
+    </title>
+    <updated>2026-08-03T16:27:22Z</updated>
+    <author><name>fixture-author-one</name><uri>https://example.com/authors/one</uri></author>
+  </entry>
+  <entry>
+    <id>tag:example.test,2026:Commit/2222222222222222222222222222222222222222</id>
+    <link type="text/html" rel="alternate" href="https://example.com/synthetic-proposals/commit/2222222222222222222222222222222222222222" />
+    <title>
+      Proposal-0102: document synthetic lifecycle states
+    </title>
+    <updated>2026-08-02T08:06:24Z</updated>
+    <author><name>fixture-author-two</name><uri>https://example.com/authors/two</uri></author>
+  </entry>
+</feed>

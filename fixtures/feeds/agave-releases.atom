@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Locally authored synthetic fixture. It models an Atom release feed shape and contains no copied provider payload. -->
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en-US">
+  <id>tag:example.test,2026:/synthetic-validator/releases</id>
+  <link type="text/html" rel="alternate" href="https://example.com/synthetic-validator/releases" />
+  <link type="application/atom+xml" rel="self" href="https://example.com/synthetic-validator/releases.atom" />
+  <title>Synthetic validator release notes</title>
+  <updated>2026-08-03T12:41:49Z</updated>
+  <entry>
+    <id>tag:example.test,2026:Release/validator-v3.0.0-rc.1</id>
+    <updated>2026-08-03T12:41:49Z</updated>
+    <link rel="alternate" type="text/html" href="https://example.com/synthetic-validator/releases/v3.0.0-rc.1" />
+    <title>Release v3.0.0-rc.1</title>
+    <author><name>release-bot</name></author>
+  </entry>
+  <entry>
+    <id>tag:example.test,2026:Release/validator-v2.4.0</id>
+    <updated>2026-08-01T09:15:00Z</updated>
+    <link rel="alternate" type="text/html" href="https://example.com/synthetic-validator/releases/v2.4.0" />
+    <title>Release v2.4.0</title>
+    <author><name>release-bot</name></author>
+  </entry>
+  <entry>
+    <id>tag:example.test,2026:Release/validator-v2.3.1</id>
+    <updated>2026-07-24T14:31:17Z</updated>
+    <link rel="alternate" type="text/html" href="https://example.com/synthetic-validator/releases/v2.3.1" />
+    <title>Release v2.3.1</title>
+    <author><name>release-bot</name></author>
+  </entry>
+</feed>

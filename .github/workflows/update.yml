@@ -1,0 +1,306 @@
+name: Update report
+
+on:
+  schedule:
+    # Every 6 hours, but disabled until REPORT_AUTOMATION_ENABLED is explicitly true.
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Publish committed samples or collect and publish a new snapshot
+        required: true
+        default: bootstrap
+        type: choice
+        options:
+          - bootstrap
+          - update
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: report-publication-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Run tests
+        run: python3 -m unittest discover -s tests
+
+      - name: Validate committed snapshot
+        run: python3 pipeline.py --snapshot snapshots/latest.json --max-age-seconds 25200
+
+      - name: Verify committed public data
+        env:
+          BASE_REVISION: >-
+            ${{ github.event_name == 'pull_request' &&
+            github.event.pull_request.base.sha || github.event.before }}
+        run: >-
+          python3 verify_release.py verify-data --committed
+          --base-revision "$BASE_REVISION"
+
+  update:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      vars.REPORT_AUTOMATION_ENABLED == 'true' &&
+      (github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'update'))
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Run tests
+        run: python3 -m unittest discover -s tests
+
+      - name: Require clean checkout
+        run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Require approved RPC endpoint
+        env:
+          REPORT_RPC_ENDPOINT: ${{ secrets.REPORT_RPC_ENDPOINT }}
+        run: |
+          if [ -z "$REPORT_RPC_ENDPOINT" ]; then
+            echo "::error::REPORT_RPC_ENDPOINT must identify an owner-approved production RPC"
+            exit 1
+          fi
+
+      - name: Collect live snapshot
+        if: github.event_name != 'push'
+        # Economics remains disabled until redistribution rights are cleared.
+        env:
+          REPORT_RPC_ENDPOINT: ${{ secrets.REPORT_RPC_ENDPOINT }}
+        run: python3 collect.py --no-economics --endpoint "$REPORT_RPC_ENDPOINT"
+
+      - name: Capture publication timestamp
+        run: |
+          run_timestamp="$(python3 - <<'PY'
+          from datetime import datetime, timezone
+          print(datetime.now(timezone.utc).isoformat(timespec="seconds"))
+          PY
+          )"
+          python3 - "$run_timestamp" <<'PY'
+          from datetime import datetime
+          import sys
+
+          parsed = datetime.fromisoformat(sys.argv[1])
+          if parsed.tzinfo is None or parsed.utcoffset() is None:
+              raise SystemExit("publication timestamp must include a UTC offset")
+          PY
+          echo "RUN_TIMESTAMP=$run_timestamp" >> "$GITHUB_ENV"
+
+      - name: Validate candidate snapshot
+        run: >-
+          python3 pipeline.py --snapshot snapshots/latest.json
+          --max-age-seconds 25200 --now "$RUN_TIMESTAMP"
+
+      - name: Detect anomalies
+        run: python3 detect.py
+
+      - name: Assert complete update path set
+        run: |
+          immutable_snapshot="$(python3 - <<'PY'
+          from collect import snapshot_filename
+          from datetime import datetime
+          import json
+          from pathlib import Path
+
+          latest = json.loads(Path("snapshots/latest.json").read_text(encoding="utf-8"))
+          collected_at = latest.get("collected_at")
+          if not isinstance(collected_at, str):
+              raise SystemExit("latest snapshot has no collected_at")
+          parsed = datetime.fromisoformat(collected_at.replace("Z", "+00:00"))
+          if parsed.tzinfo is None or parsed.utcoffset() is None:
+              raise SystemExit("latest snapshot collected_at must include a UTC offset")
+          print((Path("snapshots") / snapshot_filename(collected_at)).as_posix())
+          PY
+          )"
+          echo "IMMUTABLE_SNAPSHOT=$immutable_snapshot" >> "$GITHUB_ENV"
+          IMMUTABLE_SNAPSHOT="$immutable_snapshot" python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import subprocess
+
+          immutable = os.environ["IMMUTABLE_SNAPSHOT"]
+          required = {immutable, "snapshots/latest.json", "history/facts.jsonl"}
+          optional = {"state/xstocks-supply.json"}
+          raw = subprocess.check_output([
+              "git", "status", "--porcelain=v1", "-z", "--untracked-files=all",
+          ])
+          changes = {}
+          for record in filter(None, raw.split(b"\0")):
+              if len(record) < 4 or record[2:3] != b" ":
+                  raise SystemExit(f"unparseable git status record: {record!r}")
+              status = record[:2].decode("ascii")
+              path = os.fsdecode(record[3:])
+              if "R" in status or "C" in status or path in changes:
+                  raise SystemExit(f"rename/copy/duplicate update path is not allowed: {record!r}")
+              changes[path] = status
+
+          unexpected = set(changes) - required - optional
+          missing = required - set(changes)
+          if unexpected or missing:
+              raise SystemExit(
+                  f"unexpected update paths={sorted(unexpected)} missing={sorted(missing)}"
+              )
+          if changes[immutable] != "??":
+              raise SystemExit(f"immutable snapshot must be one new file, got {changes[immutable]!r}")
+          if any(status[0] not in {" ", "?"} for status in changes.values()):
+              raise SystemExit(f"collector must not pre-stage files: {changes!r}")
+          if Path(immutable).read_bytes() != Path("snapshots/latest.json").read_bytes():
+              raise SystemExit("latest.json must exactly match the new immutable snapshot")
+          PY
+
+      - name: Verify public update data
+        run: >-
+          python3 verify_release.py verify-data --pending-update
+          --now "$RUN_TIMESTAMP"
+
+      - name: Commit new snapshot
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "report-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -- "$IMMUTABLE_SNAPSHOT"
+          git add -- snapshots/latest.json
+          git add -- history/facts.jsonl
+          if [ -n "$(git status --porcelain=v1 -- state/xstocks-supply.json)" ]; then
+            git add -- state/xstocks-supply.json
+          fi
+          python3 - <<'PY'
+          import os
+          import subprocess
+
+          required = {
+              os.environ["IMMUTABLE_SNAPSHOT"],
+              "snapshots/latest.json",
+              "history/facts.jsonl",
+          }
+          optional = {"state/xstocks-supply.json"}
+          staged = set(filter(None, os.fsdecode(subprocess.check_output([
+              "git", "diff", "--cached", "--name-only", "-z",
+          ])).split("\0")))
+          if not required.issubset(staged) or staged - required - optional:
+              raise SystemExit(f"invalid staged update set: {sorted(staged)}")
+          if subprocess.check_output([
+              "git", "diff", "--name-only", "-z",
+          ]):
+              raise SystemExit("unstaged tracked changes remain after exact staging")
+          if subprocess.check_output([
+              "git", "ls-files", "--others", "--exclude-standard", "-z",
+          ]):
+              raise SystemExit("untracked non-ignored files remain after exact staging")
+          PY
+          git commit -m "snapshot: $RUN_TIMESTAMP [skip ci]"
+
+      - name: Render committed revision
+        run: GITHUB_SHA= python3 render.py --generated-at "$RUN_TIMESTAMP"
+
+      - name: Verify publication package
+        run: >-
+          python3 verify_release.py verify-package --artifacts dist
+          --now "$RUN_TIMESTAMP"
+
+      - name: Push committed snapshot
+        run: git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Archive verified Pages artifact
+        run: >-
+          tar --dereference --hard-dereference --directory dist
+          -cvf "$RUNNER_TEMP/artifact.tar" --exclude=.git --exclude=.github .
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: github-pages
+          path: ${{ runner.temp }}/artifact.tar
+          retention-days: 1
+          if-no-files-found: error
+
+  bootstrap:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.mode == 'bootstrap'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Run tests
+        run: python3 -m unittest discover -s tests
+
+      - name: Validate committed snapshot
+        run: python3 pipeline.py --snapshot snapshots/latest.json --max-age-seconds 25200
+
+      - name: Verify committed samples
+        env:
+          APPROVED_MANIFEST_SHA256: ${{ secrets.REPORT_BOOTSTRAP_MANIFEST_SHA256 }}
+        run: |
+          git ls-files --error-unmatch release-manifest.json \
+            samples/index.html samples/report.md samples/report.json
+          git diff --exit-code -- release-manifest.json samples
+          python3 - "$APPROVED_MANIFEST_SHA256" <<'PY'
+          import hashlib
+          import re
+          import sys
+          from pathlib import Path
+
+          approved = sys.argv[1]
+          if re.fullmatch(r"[0-9a-f]{64}", approved) is None:
+              raise SystemExit(
+                  "bootstrap requires owner-set REPORT_BOOTSTRAP_MANIFEST_SHA256"
+              )
+          actual = hashlib.sha256(Path("release-manifest.json").read_bytes()).hexdigest()
+          if actual != approved:
+              raise SystemExit(f"approved manifest SHA-256 mismatch: {actual}")
+          PY
+          python3 verify_release.py verify-package --artifacts samples \
+            --manifest release-manifest.json
+
+      - name: Archive approved bootstrap artifact
+        run: >-
+          tar --dereference --hard-dereference --directory samples
+          -cvf "$RUNNER_TEMP/artifact.tar" --exclude=.git --exclude=.github .
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: github-pages
+          path: ${{ runner.temp }}/artifact.tar
+          retention-days: 1
+          if-no-files-found: error
+
+  deploy:
+    needs: [update, bootstrap]
+    if: >-
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'push' &&
+      (needs.update.result == 'success' || needs.bootstrap.result == 'success')
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

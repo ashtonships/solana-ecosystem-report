@@ -1,0 +1,40 @@
+# Python bytecode — regenerated on every run.
+__pycache__/
+*.py[cod]
+
+# Rendered output. Regenerate with `python3 render.py`.
+# The committed examples live in samples/ instead, so a reader gets the
+# artifacts without the build products.
+dist/
+
+# NOTE: snapshots/ is deliberately NOT ignored.
+#
+# The anomaly detector needs a baseline of prior snapshots to say anything at
+# all — a fresh clone with an empty snapshots/ reports "insufficient_history"
+# and looks broken rather than careful. Committing the accumulated history
+# means `python3 detect.py` works immediately after clone, which is what the
+# brief means by another operator replicating the setup in an evening.
+#
+# They are ~4KB each. If the directory ever grows unreasonably, prune old
+# ones rather than ignoring the directory.
+
+# Local editor / OS noise
+.DS_Store
+
+# Local submission runbook and staged license options — never ship publicly.
+SUBMISSION-PACKAGE.md
+.submission-staging/
+
+# Local/private AI, design, and QA context. Public releases use an explicit
+# allowlist; these paths must not be staged from the shared working tree.
+.agents/
+.codex/
+.hermes-qa/
+.impeccable/
+.uidesigns/
+AGENTS.md
+design-qa.md
+design-references/
+docs/grants/
+frontend/
+opencode.json
