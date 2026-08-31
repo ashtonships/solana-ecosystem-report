@@ -1,0 +1,41 @@
+{
+  "artifacts": {
+    "samples/index.html": {
+      "bytes": 5302827,
+      "sha256": "fd2866027cf1f38bb36deee7bf66876a47192ba1e2326128a7bdfdd5cbd70e2d"
+    },
+    "samples/report.json": {
+      "bytes": 11954708,
+      "sha256": "1b3161d1a7d363307c8bb4dafda877e115021d38a9e30ec53a16a51043042716"
+    },
+    "samples/report.md": {
+      "bytes": 373593,
+      "sha256": "12b1e5a318fcab357fc0cbc3735c2ab46505c0120f1c51ceaeaaea7f333e2af8"
+    }
+  },
+  "data_revision": "68cb7cf6c98b9f1286fa4cd122a082908fdf499d",
+  "facts": {
+    "bytes": 656108,
+    "path": "history/facts.jsonl",
+    "sha256": "4d099d848d7a9e8d62197263d285c81815262c1ea55f1756105d014d07248183"
+  },
+  "generated_at": "2026-08-31T19:54:16+00:00",
+  "immutable_snapshot": {
+    "bytes": 993535,
+    "path": "snapshots/snapshot-20260831T195416+0000.json",
+    "sha256": "a26a07c278f8adb3cffc154e837999ad471fcbf7949da712c34cc460c099133a"
+  },
+  "latest_snapshot": {
+    "bytes": 993535,
+    "path": "snapshots/latest.json",
+    "sha256": "a26a07c278f8adb3cffc154e837999ad471fcbf7949da712c34cc460c099133a"
+  },
+  "public_projection_version": 2,
+  "schema_version": 1,
+  "source_revision": "3402385c7c3597076a7914e5916b745808ecbe11",
+  "state": {
+    "bytes": 94704,
+    "path": "state/xstocks-supply.json",
+    "sha256": "e25850e2d6db60bd3e20a13d81ab082b3374739b5c04e47176454725a46c34e6"
+  }
+}
