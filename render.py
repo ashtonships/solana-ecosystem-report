@@ -289,7 +289,7 @@ PUBLIC_OBJECT_FIELDS = {
         "queried_asset_count failed_asset_count deadline_exhausted rpc".split()
     ),
     "growth.selected_usd_stablecoins.assets[]": frozenset(
-        "symbol issuer mint available total_supply_decimal raw_amount decimals "
+        "symbol issuer mint available reason total_supply_decimal raw_amount decimals "
         "rpc_ui_amount_string rpc_context_slot rpc_api_version event_time collected_at basis "
         "account_provenance share_of_selected_total".split()
     ),
