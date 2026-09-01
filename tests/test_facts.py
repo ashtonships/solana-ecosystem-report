@@ -1400,6 +1400,22 @@ class TestFactContract(unittest.TestCase):
             self.assertEqual(path.read_bytes(), before)
             self.assertEqual(json.loads(path.read_text()), item)
 
+    def test_jsonl_append_rewrites_back_dated_rows_into_canonical_order(self):
+        newer = facts.fact_from_snapshot(
+            snapshot(at="2026-08-25T02:00:00+00:00", tps=102.0, slot=125), "latest_tps",
+        )
+        older = facts.fact_from_snapshot(
+            snapshot(at="2026-08-25T01:00:00+00:00", tps=101.0, slot=124), "latest_tps",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "facts.jsonl"
+            self.assertEqual(facts.append_jsonl(path, [newer]), 1)
+            self.assertEqual(facts.append_jsonl(path, [older]), 1)
+            rows = [json.loads(line) for line in path.read_text().splitlines()]
+            self.assertEqual([row["collected_at"] for row in rows], [
+                "2026-08-25T01:00:00+00:00", "2026-08-25T02:00:00+00:00",
+            ])
+
     def test_jsonl_additions_preflight_does_not_write(self):
         item = facts.fact_from_snapshot(snapshot(), "latest_tps")
         with tempfile.TemporaryDirectory() as directory:

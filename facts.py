@@ -3350,37 +3350,46 @@ def cadence_eligible(
     return selected
 
 
+def _read_facts_lines(path: Path) -> list[dict[str, Any]]:
+    existing: list[dict[str, Any]] = []
+    if not path.exists():
+        return existing
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise FactConflictError(f"invalid fact JSON at line {line_number}") from error
+        if not isinstance(item, dict):
+            raise FactConflictError(f"fact line {line_number} is not an object")
+        existing.append(item)
+    return existing
+
+
 def jsonl_additions(
     path: Path, new_facts: Iterable[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Return validated new identities without touching the filesystem."""
-    existing: list[dict[str, Any]] = []
-    if path.exists():
-        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-            try:
-                item = json.loads(line)
-            except json.JSONDecodeError as error:
-                raise FactConflictError(f"invalid fact JSON at line {line_number}") from error
-            if not isinstance(item, dict):
-                raise FactConflictError(f"fact line {line_number} is not an object")
-            existing.append(item)
+    existing = _read_facts_lines(path)
     known = {fact_identity(fact) for fact in dedupe_facts(existing)}
     combined = dedupe_facts([*existing, *new_facts])
     return [fact for fact in combined if fact_identity(fact) not in known]
 
 
 def append_jsonl(path: Path, new_facts: Iterable[dict[str, Any]]) -> int:
-    """Atomically append new identities after validating every conflict."""
+    """Atomically merge new identities in canonical order after validating every conflict.
+
+    New facts may carry event times older than rows already on disk (first
+    collection of a history-bearing metric), so the merged file is rewritten
+    in canonical order rather than appended after existing rows.
+    """
     additions = jsonl_additions(path, new_facts)
     if not additions:
         return 0
     path.parent.mkdir(parents=True, exist_ok=True)
-    existing = path.read_bytes() if path.exists() else b""
-    if existing and not existing.endswith(b"\n"):
-        existing += b"\n"
-    appended = "".join(
+    combined = dedupe_facts([*_read_facts_lines(path), *new_facts])
+    serialized = "".join(
         json.dumps(fact, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
-        for fact in additions
+        for fact in combined
     ).encode("utf-8")
     temporary_path: Path | None = None
     try:
@@ -3388,8 +3397,7 @@ def append_jsonl(path: Path, new_facts: Iterable[dict[str, Any]]) -> int:
             mode="wb", dir=path.parent, prefix=f".{path.name}.",
             suffix=".tmp", delete=False,
         ) as handle:
-            handle.write(existing)
-            handle.write(appended)
+            handle.write(serialized)
             handle.flush()
             os.fsync(handle.fileno())
             temporary_path = Path(handle.name)
