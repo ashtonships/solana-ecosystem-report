@@ -6962,6 +6962,26 @@ class TestReleaseMetadata(unittest.TestCase):
             raw["news"]["sources"]["simd_proposals"]["items"][0],
         )
 
+    def test_activity_degraded_reason_is_public_evidence(self):
+        """A degraded activity section keeps its explanation when published.
+
+        When block sampling fails, collect emits an unavailable activity
+        shape with a reason string. The reason is evidence about why the
+        section is unavailable and must survive the public projection
+        instead of being reported as an unknown field.
+        """
+        raw = {
+            "schema_version": 9,
+            "activity": {
+                "available": False,
+                "reason": "no blocks could be sampled from the endpoint",
+            },
+        }
+
+        projected = render.project_public_envelope(raw)["activity"]
+
+        self.assertEqual(projected, raw["activity"])
+
     def test_recursive_envelope_projection_preserves_known_records_without_mutating_input(self):
         sentinel = "PRIVATE-ENVELOPE-SENTINEL"
         raw = {

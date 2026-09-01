@@ -179,7 +179,7 @@ PUBLIC_OBJECT_FIELDS = {
     ),
     "activity": frozenset(
         "available requires_api_key source window fees rev addresses fee_split source_state "
-        "last_success_at carried_forward_at age_seconds stale".split()
+        "last_success_at carried_forward_at age_seconds stale reason".split()
     ),
     "activity.source": frozenset("endpoint endpoint_identity method".split()),
     "activity.window": frozenset(
