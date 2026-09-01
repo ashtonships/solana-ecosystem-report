@@ -1686,7 +1686,7 @@ def markdown_subject_observation_binding(
     if observation_indexes is None:
         return ""
     records = [
-        observation_indexes["subject"].get((metric_id, subject_id, snapshot_at))
+        observation_indexes["subject"].get((metric_id, subject_id, None, snapshot_at))
         or observation_indexes["derived"].get((metric_id, subject_id))
         for metric_id, subject_id in metric_subjects
     ]
@@ -14792,7 +14792,7 @@ def render_network_instruments(
             if is_number(non_vote):
                 non_vote_record = (
                     observation_indexes["subject"].get((
-                        "performance_sample_non_vote_tps", f"slot:{slot_value}", snapshot_at,
+                        "performance_sample_non_vote_tps", f"slot:{slot_value}", None, snapshot_at,
                     )) if observation_indexes is not None else None
                 )
                 if observation_indexes is not None and non_vote_record is None:
@@ -14818,7 +14818,7 @@ def render_network_instruments(
             if is_number(sample.get("vote_tps")):
                 vote_record = (
                     observation_indexes["subject"].get((
-                        "performance_sample_vote_tps", f"slot:{slot_value}", snapshot_at,
+                        "performance_sample_vote_tps", f"slot:{slot_value}", None, snapshot_at,
                     )) if observation_indexes is not None else None
                 )
                 if observation_indexes is not None and vote_record is None:
@@ -14974,7 +14974,7 @@ def _render_single_snapshot_sample_carousel(
             record = indexes["slot"].get((metric_id, snapshot_at, sample["slot"]))
             if record is None:
                 record = indexes.get("subject", {}).get(
-                    (metric_id, f"slot:{sample['slot']}", snapshot_at),
+                    (metric_id, f"slot:{sample['slot']}", None, snapshot_at),
                 )
             if observation_indexes is not None:
                 if record is None:
@@ -15551,7 +15551,7 @@ def subject_observation_attribute(
     if observation_indexes is None:
         return ""
     records = [
-        observation_indexes["subject"].get((metric_id, subject_id, snapshot_at))
+        observation_indexes["subject"].get((metric_id, subject_id, None, snapshot_at))
         or observation_indexes["derived"].get((metric_id, subject_id))
         for metric_id, subject_id in metric_subjects
     ]
@@ -16177,7 +16177,7 @@ def render_validator_workbench(
             for row in concentration_rows:
                 vote_account = row.get("vote_account")
                 record = observation_indexes["subject"].get((
-                    "validator_stake_share_pct", vote_account, snapshot_at,
+                    "validator_stake_share_pct", vote_account, None, snapshot_at,
                 ))
                 if record is None:
                     raise ValueError(
@@ -17062,7 +17062,7 @@ def render_source_flow(
         ]
         source_records = [
             observation_indexes["subject"].get((
-                "news_source_available", source_id, snapshot_at,
+                "news_source_available", source_id, None, snapshot_at,
             ))
             for source_id, source in sorted(news_sources.items())
             if isinstance(source_id, str) and isinstance(source, dict)
@@ -20763,7 +20763,7 @@ def build_derived_observation_records(
     if not history:
         return []
     summary: dict[tuple[str, str], dict[str, Any]] = {}
-    subjects: dict[tuple[str, str, str], dict[str, Any]] = {}
+    subjects: dict[tuple[str, str, str | None, str], dict[str, Any]] = {}
     for record in direct_records:
         if record.get("record_kind") != "direct":
             continue
@@ -20775,7 +20775,15 @@ def build_derived_observation_records(
         if subject_id is None and metric_id not in facts_module.PUBLIC_METRICS:
             continue
         target = summary if subject_id is None else subjects
-        key = (metric_id, snapshot_at) if subject_id is None else (metric_id, subject_id, snapshot_at)
+        if subject_id is None:
+            key: tuple[Any, ...] = (metric_id, snapshot_at)
+        else:
+            # Subject-grain facts keep their source-native event time in the
+            # map key: dated families (provider benchmark rows, SIMD
+            # lifecycle frontmatter) legitimately carry several observations
+            # per subject in one snapshot, and collapsing them to one
+            # (metric, subject, snapshot) slot would hide real evidence.
+            key = (metric_id, subject_id, record.get("observed_at"), snapshot_at)
         if key in target:
             raise ValueError(f"ambiguous direct observation {key!r}")
         target[key] = record
@@ -20862,7 +20870,7 @@ def build_derived_observation_records(
         source_records = sorted(
             (
                 (subject_id, record)
-                for (metric_id, subject_id, snapshot_at), record in subjects.items()
+                for (metric_id, subject_id, _observed_at, snapshot_at), record in subjects.items()
                 if metric_id == source_metric and snapshot_at == latest_at
             ),
             key=lambda item: item[0],
@@ -20901,7 +20909,7 @@ def build_derived_observation_records(
     official_source_records = sorted(
         (
             (subject_id, record)
-            for (metric_id, subject_id, snapshot_at), record in subjects.items()
+            for (metric_id, subject_id, _observed_at, snapshot_at), record in subjects.items()
             if metric_id == "news_source_available" and snapshot_at == latest_at
             and subject_id != "simd_proposals"
         ),
@@ -21121,8 +21129,8 @@ def build_derived_observation_records(
                 if not isinstance(item, dict):
                     continue
                 vote_account = item.get("vote_account")
-                before = subjects.get(("validator_commission_pct", vote_account, previous_at))
-                after = subjects.get(("validator_commission_pct", vote_account, current_at))
+                before = subjects.get(("validator_commission_pct", vote_account, None, previous_at))
+                after = subjects.get(("validator_commission_pct", vote_account, None, current_at))
                 if not isinstance(vote_account, str) or before is None or after is None:
                     raise ValueError("commission change has no unique public input observations")
                 add(
@@ -21170,7 +21178,7 @@ def build_derived_observation_records(
             concentration_inputs = []
             for row in ranked_current[:coefficient]:
                 record = subjects.get((
-                    "validator_stake_share_pct", row["vote_account"], latest_at,
+                    "validator_stake_share_pct", row["vote_account"], None, latest_at,
                 ))
                 if record is None:
                     raise ValueError("Nakamoto crossing has no public stake-share input")
@@ -21202,7 +21210,7 @@ def build_derived_observation_records(
             inputs = []
             for row in current_rows:
                 record = subjects.get((
-                    "validator_commission_pct", row.get("vote_account"), latest_at,
+                    "validator_commission_pct", row.get("vote_account"), None, latest_at,
                 ))
                 if record is None:
                     raise ValueError("commission bucket has no public input observation")
@@ -21814,7 +21822,11 @@ def public_observation_indexes(
             key = (metric_id, subject_id)
             target = indexes["derived"]
         elif isinstance(subject_id, str):
-            key = (metric_id, subject_id, snapshot_at)
+            # Subject-grain records keep their source-native event time in
+            # the index key: dated families (provider benchmark rows, SIMD
+            # lifecycle frontmatter) legitimately carry several observations
+            # per subject in one snapshot.
+            key = (metric_id, subject_id, record.get("observed_at"), snapshot_at)
             target = indexes["subject"]
         elif metric_id in facts_module.PUBLIC_METRICS:
             key = (metric_id, snapshot_at)
@@ -22115,8 +22127,8 @@ def bind_public_comparison(
                 continue
             row = dict(source)
             vote_account = row.get("vote_account")
-            previous = indexes["subject"].get(("validator_commission_pct", vote_account, previous_at))
-            current = indexes["subject"].get(("validator_commission_pct", vote_account, current_at))
+            previous = indexes["subject"].get(("validator_commission_pct", vote_account, None, previous_at))
+            current = indexes["subject"].get(("validator_commission_pct", vote_account, None, current_at))
             derived = indexes["derived"].get((
                 "validator_commission_change_percentage_points",
                 f"{vote_account}|{pair_subject}",
