@@ -922,7 +922,6 @@ class TestMarketCoverage(unittest.TestCase):
         self.assertEqual(summary["minimum"], 100)
         self.assertEqual(summary["maximum"], 400)
         self.assertNotIn("median", summary)
-        self.assertEqual([row["provider"] for row in summary["providers"]], ["A", "B", "C", "D"])
         self.assertEqual(summary["semantic_metric_id"], "stablecoin_active_address_provider_range")
         self.assertEqual(summary["display_name"], "Stablecoin active-address provider range")
         self.assertEqual(summary["source_label"], "Active Addresses")
@@ -988,7 +987,6 @@ class TestMarketCoverage(unittest.TestCase):
         self.assertEqual(summary["conflicts"], [{"date": "2026-08-21", "provider": "A"}])
         self.assertEqual(summary["observed_row_count"], 3)
         self.assertEqual([row["provider"] for row in summary["provider_observations"]], ["B", "C", "D"])
-        self.assertEqual([row["provider"] for row in summary["providers"]], ["B", "C", "D"])
 
     def test_fee_payer_benchmark_names_transaction_initiator_scope(self):
         raw = {"rows": [

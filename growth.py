@@ -497,18 +497,13 @@ def summarize_provider_benchmark(raw: Any, metric_name: str) -> dict[str, Any]:
         return summary
     date = max(complete_dates)
     provider_values = by_date[date]
-    providers = [
-        {"provider": provider, "value": int(value) if value.is_integer() else value}
-        for provider, value in sorted(provider_values.items())
-    ]
     values = sorted(provider_values.values())
     summary.update({
         "available": True,
         "date": date,
-        "provider_count": len(providers),
+        "provider_count": len(provider_values),
         "minimum": int(min(values)),
         "maximum": int(max(values)),
-        "providers": providers,
     })
     return summary
 
