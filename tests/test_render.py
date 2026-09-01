@@ -5461,6 +5461,47 @@ class TestPublicObservationBindings(unittest.TestCase):
             page,
         )
 
+    def test_dated_subject_observations_keep_one_record_per_source_date(self):
+        """Provider benchmark rows keep one public record per (subject, source date)."""
+        def configure_latest(snapshot):
+            snapshot["growth"] = {
+                "available": True,
+                "daily_active_addresses": {
+                    "available": True,
+                    "history_available": True,
+                    "partial": False,
+                    "semantic_metric_id": "stablecoin_active_address_provider_range",
+                    "display_name": "Stablecoin active-address provider range",
+                    "source_label": "Active Addresses",
+                    "scope": "provider observations for Solana stablecoin activity",
+                    "source_url": "https://solana.com/api/databricks/data?days=365",
+                    "provider_observations": [
+                        {"date": "2026-08-01", "provider": "Allium", "value": 1_000},
+                        {"date": "2026-08-02", "provider": "Allium", "value": 1_100},
+                        {"date": "2026-08-02", "provider": "Helius", "value": 1_200},
+                    ],
+                },
+            }
+
+        history, observations, indexes = self.observation_fixture(
+            configure_latest=configure_latest,
+        )
+        snapshot_at = history[-1]["collected_at"]
+        provider_records = [
+            record for record in observations
+            if record["metric_id"] == "stablecoin_active_address_provider_range"
+            and record["snapshot_collected_at"] == snapshot_at
+        ]
+        self.assertEqual(
+            sorted((record["subject_id"], record["observed_at"]) for record in provider_records),
+            [("Allium", "2026-08-01"), ("Allium", "2026-08-02"), ("Helius", "2026-08-02")],
+        )
+        self.assertEqual(len({record["observation_id"] for record in provider_records}), 3)
+        for record in provider_records:
+            self.assertIs(indexes["subject"][(
+                record["metric_id"], record["subject_id"], record["observed_at"], snapshot_at,
+            )], record)
+
     def test_catalog_source_counts_use_sorted_source_ids_and_schema_for_empty_sets(self):
         history, _, indexes = self.catalog_observation_fixture()
         snapshot_at = history[-1]["collected_at"]
@@ -5471,9 +5512,9 @@ class TestPublicObservationBindings(unittest.TestCase):
             records = sorted(
                 (
                     subject_id,
-                    indexes["subject"][(metric_id, subject_id, snapshot_at)],
+                    indexes["subject"][(metric_id, subject_id, None, snapshot_at)],
                 )
-                for candidate_metric, subject_id, candidate_at in indexes["subject"]
+                for candidate_metric, subject_id, _candidate_at, candidate_at in indexes["subject"]
                 if candidate_metric == metric_id and candidate_at == snapshot_at
             )
             expected_inputs = [record["observation_id"] for _, record in records]
@@ -6062,7 +6103,7 @@ class TestPublicObservationBindings(unittest.TestCase):
         official_subjects = ("alpha_feed", "zeta_feed")
         official_inputs = [
             indexes["subject"][(
-                "news_source_available", source_id, snapshot_at,
+                "news_source_available", source_id, None, snapshot_at,
             )]["observation_id"]
             for source_id in official_subjects
         ]
@@ -6077,7 +6118,7 @@ class TestPublicObservationBindings(unittest.TestCase):
         self.assertEqual(available_count["input_observation_ids"], official_inputs)
         self.assertEqual(source_count["input_observation_ids"], official_inputs)
         simd_source_id = indexes["subject"][(
-            "news_source_available", "simd_proposals", snapshot_at,
+            "news_source_available", "simd_proposals", None, snapshot_at,
         )]["observation_id"]
         self.assertNotIn(simd_source_id, official_inputs)
 
@@ -6092,7 +6133,7 @@ class TestPublicObservationBindings(unittest.TestCase):
         ]
         expected_ids.extend(
             indexes["subject"][(
-                "news_source_available", source_id, snapshot_at,
+                "news_source_available", source_id, None, snapshot_at,
             )]["observation_id"]
             for source_id in ("alpha_feed", "simd_proposals", "zeta_feed")
         )
