@@ -217,6 +217,30 @@ def fact_event_time(value: str, label: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _first_projection_extras(snapshot: Any, projected: Any, path: str = "$") -> list[str]:
+    """Return the first snapshot-only paths that the public projection removed."""
+    extras: list[str] = []
+
+    def walk(a: Any, b: Any, path: str) -> None:
+        if len(extras) >= 5:
+            return
+        if isinstance(a, dict) and isinstance(b, dict):
+            for key in sorted(set(a) - set(b)):
+                extras.append(f"{path}.{key}")
+                if len(extras) >= 5:
+                    return
+            for key in sorted(set(a) & set(b)):
+                walk(a[key], b[key], f"{path}.{key}")
+        elif isinstance(a, list) and isinstance(b, list):
+            for index, (x, y) in enumerate(zip(a, b)):
+                walk(x, y, f"{path}[{index}]")
+                if len(extras) >= 5:
+                    return
+
+    walk(snapshot, projected, path)
+    return extras
+
+
 def exact_fields(value: Any, allowed: frozenset[str], label: str) -> dict[str, Any]:
     require(isinstance(value, dict), f"{label} must be an object")
     keys = frozenset(value)
@@ -242,7 +266,12 @@ def verify_snapshot(
         projected = render.project_public_envelope(snapshot)
     except ValueError as error:
         raise ReleaseVerificationError(f"snapshot public projection failed: {error}") from error
-    require(projected == snapshot, "snapshot contains fields outside the recursive public schema")
+    if projected != snapshot:
+        offending = _first_projection_extras(snapshot, projected)
+        raise ReleaseVerificationError(
+            "snapshot contains fields outside the recursive public schema "
+            f"(first offenders: {offending})"
+        )
     provenance = exact_fields(
         snapshot.get("provenance"), frozenset(("source_revision", "source_tree_dirty")),
         "snapshot provenance",

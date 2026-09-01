@@ -264,6 +264,16 @@ class TestReleaseVerifier(unittest.TestCase):
 
         cases.append(("supported unknown", supported_unknown, "outside the recursive public schema"))
 
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "package"
+            shutil.copytree(self.template, root)
+            value = candidate("2026-08-31T09:00:00+00:00")
+            value["private_debug"] = {"nested": [{"deep": 1}]}
+            projected = render.project_public_envelope(deepcopy(value))
+            extras = verify_release._first_projection_extras(value, projected)
+            self.assertIn("$.private_debug", extras)
+            self.assertTrue(all(isinstance(item, str) for item in extras))
+
         def unsupported(root):
             value = candidate("2026-08-31T09:00:00+00:00")
             value["schema_version"] = 10
