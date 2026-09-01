@@ -768,6 +768,78 @@ class TestReleaseVerifier(unittest.TestCase):
                 ):
                     verify_release.verify_artifacts(root / "samples", data)
 
+    def test_report_observation_accepts_bare_source_dates(self):
+        """Provider-row source dates stay bare dates in report observations.
+
+        The facts contract records provider observations as dates and never
+        invents a time of day; report verification interprets such
+        observed_at values as the start of that day in UTC, matching
+        fact-level ordering semantics.
+        """
+        record = {
+            "observation_id": facts.public_observation_id(
+                record_kind="direct",
+                metric_id="stablecoin_active_address_provider_range",
+                subject_id="Allium",
+                snapshot_collected_at="2026-09-01T21:59:02+00:00",
+                observed_at="2026-08-31",
+                observed_slot=None,
+                source="solana-data-provider-benchmark",
+            ),
+            "record_kind": "direct",
+            "metric_id": "stablecoin_active_address_provider_range",
+            "subject_id": "Allium",
+            "name": "Stablecoin active-address provider observation",
+            "value": 12345.0,
+            "type": "numeric",
+            "unit": "addresses",
+            "population": "provider observation",
+            "denominator": "not applicable",
+            "window": "provider observation date",
+            "observed_at": "2026-08-31",
+            "observed_slot": None,
+            "collected_at": "2026-09-01T21:59:02+00:00",
+            "snapshot_collected_at": "2026-09-01T21:59:02+00:00",
+            "source": "solana-data-provider-benchmark",
+            "source_url": "https://solana.com/data",
+            "source_path": "growth.daily_active_addresses.provider_observations",
+            "collection_method": "retain source-labelled provider rows",
+            "calculation_method": "recorded provider observation",
+            "freshness": "fresh",
+            "status": "current",
+            "basis": "recorded",
+            "quality": "not applicable",
+            "caveat": "Provider methodologies differ.",
+            "input_observation_ids": [],
+            "output_path": "observations[observation_id=%s]" % json.dumps(
+                facts.public_observation_id(
+                    record_kind="direct",
+                    metric_id="stablecoin_active_address_provider_range",
+                    subject_id="Allium",
+                    snapshot_collected_at="2026-09-01T21:59:02+00:00",
+                    observed_at="2026-08-31",
+                    observed_slot=None,
+                    source="solana-data-provider-benchmark",
+                )
+            ),
+        }
+        snapshot = {"collected_at": "2026-09-01T21:59:02+00:00"}
+        now = verify_release.reference_time("2026-09-01T22:00:00+00:00")
+        known = verify_release.verify_observations([record], snapshot, now)
+        self.assertEqual(len(known), 1)
+        stale = dict(record, observed_at="2026-09-02")
+        with self.assertRaisesRegex(
+            verify_release.ReleaseVerificationError,
+            r"report observation 0\.observed_at is after",
+        ):
+            verify_release.verify_observations([stale], snapshot, now)
+        invalid = dict(record, observed_at="2026-08-05T12:00")
+        with self.assertRaisesRegex(
+            verify_release.ReleaseVerificationError,
+            r"report observation 0\.observed_at",
+        ):
+            verify_release.verify_observations([invalid], snapshot, now)
+
 
 class TestCleanInitialGitHistory(unittest.TestCase):
     def _build_repo(
