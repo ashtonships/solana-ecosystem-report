@@ -862,9 +862,8 @@ def verify_observations(
             require(timestamp <= selected_at and timestamp <= reference,
                     f"{label}.{field} is after the selected snapshot or verification time")
         if record.get("observed_at") is not None:
-            observed_at = datetime.fromisoformat(
-                aware_timestamp(record["observed_at"], f"{label}.observed_at")
-                .replace("Z", "+00:00")
+            observed_at = fact_event_time(
+                record["observed_at"], f"{label}.observed_at"
             )
             require(observed_at <= selected_at and observed_at <= reference,
                     f"{label}.observed_at is after the selected snapshot or verification time")
