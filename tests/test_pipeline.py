@@ -2384,6 +2384,13 @@ class TestWorkflowGateCoverage(unittest.TestCase):
             update,
         )
         self.assertIn(
-            'python3 collect.py --no-economics --endpoint "$REPORT_RPC_ENDPOINT"',
+            'python3 collect.py --with-price --endpoint "$REPORT_RPC_ENDPOINT"',
             update,
         )
+        # The Demo key rides only in the environment and as a request header;
+        # it must never appear in a URL or a command line.
+        self.assertIn(
+            "COINGECKO_DEMO_API_KEY: ${{ secrets.COINGECKO_DEMO_API_KEY }}",
+            update,
+        )
+        self.assertNotIn("x-cg-demo-api-key", update)

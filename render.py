@@ -859,6 +859,45 @@ PUBLIC_SCHEMA_OVERRIDES = {
         "news": frozenset(
             "available partial requires_api_key featured_item_id items sources current_status note".split()
         ),
+        # Schema 9 economics was cut while every source was held, so it
+        # collapsed to availability state. The approved CoinGecko Demo price
+        # transport promotes the recorded detail contracts into the current
+        # schema: the price part carries its observation, rights-held parts
+        # stay available:false, and per-section publication_state/reason
+        # markers (used by facts.publication_history when withholding held
+        # sources from history) remain representable.
+        "economics": frozenset(
+            "available requires_api_key price tvl stablecoins dex protocols sources "
+            "publication_state reason".split()
+        ),
+        "economics.price": frozenset(
+            "available publication_state reason price_usd market_cap_usd volume_24h_usd "
+            "change_24h_pct last_updated_at_unix freshness".split()
+        ),
+        "economics.tvl": frozenset(
+            "available publication_state reason tvl_usd as_of_unix history_points change_7d_pct".split()
+        ),
+        "economics.stablecoins": frozenset(
+            "available publication_state reason stablecoin_usd usd_pegged_circulating_usd "
+            "non_usd_pegged_usd metric provider_field scope".split()
+        ),
+        "economics.dex": frozenset(
+            "available publication_state reason volume_24h_usd volume_7d_usd change_1d_pct".split()
+        ),
+        "economics.protocols": frozenset(
+            "available publication_state reason scope excluded_categories "
+            "eligible_protocol_count excluded_child_protocol_count protocols".split()
+        ),
+        "economics.sources": frozenset(
+            "price tvl stablecoins dex protocols".split()
+        ),
+        "economics.sources.price": frozenset(
+            "url available last_updated_at_unix freshness".split()
+        ),
+        "economics.sources.tvl": frozenset("url available".split()),
+        "economics.sources.stablecoins": frozenset("url available".split()),
+        "economics.sources.dex": frozenset("url available".split()),
+        "economics.sources.protocols": frozenset("url available".split()),
     },
 }
 

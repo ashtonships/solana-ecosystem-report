@@ -83,10 +83,13 @@ jobs:
 
       - name: Collect live snapshot
         if: github.event_name != 'push'
-        # Economics remains disabled until redistribution rights are cleared.
+        # Rights-held economics stays disabled. The approved CoinGecko Demo
+        # key transport supplies the price observation; held sources are not
+        # fetched and record available:false so their hold persists.
         env:
           REPORT_RPC_ENDPOINT: ${{ secrets.REPORT_RPC_ENDPOINT }}
-        run: python3 collect.py --no-economics --endpoint "$REPORT_RPC_ENDPOINT"
+          COINGECKO_DEMO_API_KEY: ${{ secrets.COINGECKO_DEMO_API_KEY }}
+        run: python3 collect.py --with-price --endpoint "$REPORT_RPC_ENDPOINT"
 
       - name: Capture publication timestamp
         run: |
