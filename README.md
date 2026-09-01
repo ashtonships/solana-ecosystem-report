@@ -174,7 +174,7 @@ Current production defaults keep uncleared sources out of new public candidates.
 | Solana Status | Adopt, factual metadata/link only | Current official state and incident metadata; an old newest incident is not source staleness |
 | CoinGecko | Defer | No new append-only public retention until licence, permission, or a compatible replacement is established |
 | DeFiLlama | Defer / externally blocked | No new public republication until permission or a licensed replacement is established |
-| Solana Data numeric rows | Defer | Provider rows are not network-wide DAA; public reuse still requires acceptance |
+| Solana Data numeric rows | Adopt, scoped | Owner accepted public redistribution on 2026-09-01 for Active Addresses only: provider-scoped daily ranges, never a canonical network-wide count; Fee Payers and all other rows stay held |
 | Solana Foundation token registry | Adopt at fixed revision | Exact-`xStock` mint identities only; MIT notice retained; no logos or hosted market data |
 | Selected four-mint stablecoin supply | Adopt, scoped chain fact | Finalized RPC supply for four pinned mints; not circulating supply, value, liquidity, depth, or all stablecoins |
 | xStocks public API | Defer / externally blocked | API terms need clarification; the adopted on-chain path does not call this API |
@@ -188,9 +188,10 @@ before a new source is promoted from deferred to adopted.
 Economics are disabled by default. `--with-economics` is an explicit private-
 research opt-in that requires `--dry-run`; it cannot write held data into the
 canonical snapshot/fact paths or advance `latest.json`. The adopted growth path
-does not call DEX Screener, the held xStocks API, DeFiLlama, Solana Data, or
-other provider endpoints; `--no-growth` is only an explicit opt-out from its
-fixed registry and finalized RPC facts. The default news collector
+calls only the adopted Solana Data Active Addresses feed plus the pinned
+registry and finalized RPC methods; it does not call DEX Screener, the held
+xStocks API, DeFiLlama, or any other provider endpoint; `--no-growth` is only
+an explicit opt-out from those fixed sources. The default news collector
 fetches only adopted Agave and Solana Status metadata; held Solana News,
 curated-upgrade, and SIMD sources are not requested.
 
@@ -583,11 +584,14 @@ ecosystem dashboards.
 
 ## Open release gates
 
-- Network-wide daily active addresses remain unavailable; provider observations
-  may appear only when reuse is accepted and remain explicitly provider-scoped.
+- Solana Data Active Addresses provider ranges are adopted (owner acceptance
+  recorded 2026-09-01) and stay explicitly provider-scoped; they are never a
+  canonical network-wide daily-active-address count. Fee Payers and all other
+  Solana Data rows remain held pending separate acceptance.
 - Exact cross-venue tokenized-equity volume remains unavailable. Supply,
   issuance, reserves, AUM, liquidity, and indexed DEX pools are not substitutes.
-- CoinGecko, DeFiLlama, Solana Data numeric rows, xStocks APIs, Solana News,
+- CoinGecko, DeFiLlama, non-adopted Solana Data rows (including Fee Payers),
+  xStocks APIs, Solana News,
   curated upgrades, and SIMD metadata retain the source decisions and holds
   listed above.
 - Dune and X remain owner-gated; the default path creates no account, requests

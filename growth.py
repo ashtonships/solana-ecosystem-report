@@ -1387,14 +1387,23 @@ def collect_growth(
     stablecoins = fetch_selected_usd_stablecoin_supplies(
         endpoint, min(timeout, 20), total_deadline_seconds=30,
     )
-    daily_addresses = summarize_provider_benchmark(None, "Active Addresses")
+    # Active Addresses rows are provider-scoped estimates of network-wide daily
+    # activity, never a canonical complete-network count. Owner accepted public
+    # redistribution of this feed on 2026-09-01. Fee Payers stays held pending a
+    # separate acceptance decision.
+    solana_data_raw = fetch_json(SOLANA_DATA_URL, timeout)
+    daily_addresses = summarize_provider_benchmark(solana_data_raw, "Active Addresses")
     fee_payers = summarize_provider_benchmark(None, "Fee Payers")
-    activity_hold_reason = (
-        "Numeric provider-row republication is held pending explicit source-rights "
-        "acceptance. Network-wide daily active addresses remain unavailable."
+    fee_payers_hold_reason = (
+        "Fee Payers provider-row republication is held pending explicit "
+        "source-rights acceptance; transaction-initiator ranges remain unavailable."
     )
-    daily_addresses["reason"] = activity_hold_reason
-    fee_payers["reason"] = activity_hold_reason
+    fee_payers["reason"] = fee_payers_hold_reason
+    if daily_addresses.get("available") is not True:
+        daily_addresses["reason"] = (
+            "Solana Data provider activity rows were not collected this run "
+            "(fetch failed or no overlapping provider day)."
+        )
 
     observed_at_unix = int(time.time())
     coverage = summarize_supply_coverage(
@@ -1496,9 +1505,12 @@ def collect_growth(
             },
             "activity_benchmark": {
                 "url": SOLANA_DATA_URL,
-                "available": False,
-                "held": True,
-                "reason": activity_hold_reason,
+                "available": any((
+                    daily_addresses.get("history_available") is True,
+                    fee_payers.get("history_available") is True,
+                )),
+                "held": fee_payers.get("available") is not True,
+                "reason": fee_payers_hold_reason,
                 "active_addresses_available": daily_addresses.get("available") is True,
                 "fee_payers_available": fee_payers.get("available") is True,
                 "active_addresses_history_available": (

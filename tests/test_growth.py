@@ -585,7 +585,8 @@ class TestSupplyState(unittest.TestCase):
                  "rows": [], "batches_expected": 1, "batches_requested": 1,
                  "batches_succeeded": 1,
              }), patch("growth.fetch_selected_usd_stablecoin_supplies",
-                       return_value=empty_selected_stablecoins()):
+                       return_value=empty_selected_stablecoins()), \
+             patch("growth.fetch_json", return_value=None):
             result, next_state = growth.collect_growth(
                 devnet, supply_state=mainnet_state,
             )
@@ -1037,7 +1038,7 @@ class TestMarketCoverage(unittest.TestCase):
              patch("growth.fetch_json") as provider_api:
             result, next_state = growth.collect_growth("https://rpc.example")
         issuer_api.assert_not_called()
-        provider_api.assert_not_called()
+        provider_api.assert_called_once_with(growth.SOLANA_DATA_URL, 12)
         dex_fetch.assert_not_called()
         self.assertTrue(result["available"])
         self.assertFalse(result["tokenized_equities"]["available"])
@@ -1074,6 +1075,46 @@ class TestMarketCoverage(unittest.TestCase):
         self.assertIn("selected_usd_stablecoins", result)
         self.assertFalse(result["sources"]["selected_usd_stablecoins"]["available"])
         self.assertFalse(result["sources"]["selected_usd_stablecoins"]["coverage_complete"])
+
+    def test_accepted_solana_data_rows_populate_active_address_range(self):
+        raw = {
+            "generatedAt": "2026-09-01T00:00:00Z",
+            "rows": [
+                {"date": "2026-08-30", "metricName": "Active Addresses",
+                 "unit": "Count", "providerName": name, "value": value}
+                for name, value in (
+                    ("Allium", 3_100_000), ("Artemis", 3_300_000),
+                    ("Blockworks", 3_200_000), ("Dune", 3_000_000),
+                )
+            ],
+        }
+        with patch("growth.fetch_xstocks_registry", return_value={
+                 "products": [], "coverage_complete": True,
+             }), patch("growth.fetch_dex_pairs", return_value={
+                 "rows": [], "batches_expected": 0, "batches_requested": 0,
+                 "batches_succeeded": 0,
+             }), patch("growth.fetch_selected_usd_stablecoin_supplies",
+                       return_value=empty_selected_stablecoins()), \
+             patch("growth.fetch_paginated_nodes"), \
+             patch("growth.fetch_json", return_value=raw):
+            result, next_state = growth.collect_growth("https://rpc.example")
+        addresses = result["daily_active_addresses"]
+        self.assertTrue(addresses["available"])
+        self.assertEqual(addresses["date"], "2026-08-30")
+        self.assertEqual(addresses["minimum"], 3_000_000)
+        self.assertEqual(addresses["maximum"], 3_300_000)
+        self.assertEqual(addresses["provider_count"], 4)
+        self.assertNotIn("reason", addresses)
+        fee_payers = result["daily_fee_payers"]
+        self.assertFalse(fee_payers["available"])
+        self.assertIn("source-rights", fee_payers["reason"])
+        source = result["sources"]["activity_benchmark"]
+        self.assertTrue(source["available"])
+        self.assertTrue(source["active_addresses_available"])
+        self.assertFalse(source["fee_payers_available"])
+        self.assertTrue(source["held"])
+        self.assertIn("Fee Payers", source["reason"])
+        self.assertEqual(source["active_addresses_observed_row_count"], 4)
 
     def test_successful_supply_updates_cache_and_can_be_registry_wide(self):
         products = [{"slug": "a", "name": "Asset", "symbol": "Ax", "solana_mint": "mint-a"}]
