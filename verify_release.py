@@ -199,6 +199,24 @@ def reference_time(value: str | None, label: str = "verification time") -> datet
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def fact_event_time(value: str, label: str) -> datetime:
+    """Parse an offset-aware timestamp or a bare source date (UTC midnight).
+
+    The facts contract records provider-row source dates as dates and never
+    invents a time of day; ordering checks interpret such dates as the start
+    of that day in UTC.
+    """
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) is not None:
+        try:
+            return datetime.fromisoformat(f"{value}T00:00:00+00:00")
+        except ValueError as error:
+            raise ReleaseVerificationError(
+                f"{label} is not a valid date"
+            ) from error
+    aware_timestamp(value, label)
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
 def exact_fields(value: Any, allowed: frozenset[str], label: str) -> dict[str, Any]:
     require(isinstance(value, dict), f"{label} must be an object")
     keys = frozenset(value)
@@ -666,10 +684,7 @@ def verify_public_data(
                 f"fact line {index} collected_at is after the selected snapshot or verification time")
         event_time = fact.get("event_time")
         if event_time is not None:
-            event_at = datetime.fromisoformat(
-                aware_timestamp(event_time, f"fact line {index} event_time")
-                .replace("Z", "+00:00")
-            )
+            event_at = fact_event_time(event_time, f"fact line {index} event_time")
             require(event_at <= fact_at and event_at <= snapshot_at and event_at <= reference,
                     f"fact line {index} event_time is after collection, the selected snapshot, "
                     "or verification time")
