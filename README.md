@@ -1,6 +1,9 @@
 # Solana Ecosystem Report
 
-An auto-updating, evidence-labelled report on the state of the Solana network.
+[![Live report](docs/readme/dashboard-hero.png)](https://ashtonships.github.io/solana-ecosystem-report/)
+
+**An auto-updating, evidence-labelled report on the state of the Solana network** — [view the live report](https://ashtonships.github.io/solana-ecosystem-report/).
+
 The local collector can record a bounded **keyless Solana JSON-RPC core**,
 append-only snapshots and metric facts, compare compatible observations, and
 render a self-contained HTML dashboard, a human-readable Markdown report, and
@@ -19,6 +22,12 @@ controller receipts are deliberately excluded from the publication package.
 account, third-party package, or build step. `git clone` and run. Production
 automation has a separate endpoint gate because Solana's official documentation
 says its public RPC is not intended for production applications.
+
+## What it looks like
+
+Every published byte is generated from committed snapshots — the dashboard, the charts, and the honest unavailable states you see below are the artifact itself.
+
+![Execution and epoch clock](docs/readme/instruments.png)
 
 ## Quick start
 
