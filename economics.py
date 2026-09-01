@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import time
 import urllib.error
 import urllib.request
@@ -77,6 +78,74 @@ def fetch_all(timeout: int = 12) -> dict[str, Any | None]:
     with ThreadPoolExecutor(max_workers=len(SOURCES)) as executor:
         futures = {name: executor.submit(fetch, url, timeout) for name, url in SOURCES.items()}
         return {name: future.result() for name, future in futures.items()}
+
+
+# CoinGecko's Demo plan is the approved price transport: a free key, used via
+# header so the credential never appears in a URL, log line, or snapshot.
+COINGECKO_DEMO_KEY_ENV = "COINGECKO_DEMO_API_KEY"
+PRICE_ONLY_SOURCES = ("price",)
+
+
+def fetch_price_only(timeout: int = 12) -> dict[str, Any | None]:
+    """Fetch only the approved price source, with Demo-key authentication.
+
+    Rights-held sources (DeFiLlama) stay untouched: no request is made, so no
+    held data can enter a snapshot through this path.
+    """
+    key = os.environ.get(COINGECKO_DEMO_KEY_ENV, "").strip()
+    if not key:
+        return {name: None for name in PRICE_ONLY_SOURCES}
+    request = urllib.request.Request(
+        SOURCES["price"],
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "solana-ecosystem-report/0.1",
+            "x-cg-demo-api-key": key,
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            raw = json.loads(transport.read_bounded(response).decode("utf-8"))
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
+            json.JSONDecodeError, ValueError):
+        return {"price": None}
+    return {"price": raw}
+
+
+def build_price_economics(
+    raw: dict[str, Any | None], observed_at_unix: int | None = None,
+) -> dict[str, Any]:
+    """Assemble a price-only economics section. Pure — no network, no clock.
+
+    The section keeps the full schema-9 economics shape: the approved price
+    part carries the observation, and every rights-held part reports
+    `available: false`, which keeps the per-source publication hold
+    (facts.publication_history) in force for exactly those sources.
+    """
+    price = summarize_price(raw.get("price"), observed_at_unix)
+    held = ("tvl", "stablecoins", "dex", "protocols")
+    parts: dict[str, Any] = {
+        "price": price,
+        **{name: {"available": False} for name in held},
+    }
+    sources = {
+        name: {"available": parts[name]["available"], "url": SOURCES[name]}
+        for name in parts
+    }
+    sources["price"].update({
+        "freshness": price.get("freshness"),
+        "last_updated_at_unix": price.get("last_updated_at_unix"),
+    })
+    return {
+        "available": price["available"],
+        "requires_api_key": True,
+        **parts,
+        "sources": sources,
+    }
+
+
+def collect_price_economics(timeout: int = 12) -> dict[str, Any]:
+    return build_price_economics(fetch_price_only(timeout), int(time.time()))
 
 
 # ── pure transforms ──────────────────────────────────────────────────────────

@@ -2519,13 +2519,18 @@ def check_publishable(
         })
 
     economics = snapshot.get("economics")
-    if (not allow_release_held and isinstance(economics, dict)
-            and economics.get("available") is True):
-        failures.append({
-            "check": "release_policy",
-            "detail": "economics is release-held; public candidates must record it "
-                      "as unavailable until source rights are approved",
-        })
+    if (isinstance(economics, dict) and economics.get("available") is True
+            and not allow_release_held):
+        # The CoinGecko Demo key transport is the one approved keyed source:
+        # it alone records requires_api_key=True, and its rights-held siblings
+        # stay available:false so their per-source publication hold persists.
+        approved_keyed = economics.get("requires_api_key") is True
+        if not approved_keyed:
+            failures.append({
+                "check": "release_policy",
+                "detail": "economics is release-held; public candidates must record it "
+                          "as unavailable until source rights are approved",
+            })
 
     failures.extend(semantic_failures(snapshot))
 

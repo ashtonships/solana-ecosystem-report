@@ -732,6 +732,7 @@ def apply_activity_last_known_good(
 def sources(
     endpoint: str = DEFAULT_ENDPOINT,
     with_economics: bool = False,
+    with_price: bool = False,
     with_activity: bool = True,
     with_news: bool = True,
     samples: int = blocks.DEFAULT_SAMPLES,
@@ -743,6 +744,8 @@ def sources(
     Public Solana RPC, sampled block bodies, selected optional data providers,
     and accepted first-party metadata. A failed source remains independently
     unavailable; release-held sources are not fetched by the default path.
+    The approved CoinGecko Demo price transport is the only keyed third-party
+    source, and only when explicitly requested with ``with_price``.
     """
     batch = fetch_rpc(endpoint)
     indexed = index_results(batch)
@@ -758,7 +761,12 @@ def sources(
     )
     # Economic sources are third-party and optional: a failure there degrades
     # that section only, and never blocks the on-chain snapshot.
-    econ = economics.collect_economics() if with_economics else None
+    if with_economics:
+        econ = economics.collect_economics()
+    elif with_price:
+        econ = economics.collect_price_economics()
+    else:
+        econ = None
     # Block sampling is the slow part of a run — a dozen multi-megabyte bodies
     # against a rate-limited public endpoint. Same rule as economics: it fails
     # to `available: false` on its own and never takes the snapshot with it.
@@ -807,6 +815,7 @@ def normalize(raw: dict[str, Any]) -> dict[str, Any]:
 def collect(
     endpoint: str = DEFAULT_ENDPOINT,
     with_economics: bool = False,
+    with_price: bool = False,
     with_activity: bool = True,
     with_news: bool = True,
     samples: int = blocks.DEFAULT_SAMPLES,
@@ -820,6 +829,7 @@ def collect(
     snapshot, _ = collect_with_state(
         endpoint,
         with_economics=with_economics,
+        with_price=with_price,
         with_activity=with_activity,
         with_news=with_news,
         samples=samples,
@@ -831,6 +841,7 @@ def collect(
 def collect_with_state(
     endpoint: str = DEFAULT_ENDPOINT,
     with_economics: bool = False,
+    with_price: bool = False,
     with_activity: bool = True,
     with_news: bool = True,
     samples: int = blocks.DEFAULT_SAMPLES,
@@ -841,6 +852,7 @@ def collect_with_state(
     raw = sources(
         endpoint,
         with_economics=with_economics,
+        with_price=with_price,
         with_activity=with_activity,
         with_news=with_news,
         samples=samples,
@@ -871,7 +883,14 @@ def main() -> int:
         "--no-economics", dest="with_economics", action="store_false",
         help="skip held third-party economic sources (the default)",
     )
-    parser.set_defaults(with_economics=False)
+    economics_group.add_argument(
+        "--with-price", dest="with_price", action="store_true",
+        help=(
+            "include the approved CoinGecko Demo price observation "
+            "(uses COINGECKO_DEMO_API_KEY; rights-held sources stay held)"
+        ),
+    )
+    parser.set_defaults(with_economics=False, with_price=False)
     parser.add_argument("--no-activity", action="store_true",
                         help="skip block sampling for fees, REV and address activity")
     parser.add_argument("--no-news", action="store_true",
@@ -903,6 +922,7 @@ def main() -> int:
         snapshot, next_supply_state = collect_with_state(
             args.endpoint,
             with_economics=args.with_economics,
+            with_price=args.with_price,
             with_activity=not args.no_activity,
             with_news=not args.no_news,
             with_growth=not args.no_growth,

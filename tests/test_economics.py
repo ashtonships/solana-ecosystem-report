@@ -5,6 +5,7 @@ synthetic values to a pure function. The central property under test is that a
 failed third-party source degrades to `available: false` rather than to zero.
 """
 
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -66,6 +67,86 @@ class TestTvl(unittest.TestCase):
         ]
         with self.assertRaises(economics.facts.FactConflictError):
             economics.tvl_history_facts(raw, "2026-08-25T22:00:00+00:00")
+
+
+class TestPriceOnlyEconomics(unittest.TestCase):
+    """The approved CoinGecko Demo price transport, isolated from held sources."""
+
+    def provider_shape(self):
+        return {
+            "solana": {
+                "usd": 173.42, "usd_market_cap": 91_000_000_000.0,
+                "usd_24h_vol": 4_100_000_000.0, "usd_24h_change": -1.8,
+                "last_updated_at": 1_700_000_100,
+            },
+        }
+
+    def test_fetch_price_only_never_touches_a_held_source(self):
+        calls = []
+        real_urlopen = economics.urllib.request.urlopen
+        env = dict(os.environ)
+        os.environ[economics.COINGECKO_DEMO_KEY_ENV] = "test-key"
+
+        def spy(request, timeout=None):
+            calls.append(request.full_url)
+            raise AssertionError("no network in this test")
+
+        economics.urllib.request.urlopen = spy
+        try:
+            with self.assertRaises(AssertionError):
+                economics.fetch_price_only()
+        finally:
+            economics.urllib.request.urlopen = real_urlopen
+            os.environ.clear()
+            os.environ.update(env)
+        self.assertEqual(calls, [economics.SOURCES["price"]])
+
+    def test_missing_key_reports_unavailable_without_a_request(self):
+        env = dict(os.environ)
+        os.environ.pop(economics.COINGECKO_DEMO_KEY_ENV, None)
+        try:
+            result = economics.fetch_price_only()
+        finally:
+            os.environ.clear()
+            os.environ.update(env)
+        self.assertEqual(result, {"price": None})
+        self.assertFalse(
+            economics.build_price_economics(result, 1_700_000_100)["available"]
+        )
+
+    def test_held_sources_stay_available_false_in_the_price_section(self):
+        section = economics.build_price_economics(
+            {"price": self.provider_shape()}, 1_700_000_100,
+        )
+        for name in ("tvl", "stablecoins", "dex", "protocols"):
+            self.assertIs(section[name]["available"], False)
+        self.assertEqual(section["sources"]["price"]["url"], economics.SOURCES["price"])
+        self.assertTrue(all(
+            section["sources"][name]["available"] is False
+            for name in ("tvl", "stablecoins", "dex", "protocols")
+        ))
+
+    def test_price_observation_is_recorded_and_attributed(self):
+        section = economics.build_price_economics(
+            {"price": self.provider_shape()}, 1_700_000_100,
+        )
+        self.assertTrue(section["available"])
+        self.assertEqual(section["price"]["price_usd"], 173.42)
+        self.assertEqual(section["price"]["freshness"], "fresh")
+        self.assertTrue(section["requires_api_key"])
+
+    def test_malformed_price_response_degrades_to_unavailable(self):
+        for bad in (None, [], "nope", {}, {"solana": None}, {"solana": {"usd": "nan"}}):
+            section = economics.build_price_economics({"price": bad}, 1_700_000_100)
+            self.assertFalse(section["available"])
+            self.assertFalse(section["price"]["available"])
+            self.assertEqual(section["price"]["freshness"], "unavailable")
+
+    def test_stale_provider_timestamp_is_labelled_not_relabeled(self):
+        section = economics.build_price_economics(
+            {"price": self.provider_shape()}, 1_700_000_100 + 4_000,
+        )
+        self.assertEqual(section["price"]["freshness"], "stale")
 
 
 class TestPrice(unittest.TestCase):
