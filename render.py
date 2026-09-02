@@ -15513,6 +15513,180 @@ def render_economics_html(
     return "".join(parts)
 
 
+def _pulse_provider_range_card(
+    label: str,
+    source: Any,
+    metric_ids: tuple[str, ...],
+    binding,
+) -> str:
+    """One Solana Data provider-range card, or its explicit unavailable state.
+
+    Legacy-schema rows are refused rather than relabelled: their metric
+    identity and scope are not comparable, so printing a range would launder
+    a different measurement under the new name.
+    """
+    source = source if isinstance(source, dict) else {}
+    if source.get("available") is True and is_number(source.get("minimum")) \
+            and is_number(source.get("maximum")):
+        return card(
+            label,
+            f"{fmt(source.get('minimum'))}–{fmt(source.get('maximum'))}",
+            f"Solana Data · provider-reported · {source.get('date') or 'date unavailable'} · "
+            f"{fmt(source.get('provider_count'))} providers · not network-wide · ~1 day source lag",
+            attributes=binding(*metric_ids),
+        )
+    if source.get("available") is True:
+        reason = "Legacy provider activity semantics are not comparable — schema-8 metric identity and scope are missing."
+    else:
+        reason = str(source.get("reason") or "Solana Data provider rows were not collected this run.")
+    return card(label, "Unavailable", f"provider-reported · {reason}")
+
+
+def render_ecosystem_pulse(
+    snapshot: dict[str, Any],
+    observation_indexes: dict[str, dict[tuple[Any, ...], dict[str, Any]]] | None = None,
+) -> str:
+    """Ecosystem Pulse: headline cards assembled from already-recorded sections.
+
+    Render-time only — nothing here writes back into the snapshot. Every card
+    carries value-or-range, source, data date, basis (measured or
+    provider-reported) and, for provider data, the ~1 day source lag. A missing
+    input renders its real unavailability reason; never zero, never a bare dash.
+    """
+    economics = snapshot.get("economics", {}) if isinstance(snapshot.get("economics"), dict) else {}
+    activity = snapshot.get("activity", {}) if isinstance(snapshot.get("activity"), dict) else {}
+    growth = snapshot.get("growth", {}) if isinstance(snapshot.get("growth"), dict) else {}
+    collected_date = str(snapshot.get("collected_at") or "")[:10] or "date unavailable"
+    snapshot_at = str(snapshot.get("collected_at"))
+
+    def binding(*metric_ids: str) -> str:
+        return summary_observation_attribute(
+            observation_indexes, snapshot_at, tuple(metric_ids),
+        )
+
+    # (a) SOL price — CoinGecko via the economics price block.
+    price = economics.get("price", {}) if isinstance(economics.get("price"), dict) else {}
+    price_usd = price.get("price_usd")
+    if price.get("available") and detect.source_eligible(snapshot, "economics", "price") \
+            and is_number(price_usd):
+        updated = unix_timestamp_label(price.get("last_updated_at_unix"))[:10] \
+            if is_number(price.get("last_updated_at_unix")) else collected_date
+        sol_card = card(
+            "SOL price",
+            f"${float(price_usd):,.2f}",
+            f"CoinGecko · provider-reported · {updated} · {price.get('freshness', 'unavailable')} · "
+            f"~1 day source lag{stale_provenance_label(price)}",
+            attributes=binding("price_usd"),
+        )
+    else:
+        sol_card = card(
+            "SOL price", "Unavailable",
+            "provider-reported · "
+            + str(price.get("reason") or "CoinGecko price source unavailable in this snapshot."),
+        )
+
+    # (b) Daily active addresses provider range.
+    addresses_card = _pulse_provider_range_card(
+        "Daily active addresses (provider range)",
+        growth.get("daily_active_addresses"),
+        ("stablecoin_active_address_provider_range_min",
+         "stablecoin_active_address_provider_range_max",
+         "stablecoin_active_address_provider_count"),
+        binding,
+    )
+
+    # (c) Daily fee payers provider range.
+    fee_payers_card = _pulse_provider_range_card(
+        "Daily fee payers (provider range)",
+        growth.get("daily_fee_payers"),
+        ("transaction_initiator_provider_range_min",
+         "transaction_initiator_provider_range_max",
+         "transaction_initiator_provider_count"),
+        binding,
+    )
+
+    # (d) Application revenue — explicit pending state until Solana Data publishes it.
+    app_revenue = growth.get("application_revenue") \
+        if isinstance(growth.get("application_revenue"), dict) else {}
+    if app_revenue.get("available") is True and is_number(app_revenue.get("minimum")) \
+            and is_number(app_revenue.get("maximum")):
+        app_revenue_card = card(
+            "Application revenue",
+            f"{fmt(app_revenue.get('minimum'))}–{fmt(app_revenue.get('maximum'))}",
+            f"Solana Data · provider-reported · {app_revenue.get('date') or 'date unavailable'} · "
+            f"~1 day source lag",
+            attributes=binding("application_revenue_min", "application_revenue_max"),
+        )
+    else:
+        app_revenue_card = card(
+            "Application revenue", "Pending",
+            "provider-reported · provider range pending Solana Data adoption",
+        )
+
+    # (e) Network REV pointer — the activity section's own sampled value.
+    rev = activity.get("rev", {}) if isinstance(activity.get("rev"), dict) else {}
+    if rev.get("available") and is_number(rev.get("sample_mean_estimate_sol")):
+        rev_card = card(
+            "Network REV (sampled window mean)",
+            f"{fmt(rev.get('sample_mean_estimate_sol'))} SOL",
+            f"on-chain block sampling · measured · {collected_date} · sample mean, not a total · "
+            "details in Fees, REV and activity",
+            attributes=binding("sample_mean_rev_sol"),
+        )
+    else:
+        rev_card = card(
+            "Network REV (sampled window mean)", "Unavailable",
+            "measured · "
+            + str(activity.get("reason") or "Block sampling unavailable in this snapshot."),
+        )
+
+    # (f) Tokenized-equities supply total — finalized on-chain supplies.
+    equities = growth.get("tokenized_equities", {}) \
+        if isinstance(growth.get("tokenized_equities"), dict) else {}
+    assets = [
+        asset for asset in equities.get("all_assets", [])
+        if isinstance(asset, dict) and is_number(asset.get("supply"))
+    ] if isinstance(equities.get("all_assets"), list) else []
+    if assets:
+        supply_total = sum(float(asset["supply"]) for asset in assets)
+        newest_at = max(
+            (str(asset.get("supply_collected_at") or "") for asset in assets),
+            default="",
+        ) or None
+        supply_date = (newest_at or "")[:10] or collected_date
+        denominator = equities.get("supply_coverage", {}).get("coverage_denominator") \
+            if isinstance(equities.get("supply_coverage"), dict) else None
+        coverage_note = (
+            f" · {len(assets)} of {fmt(denominator)} assets"
+            if is_number(denominator) and len(assets) != int(denominator)
+            else f" · {len(assets)} assets"
+        )
+        supply_card = card(
+            "Tokenized-equities supply total",
+            f"{compact_number(supply_total)} units",
+            f"RPC getTokenSupply(finalized) · measured · {supply_date}{coverage_note} · "
+            "not USD valuation",
+        )
+    else:
+        supply_card = card(
+            "Tokenized-equities supply total", "Unavailable",
+            "measured · "
+            + str(
+                (equities.get("supply", {}) or {}).get("reason")
+                if isinstance(equities.get("supply"), dict)
+                and (equities.get("supply", {}) or {}).get("reason")
+                else "Finalized token supplies were not observed this run."
+            ),
+        )
+
+    return (
+        "<h2>Ecosystem Pulse <span class='keyless'>assembled from recorded snapshot data</span></h2>"
+        "<div class='grid'>"
+        + sol_card + addresses_card + fee_payers_card + app_revenue_card + rev_card + supply_card
+        + "</div>"
+    )
+
+
 def pagination_controls(label: str) -> str:
     """Progressively enhanced controls; without JavaScript every row stays visible."""
     return (
@@ -20730,6 +20904,7 @@ def render_html(
         "" if perf.get("available") else "<p class='unavailable'>Performance samples unavailable in this snapshot.</p>",
         "</section>",
         f"<section class='detail-section'>{render_activity_html(snapshot, observation_bindings)}</section>",
+        f"<section class='detail-section'>{render_ecosystem_pulse(snapshot, observation_bindings)}</section>",
         f"<section class='detail-section'>{render_economics_html(snapshot, observation_bindings)}</section>",
         f"<section class='detail-section'>{render_supply_validators_html(snapshot, observation_bindings)}</section>",
         f"<section class='detail-section'>{render_news_html(snapshot, observation_bindings)}</section>",

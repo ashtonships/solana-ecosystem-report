@@ -2613,7 +2613,9 @@ class TestHtml(unittest.TestCase):
             "activity": {"available": False},
         })
         # Each degraded section says so; none of them renders a zero.
-        self.assertEqual(page.count("unavailable in this snapshot"), 5)
+        # The Ecosystem Pulse block adds two more legitimate unavailability
+        # statements (SOL price and sampled REV) in fully degraded snapshots.
+        self.assertEqual(page.count("unavailable in this snapshot"), 7)
         self.assertNotIn(">$0<", page)
 
 
