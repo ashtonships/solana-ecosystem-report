@@ -1628,7 +1628,8 @@ class TestFactContract(unittest.TestCase):
                             for item in public_rows))
         self.assertTrue(all(item in facts.snapshot_facts(source) for item in packed))
 
-    def test_provider_activity_conflicts_fail_closed_across_snapshots(self):
+    def test_provider_activity_revisions_append_instead_of_conflicting(self):
+        """A revised provider row appends a distinct revision; the old value is retained."""
         source = snapshot()
         source["growth"] = {
             "daily_active_addresses": {
@@ -1641,8 +1642,68 @@ class TestFactContract(unittest.TestCase):
             },
         }
         first = facts.provider_activity_facts(source)[0]
+        revised = facts.dedupe_facts([first, dict(first, value=101.0)])
+        self.assertEqual(len(revised), 2)
+        self.assertEqual(sorted(row["value"] for row in revised), [100.0, 101.0])
+
+    def test_exact_provider_rerun_is_idempotent(self):
+        source = snapshot()
+        source["growth"] = {
+            "daily_active_addresses": {
+                "available": True,
+                "history_available": True,
+                "semantic_metric_id": "stablecoin_active_address_provider_range",
+                "provider_observations": [
+                    {"date": "2026-08-21", "provider": "A", "value": 100},
+                ],
+            },
+        }
+        first = facts.provider_activity_facts(source)[0]
+        self.assertEqual(len(facts.dedupe_facts([first, dict(first)])), 1)
+        # A later re-collection of the same observation stays one fact.
+        self.assertEqual(len(facts.dedupe_facts([
+            first, dict(first, collected_at="2026-08-25T23:00:00+00:00"),
+        ])), 1)
+
+    def test_provider_revisions_order_deterministically_by_collection(self):
+        source = snapshot()
+        source["growth"] = {
+            "daily_active_addresses": {
+                "available": True,
+                "history_available": True,
+                "semantic_metric_id": "stablecoin_active_address_provider_range",
+                "provider_observations": [
+                    {"date": "2026-08-21", "provider": "A", "value": 100},
+                ],
+            },
+        }
+        first = facts.provider_activity_facts(source)[0]
+        older = dict(first, value=101.0, collected_at="2026-08-25T20:00:00+00:00")
+        newer = dict(first, value=102.0, collected_at="2026-08-25T22:00:00+00:00")
+        ordered = facts.dedupe_facts([newer, first, older])
+        self.assertEqual([row["value"] for row in ordered], [100.0, 101.0, 102.0])
+        again = facts.dedupe_facts([older, newer, first])
+        self.assertEqual([row["value"] for row in again], [100.0, 101.0, 102.0])
+
+    def test_non_revisionable_chain_fact_still_conflicts(self):
+        source = snapshot()
+        source["economics"] = {
+            "available": True,
+            "price": {"available": True, "price_usd": 105.0,
+                      "last_updated_at_unix": 1_777_070_400, "freshness": "fresh"},
+            "tvl": {"available": True, "tvl_usd": 5_900_000_000.0},
+            "stablecoins": {
+                "available": True,
+                "usd_pegged_circulating_usd": 15_900_000_000.0,
+            },
+            "dex": {"available": True, "volume_24h_usd": 1_400_000_000.0},
+        }
+        price = next(
+            row for row in facts.snapshot_facts(source)
+            if row["metric_id"] == "price_usd"
+        )
         with self.assertRaises(facts.FactConflictError):
-            facts.dedupe_facts([first, dict(first, value=101.0)])
+            facts.dedupe_facts([price, dict(price, value=106.0)])
 
     def test_provider_activity_facts_require_explicit_history_availability(self):
         source = snapshot()
