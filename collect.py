@@ -36,6 +36,7 @@ from typing import Any
 import blocks
 import economics
 import facts
+import dune as dune_module
 import growth as growth_module
 import news as news_module
 import pipeline
@@ -503,6 +504,7 @@ def build_snapshot(
     activity: dict[str, Any] | None = None,
     news: dict[str, Any] | None = None,
     growth: dict[str, Any] | None = None,
+    dune: dict[str, Any] | None = None,
     provenance: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the machine-readable snapshot. Pure — no network, no clock."""
@@ -627,6 +629,9 @@ def build_snapshot(
         "activity": activity_output,
         "news": news_output,
         "growth": growth if growth is not None else {"available": False},
+        # 'dune' is recorded only when explicitly collected (with_dune=True);
+        # default snapshots keep their exact prior shape.
+        **({"dune": dune} if dune is not None else {}),
     }
 
 
@@ -738,6 +743,7 @@ def sources(
     samples: int = blocks.DEFAULT_SAMPLES,
     with_growth: bool = True,
     supply_state: dict[str, Any] | None = None,
+    with_dune: bool = False,
 ) -> dict[str, Any]:
     """Stage 1 — collect attributable inputs.
 
@@ -746,6 +752,9 @@ def sources(
     unavailable; release-held sources are not fetched by the default path.
     The approved CoinGecko Demo price transport is the only keyed third-party
     source, and only when explicitly requested with ``with_price``.
+    The Dune adapter runs only when explicitly requested with ``with_dune``:
+    it is keyed (DUNE_API_KEY) and unconfigured (DUNE_QUERY_ID) until Ashton's
+    query exists, so the default path never touches it.
     """
     batch = fetch_rpc(endpoint)
     indexed = index_results(batch)
@@ -781,6 +790,9 @@ def sources(
     else:
         growth_data = None
         next_supply_state = None
+    # Dune is keyed and paid (credits); like economics it degrades to
+    # `available: false` on its own and never blocks the on-chain snapshot.
+    dune_data = dune_module.collect_dune() if with_dune else None
     collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     return {
         "indexed": indexed,
@@ -792,6 +804,7 @@ def sources(
         "activity": activity,
         "news": feeds,
         "growth": growth_data,
+        "dune": dune_data,
         "provenance": source_code_state(),
         "_growth_supply_state": next_supply_state,
     }
@@ -808,6 +821,7 @@ def normalize(raw: dict[str, Any]) -> dict[str, Any]:
         block_production=raw.get("block_production"),
         economics=raw.get("economics"), activity=raw.get("activity"),
         news=raw.get("news"), growth=raw.get("growth"),
+        dune=raw.get("dune"),
         provenance=raw.get("provenance"),
     )
 
@@ -820,6 +834,7 @@ def collect(
     with_news: bool = True,
     samples: int = blocks.DEFAULT_SAMPLES,
     with_growth: bool = True,
+    with_dune: bool = False,
 ) -> dict[str, Any]:
     """One-shot Sources → Normalize → Validate without persisting cursor state.
 
@@ -834,6 +849,7 @@ def collect(
         with_news=with_news,
         samples=samples,
         with_growth=with_growth,
+        with_dune=with_dune,
     )
     return snapshot
 
@@ -847,6 +863,7 @@ def collect_with_state(
     samples: int = blocks.DEFAULT_SAMPLES,
     with_growth: bool = True,
     supply_state: dict[str, Any] | None = None,
+    with_dune: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     """Validate a snapshot and return, but do not persist, its next cursor."""
     raw = sources(
@@ -858,6 +875,7 @@ def collect_with_state(
         samples=samples,
         with_growth=with_growth,
         supply_state=supply_state,
+        with_dune=with_dune,
     )
     next_supply_state = raw.pop("_growth_supply_state", None)
     snapshot = pipeline.validate(normalize(raw))
@@ -891,6 +909,14 @@ def main() -> int:
         ),
     )
     parser.set_defaults(with_economics=False, with_price=False)
+    parser.add_argument(
+        "--with-dune", dest="with_dune", action="store_true",
+        help=(
+            "include the Dune query section (uses DUNE_API_KEY + DUNE_QUERY_ID; "
+            "reports unavailable when unconfigured; off by default)"
+        ),
+    )
+    parser.set_defaults(with_dune=False)
     parser.add_argument("--no-activity", action="store_true",
                         help="skip block sampling for fees, REV and address activity")
     parser.add_argument("--no-news", action="store_true",
@@ -926,6 +952,7 @@ def main() -> int:
             with_activity=not args.no_activity,
             with_news=not args.no_news,
             with_growth=not args.no_growth,
+            with_dune=args.with_dune,
             samples=args.samples,
             supply_state=supply_state,
         )
