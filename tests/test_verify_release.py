@@ -1134,6 +1134,95 @@ class TestGitReleaseTransitions(unittest.TestCase):
                     ):
                         verify_release.verify_committed_data(root, data, base_revision)
 
+    def test_bot_snapshot_commit_between_collection_and_merge_push(self):
+        # Production shape (2026-09-02 18:44Z run): the scheduled update
+        # collected at source S, committed its snapshot as B ("[skip ci]"),
+        # and a reviewed PR then merged on top. The push event reported
+        # before=B, making the trusted base NEWER than the source revision
+        # while HEAD's public content is identical to B. The history-walk
+        # checks misread that shape; content equality proves it safe.
+        with tempfile.TemporaryDirectory(
+            prefix="release-bot-snapshot-interleave-",
+        ) as tmp:
+            root = Path(tmp) / "repo"
+            root.mkdir()
+            verify_release._git(root, "init", "-q")
+            verify_release._git(root, "config", "user.name", "Release Test")
+            verify_release._git(root, "config", "user.email", "release@example.invalid")
+            (root / "source.txt").write_text("source\n", encoding="utf-8")
+            verify_release._git(root, "add", "--", "source.txt")
+            verify_release._git(root, "commit", "-q", "-m", "source")
+            source_commit = verify_release._git(
+                root, "rev-parse", "HEAD",
+            ).stdout.decode().strip()
+            snapshot = candidate("2026-08-31T10:00:00+00:00")
+            snapshot["provenance"]["source_revision"] = source_commit
+            write_snapshot(root, snapshot)
+            immutable = root / "snapshots" / collect.snapshot_filename("2026-08-31T10:00:00+00:00")
+            facts_path = root / "history" / "facts.jsonl"
+            facts.append_jsonl(facts_path, facts.snapshot_facts(snapshot))
+            verify_release._git(
+                root, "add", "--", "snapshots", "history/facts.jsonl",
+            )
+            verify_release._git(root, "commit", "-q", "-m", "snapshot: [skip ci]")
+            bot_snapshot_commit = verify_release._git(
+                root, "rev-parse", "HEAD",
+            ).stdout.decode().strip()
+
+            package_paths = [
+                "release-manifest.json", "samples/index.html",
+                "samples/report.md", "samples/report.json",
+            ]
+            for relative in package_paths:
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(f"{relative}\n", encoding="utf-8")
+            verify_release._git(root, "add", "--", *package_paths)
+            verify_release._git(root, "commit", "-q", "-m", "package")
+
+            # Reviewed code branch merged on top: touches code only.
+            base_branch = verify_release._git(
+                root, "branch", "--show-current",
+            ).stdout.decode().strip()
+            verify_release._git(root, "switch", "-q", "-c", "code-change")
+            (root / "source.txt").write_text("source\ncode change\n", encoding="utf-8")
+            verify_release._git(root, "add", "--", "source.txt")
+            verify_release._git(root, "commit", "-q", "-m", "code change")
+            verify_release._git(root, "switch", "-q", base_branch)
+            verify_release._git(
+                root, "merge", "-q", "--no-ff", "-m", "merge code change", "code-change",
+            )
+            head = verify_release._git(root, "rev-parse", "HEAD").stdout.decode().strip()
+            self.assertNotEqual(head, bot_snapshot_commit)
+
+            data = {
+                "immutable": immutable,
+                "snapshot": snapshot,
+                "facts_raw": facts_path.read_bytes(),
+                "state_raw": None,
+            }
+            # Trust base B, the bot's own snapshot commit: base sits ABOVE
+            # the source revision, exactly like github.event.before on the
+            # failing push run.
+            verify_release.verify_committed_data(
+                root, data, bot_snapshot_commit,
+            )
+            # And a smuggled new public file under the same shape
+            # must still be rejected: content equality over the public
+            # pathset is exactly what the base-diff branch inspects.
+            smuggled = root / "state" / "smuggled.json"
+            smuggled.parent.mkdir(parents=True, exist_ok=True)
+            smuggled.write_text('{"smuggled": true}\n', encoding="utf-8")
+            verify_release._git(root, "add", "--", "state/smuggled.json")
+            verify_release._git(root, "commit", "-q", "-m", "smuggle public file")
+            with self.assertRaisesRegex(
+                verify_release.ReleaseVerificationError,
+                "trusted base-to-source range changes public data",
+            ):
+                verify_release.verify_committed_data(
+                    root, data, bot_snapshot_commit,
+                )
+
 
 class TestPythonCompatibility(unittest.TestCase):
     def test_verifier_parses_with_python_3_10(self):
