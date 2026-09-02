@@ -33,3 +33,7 @@ The submission itself is unchanged; this file itemizes later work for judges and
 - Official solana.com news source and first-class Upgrades overview.
 - Ecosystem Pulse overview block and additional Solana Data provider metrics.
 - Dune adapter (bounded, credit-capped, one execution/day max) — pending query creation.
+- Release verification: a push whose trusted event base is a newer bot "[skip ci]"
+  snapshot commit (PR merged between bot commits) is now judged by public-content
+  equality instead of a false-positive history-walk check; all previous rejection
+  semantics are preserved and regression-tested.

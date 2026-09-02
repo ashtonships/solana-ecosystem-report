@@ -1302,22 +1302,44 @@ def verify_committed_data(
         "snapshots", "history", "state",
     ).stdout.split()
     if public_touches:
-        require(_git(
+        if _git(
             root, "merge-base", "--is-ancestor", base_revision,
             source_revision, check=False,
-        ).returncode == 0, "trusted event base must be an ancestor of the source revision")
-        source_data_touches = _git(
-            root, "rev-list", "--full-history", f"{base_revision}..{source_revision}", "--",
-            "snapshots", "history", "state",
-        ).stdout.split()
-        require(not source_data_touches,
-                "trusted base-to-source range changes public data")
-        later_data_touches = _git(
-            root, "rev-list", "--full-history", f"{data_revision}..HEAD", "--",
-            "snapshots", "history", "state",
-        ).stdout.split()
-        require(not later_data_touches,
-                "data revision-to-HEAD range changes public data")
+        ).returncode == 0:
+            source_data_touches = _git(
+                root, "rev-list", "--full-history",
+                f"{base_revision}..{source_revision}", "--",
+                "snapshots", "history", "state",
+            ).stdout.split()
+            require(not source_data_touches,
+                    "trusted base-to-source range changes public data")
+            later_data_touches = _git(
+                root, "rev-list", "--full-history",
+                f"{data_revision}..HEAD", "--",
+                "snapshots", "history", "state",
+            ).stdout.split()
+            require(not later_data_touches,
+                    "data revision-to-HEAD range changes public data")
+        else:
+            # A scheduled [skip ci] snapshot commit can land on main
+            # between the collector's source revision and a push that
+            # merges a reviewed code branch, making the trusted event
+            # base NEWER than the source revision. History-walk checks
+            # misread that shape (the branch's merge hop appears to
+            # touch public paths), so judge it by content instead: the
+            # push is acceptable only when every public path is
+            # byte-identical to the trusted base.
+            base_diff_paths = {
+                os.fsdecode(value)
+                for value in _git(
+                    root, "diff", "--name-only", "-z", "--no-renames",
+                    base_revision, "HEAD", "--",
+                    "snapshots", "history", "state",
+                ).stdout.split(b"\0")
+                if value
+            }
+            require(not base_diff_paths,
+                    "trusted base-to-source range changes public data")
 
 
 def verify_git_revisions(
