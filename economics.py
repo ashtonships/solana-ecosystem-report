@@ -60,13 +60,20 @@ def is_finite_number(value: Any) -> bool:
 # ── network boundary ─────────────────────────────────────────────────────────
 
 def fetch(url: str, timeout: int = 20) -> Any | None:
-    """GET and decode JSON. Returns None on any failure — never raises."""
+    """GET and decode JSON. Returns None on any failure — never raises.
+
+    Transient failures (429/5xx, network errors, timeouts) are retried with
+    bounded backoff via transport.fetch_with_retry; non-retryable errors
+    return None on the first attempt.
+    """
     request = urllib.request.Request(
         url,
         headers={"Accept": "application/json", "User-Agent": "solana-ecosystem-report/0.1"},
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with transport.fetch_with_retry(
+            lambda: urllib.request.urlopen(request, timeout=timeout)
+        ) as response:
             return json.loads(transport.read_bounded(response).decode("utf-8"))
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
             json.JSONDecodeError, ValueError):
@@ -104,7 +111,9 @@ def fetch_price_only(timeout: int = 12) -> dict[str, Any | None]:
         },
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with transport.fetch_with_retry(
+            lambda: urllib.request.urlopen(request, timeout=timeout)
+        ) as response:
             raw = json.loads(transport.read_bounded(response).decode("utf-8"))
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
             json.JSONDecodeError, ValueError):
