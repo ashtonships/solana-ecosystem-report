@@ -898,6 +898,21 @@ PUBLIC_SCHEMA_OVERRIDES = {
         "economics.sources.stablecoins": frozenset("url available".split()),
         "economics.sources.dex": frozenset("url available".split()),
         "economics.sources.protocols": frozenset("url available".split()),
+        # Dune adapter (opt-in via with_dune; unconfigured until Ashton's
+        # query exists). Public contract keeps provenance and freshness but
+        # never the raw rows.
+        "dune": frozenset(
+            "available requires_api_key query_id query_url execution_id "
+            "execution_started_at execution_ended_at result_age_seconds "
+            "row_count datapoint_count result_sha256 source_url freshness "
+            "columns state last_known_good reason".split()
+        ),
+        "dune.last_known_good": frozenset(
+            "query_id query_url source_url execution_id execution_started_at "
+            "execution_ended_at age_seconds row_count datapoint_count "
+            "result_sha256 execution_started_at_parsed "
+            "execution_ended_at_parsed".split()
+        ),
     },
 }
 
