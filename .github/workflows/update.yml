@@ -61,6 +61,9 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      run_timestamp: ${{ steps.publication_timestamp.outputs.run_timestamp }}
+      release_id: ${{ steps.release_id.outputs.release_id }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -91,7 +94,8 @@ jobs:
           COINGECKO_DEMO_API_KEY: ${{ secrets.COINGECKO_DEMO_API_KEY }}
         run: python3 collect.py --with-price --endpoint "$REPORT_RPC_ENDPOINT"
 
-      - name: Capture publication timestamp
+      - id: publication_timestamp
+        name: Capture publication timestamp
         run: |
           run_timestamp="$(python3 - <<'PY'
           from datetime import datetime, timezone
@@ -221,7 +225,8 @@ jobs:
           python3 verify_release.py verify-package --artifacts dist
           --now "$RUN_TIMESTAMP"
 
-      - name: Record release id for the smoke check
+      - id: release_id
+        name: Record release id for the smoke check
         run: >-
           echo "release_id=$(python3 -c "import json;
           print(json.load(open('dist/report.json'))['release']['release_id'])")"
@@ -354,9 +359,9 @@ jobs:
           if payload is None:
               raise SystemExit(f"smoke check could not fetch {url}: {last_error}")
 
-          generated_at = payload.get("generated_at")
+          generated_at = payload.get("release", {}).get("generated_at")
           if not isinstance(generated_at, str):
-              raise SystemExit("smoke check: report.json has no generated_at")
+              raise SystemExit("smoke check: report.json has no release.generated_at")
           generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
           expected = datetime.fromisoformat(run_timestamp)
           skew = abs((generated - expected).total_seconds())
@@ -402,18 +407,18 @@ jobs:
           print(datetime.now(timezone.utc).isoformat(timespec="seconds"))
           PY
           )"
-          failing_jobs="$(gh run view "$GITHUB_RUN_ID" --json jobs \
+          failing_jobs="$(gh run view -R "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" --json jobs \
             --jq '[.jobs[] | select(.conclusion=="failure") | .name] | join(", ")')"
-          failing_step="$(gh run view "$GITHUB_RUN_ID" --json jobs \
+          failing_step="$(gh run view -R "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" --json jobs \
             --jq '[.jobs[] | select(.conclusion=="failure")
               | (.steps // [])[] | select(.conclusion=="failure") | .name]
               | join(", ")')"
           body="$(printf 'Scheduled report update failed.\n\n- **When (UTC):** %s\n- **Run:** %s\n- **Failing jobs:** %s\n- **Failing steps:** %s\n' \
             "$timestamp" "$RUN_URL" "${failing_jobs:-unknown}" "${failing_step:-unknown}")"
-          existing="$(gh issue list --state open --search "in:title $TITLE" \
+          existing="$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "in:title $TITLE" \
             --json number,title --jq ".[] | select(.title == \"$TITLE\") | .number" | head -n1)"
           if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body "$body"
+            gh issue comment -R "$GITHUB_REPOSITORY" "$existing" --body "$body"
           else
-            gh issue create --title "$TITLE" --body "$body"
+            gh issue create -R "$GITHUB_REPOSITORY" --title "$TITLE" --body "$body"
           fi

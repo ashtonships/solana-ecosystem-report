@@ -2411,6 +2411,10 @@ class TestWorkflowGateCoverage(unittest.TestCase):
         self.assertIn("Smoke check live report", deploy)
         self.assertIn("REPORT_URL: ${{ steps.deploy.outputs.page_url }}", deploy)
         self.assertIn(
+            "generated_at = payload.get(\"release\", {}).get(\"generated_at\")",
+            deploy,
+        )
+        self.assertIn(
             "RUN_TIMESTAMP: ${{ needs.update.outputs.run_timestamp "
             "|| needs.bootstrap.outputs.run_timestamp }}",
             deploy,
@@ -2433,6 +2437,7 @@ class TestWorkflowGateCoverage(unittest.TestCase):
             "[solana-ecosystem-report] scheduled update failed", text,
         )
         # Dedupe: search for an existing open issue before creating one.
-        self.assertIn("gh issue list", text)
-        self.assertIn("gh issue comment", text)
-        self.assertIn("gh issue create", text)
+        # The job runs without a checkout, so every gh call passes -R explicitly.
+        self.assertIn("gh issue list -R \"$GITHUB_REPOSITORY\"", text)
+        self.assertIn("gh issue comment -R \"$GITHUB_REPOSITORY\"", text)
+        self.assertIn("gh issue create -R \"$GITHUB_REPOSITORY\"", text)
