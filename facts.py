@@ -24,6 +24,14 @@ ECONOMICS_PUBLICATION_HOLD = (
 )
 ECONOMICS_METRIC_SECTIONS = ("price", "tvl", "stablecoins", "dex")
 PROVIDER_BENCHMARK_SOURCE = "solana-data-provider-benchmark"
+BLOCK_SAMPLE_SOURCE = "solana-rpc-block-sample"
+# Measurement sources whose repeats can partially overlap: provider rows
+# arrive from a sliding window that providers may revise, and sampled block
+# windows from consecutive runs can share boundary block times while sampling
+# different subsets. Facts from these sources carry a semantic payload hash
+# in their identity: an exact rerun is an idempotent no-op, a changed value
+# appends as a distinct retained revision, and dedup stays deterministic.
+REVISIONABLE_SOURCES = frozenset((PROVIDER_BENCHMARK_SOURCE, BLOCK_SAMPLE_SOURCE))
 VALIDATOR_COMMISSION_SOURCE = "solana-rpc-getVoteAccounts"
 VALIDATOR_COMMISSION_FACT_CONTRACT = "validator-commission-v2-no-source-slot"
 VALIDATOR_COMMISSION_QUALITY = "getVoteAccounts exposes no source-native observation slot"
@@ -3076,7 +3084,7 @@ def fact_identity(fact: dict[str, Any]) -> tuple[Any, ...]:
         event_identity = (None, None) if fact.get("source_revision") else (fact.get("collected_at"), None)
     identity = (fact.get("metric_id"), fact.get("subject_id"), fact.get("source"),
                 fact.get("source_revision"), *event_identity)
-    if fact.get("source") == PROVIDER_BENCHMARK_SOURCE:
+    if fact.get("source") in REVISIONABLE_SOURCES:
         # Provider benchmark rows come from a sliding 365-day window whose
         # providers may legitimately revise a historical value (late indexing,
         # reclassification, backfill). Key such facts on their semantic
