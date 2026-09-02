@@ -23,6 +23,7 @@ ECONOMICS_PUBLICATION_HOLD = (
     "economics sources are unavailable or release-held."
 )
 ECONOMICS_METRIC_SECTIONS = ("price", "tvl", "stablecoins", "dex")
+PROVIDER_BENCHMARK_SOURCE = "solana-data-provider-benchmark"
 VALIDATOR_COMMISSION_SOURCE = "solana-rpc-getVoteAccounts"
 VALIDATOR_COMMISSION_FACT_CONTRACT = "validator-commission-v2-no-source-slot"
 VALIDATOR_COMMISSION_QUALITY = "getVoteAccounts exposes no source-native observation slot"
@@ -3073,8 +3074,17 @@ def fact_identity(fact: dict[str, Any]) -> tuple[Any, ...]:
     event_identity = (fact.get("event_time"), fact.get("event_slot"))
     if event_identity == (None, None):
         event_identity = (None, None) if fact.get("source_revision") else (fact.get("collected_at"), None)
-    return (fact.get("metric_id"), fact.get("subject_id"), fact.get("source"),
-            fact.get("source_revision"), *event_identity)
+    identity = (fact.get("metric_id"), fact.get("subject_id"), fact.get("source"),
+                fact.get("source_revision"), *event_identity)
+    if fact.get("source") == PROVIDER_BENCHMARK_SOURCE:
+        # Provider benchmark rows come from a sliding 365-day window whose
+        # providers may legitimately revise a historical value (late indexing,
+        # reclassification, backfill). Key such facts on their semantic
+        # payload hash so an exact rerun is idempotent while a revised
+        # provider/date observation appends as a distinct revision; the old
+        # revision is retained and public consumers select the newest.
+        identity = identity + (_semantic_payload(fact).__hash__(),)
+    return identity
 
 
 def validate_fact(fact: dict[str, Any]) -> None:
