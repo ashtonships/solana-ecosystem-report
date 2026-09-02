@@ -845,7 +845,7 @@ PUBLIC_ROOT_FIELDS = {
     ),
     9: frozenset(
         "schema_version collected_at provenance source network epoch performance supply inflation "
-        "validators economics activity news growth pipeline release anomalies delta history upgrades "
+        "validators economics activity news growth dune pipeline release anomalies delta history upgrades "
         "observations".split()
     ),
 }
@@ -920,7 +920,7 @@ PUBLIC_LIST_PATHS = PUBLIC_LIST_PATHS | frozenset({
     "economics.protocols.excluded_categories", "economics.protocols.protocols",
     "growth.daily_active_addresses.providers", "growth.daily_fee_payers.providers",
     "growth.tokenized_equities.volume.top_pairs", "news.sources.simd_proposals.items[].authors",
-    "growth.tokenized_equities.watchlist_symbols",
+    "growth.tokenized_equities.watchlist_symbols", "dune.columns",
 })
 
 

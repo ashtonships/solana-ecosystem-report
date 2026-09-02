@@ -76,9 +76,10 @@ def _request_with_retry(
     api_key: str,
     method: str = "GET",
     body: dict[str, Any] | None = None,
-    sleep: Any = time.sleep,
+    sleep: Any = None,
 ) -> tuple[int, dict[str, Any] | None, str | None]:
     """Bounded retry on 429/5xx. Returns (status, payload, error)."""
+    pause = time.sleep if sleep is None else sleep
     backoff = RETRY_BACKOFF_SECONDS
     last_error: str | None = None
     for attempt in range(MAX_ATTEMPTS):
@@ -93,7 +94,7 @@ def _request_with_retry(
             last_error = f"transport error: {error}"
             status = 0
         if attempt < MAX_ATTEMPTS - 1:
-            sleep(backoff)
+            pause(backoff)
             backoff *= 2
     return status if status else 0, None, last_error
 
@@ -168,7 +169,7 @@ def _build_unavailable(
 def collect_dune(
     env: dict[str, str] | None = None,
     now: datetime | None = None,
-    sleep: Any = time.sleep,
+    sleep: Any = None,
 ) -> dict[str, Any]:
     """Collect the latest Dune query result, executing only when stale.
 
@@ -179,6 +180,8 @@ def collect_dune(
     query_id = environment.get("DUNE_QUERY_ID")
     if not api_key or not query_id:
         return _unconfigured()
+    # Resolve at call time so tests (and embedders) can patch the clock.
+    pause = time.sleep if sleep is None else sleep
 
     reference = now if now is not None else datetime.now(timezone.utc)
     try:
@@ -201,6 +204,9 @@ def collect_dune(
         )
 
     result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    # Dune returns execution_id at the response top level; the result body
+    # carries the timing and row data.
+    execution_id = payload.get("execution_id") if isinstance(payload.get("execution_id"), str) else result.get("execution_id")
     ended_at = _parse_utc(result.get("execution_ended_at"))
 
     columns_ok, columns_error = _validate_columns(payload)
@@ -218,7 +224,7 @@ def collect_dune(
         freshness = "stale"
         # Paid re-execution only when the cached result is older than the
         # refresh window. Credit policy: at most one execution per day.
-        execution = _execute_and_poll(results_url, api_key, reference, sleep=sleep)
+        execution = _execute_and_poll(results_url, api_key, reference, sleep=pause)
 
     if execution is not None and not execution.get("available", True):
         # Execution failed or timed out: keep last-known-good with explicit age.
@@ -254,7 +260,17 @@ def collect_dune(
                 else "stale"
             )
 
-    return _success_section(query_id, query_url, results_url, payload, freshness, reference)
+    return _success_section(query_id, query_url, SOURCE_URL, payload, freshness, reference)
+
+
+def _response_execution_id(payload: dict[str, Any]) -> str | None:
+    """Dune puts execution_id at the response top level; result may mirror it."""
+    value = payload.get("execution_id")
+    if isinstance(value, str) and value:
+        return value
+    result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    value = result.get("execution_id")
+    return value if isinstance(value, str) and value else None
 
 
 def _last_known_good(
@@ -271,7 +287,7 @@ def _last_known_good(
         "query_id": query_id,
         "query_url": query_url,
         "source_url": source_url,
-        "execution_id": result.get("execution_id"),
+        "execution_id": _response_execution_id(payload),
         "execution_started_at": result.get("execution_started_at"),
         "execution_ended_at": result.get("execution_ended_at"),
         "age_seconds": age_seconds,
@@ -306,7 +322,7 @@ def _success_section(
         "requires_api_key": True,
         "query_id": query_id,
         "query_url": query_url,
-        "execution_id": result.get("execution_id"),
+        "execution_id": _response_execution_id(payload),
         "execution_started_at": result.get("execution_started_at"),
         "execution_ended_at": result.get("execution_ended_at"),
         "result_age_seconds": age_seconds,
@@ -343,11 +359,12 @@ def _execute_and_poll(
     if payload is None:
         return {"available": False, "reason": f"dune execute failed: {error}"}
 
-    deadline = reference + timedelta(seconds=EXECUTE_DEADLINE_SECONDS)
-    while True:
-        current = datetime.now(timezone.utc)
-        if current >= deadline:
-            return {"available": False, "reason": "dune execution poll timed out after 120s"}
+    # Polling is bounded by iteration count (interval x deadline), not wall
+    # clock, so behavior is deterministic under an injected clock and the
+    # real-world ceiling is equivalent (120s / 5s = 24 polls).
+    max_polls = int(EXECUTE_DEADLINE_SECONDS / EXECUTE_POLL_INTERVAL_SECONDS)
+    for _ in range(max_polls):
+        sleep(EXECUTE_POLL_INTERVAL_SECONDS)
         status, payload, error = _request_with_retry(results_url, api_key, sleep=sleep)
         if payload is not None:
             state = payload.get("state")
@@ -358,6 +375,4 @@ def _execute_and_poll(
                     "available": False,
                     "reason": f"dune execution ended with state {state!r}",
                 }
-        if current + timedelta(seconds=EXECUTE_POLL_INTERVAL_SECONDS) >= deadline:
-            return {"available": False, "reason": "dune execution poll timed out after 120s"}
-        sleep(EXECUTE_POLL_INTERVAL_SECONDS)
+    return {"available": False, "reason": "dune execution poll timed out after 120s"}

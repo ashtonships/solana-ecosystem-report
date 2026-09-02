@@ -113,6 +113,7 @@ class CollectDuneTests(unittest.TestCase):
     def test_stale_triggers_execute_and_poll_then_fresh(self):
         stale_payload = _result_payload(NOW - timedelta(hours=48))
         fresh_payload = _result_payload(NOW - timedelta(minutes=1))
+        fresh_payload["execution_id"] = "exec-2"
         calls = []
 
         def fake_request(url, api_key, method="GET", body=None):
@@ -120,7 +121,9 @@ class CollectDuneTests(unittest.TestCase):
             if method == "POST":
                 self.assertTrue(url.endswith(f"/query/{QUERY_ID}/results/execute"))
                 return 200, {"execution_id": "exec-2"}
-            return 200, fresh_payload
+            # First GET returns the stale cached result; every later GET
+            # (polling the execution) returns the refreshed one.
+            return 200, calls and len([c for c in calls if c[0] == "GET"]) == 1 and stale_payload or fresh_payload
 
         with mock.patch.object(dune, "_request", side_effect=fake_request):
             section = dune.collect_dune(
@@ -132,7 +135,7 @@ class CollectDuneTests(unittest.TestCase):
         self.assertIn("POST", methods)
         self.assertTrue(section["available"])
         self.assertEqual(section["freshness"], "fresh")
-        self.assertEqual(section["execution_id"], "exec-1")
+        self.assertEqual(section["execution_id"], "exec-2")
 
     def test_schema_drift_rejected_as_unavailable(self):
         drifted = [
@@ -148,12 +151,18 @@ class CollectDuneTests(unittest.TestCase):
 
     def test_execution_failure_keeps_last_known_good_with_age(self):
         stale_payload = _result_payload(NOW - timedelta(hours=48))
+        get_calls = []
 
         def fake_request(url, api_key, method="GET", body=None):
             if method == "POST":
                 return 200, {"execution_id": "exec-2"}
-            # Poll never completes; the fixed 120s deadline expires.
-            return 200, {"state": "QUERY_STATE_PENDING"}
+            get_calls.append(url)
+            # First GET: the stale cached result. Polls: never complete, so
+            # the fixed 120s deadline expires.
+            return (
+                200, stale_payload if len(get_calls) == 1
+                else {"state": "QUERY_STATE_PENDING"},
+            )
 
         with mock.patch.object(dune, "_request", side_effect=fake_request):
             section = dune.collect_dune(
@@ -178,7 +187,7 @@ class CollectDuneTests(unittest.TestCase):
                 env={"DUNE_API_KEY": "k", "DUNE_QUERY_ID": QUERY_ID}, now=NOW,
             )
         self.assertEqual(rm.call_count, 2)
-        sleep_mock.assert_called_once_with(2.0)
+        sleep_mock.assert_called_once_with(dune.RETRY_BACKOFF_SECONDS)
         self.assertTrue(section["available"])
 
     def test_all_failures_degrade_without_raising(self):
