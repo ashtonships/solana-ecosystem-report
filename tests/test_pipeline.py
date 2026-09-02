@@ -2394,3 +2394,45 @@ class TestWorkflowGateCoverage(unittest.TestCase):
             update,
         )
         self.assertNotIn("x-cg-demo-api-key", update)
+
+    def test_update_exports_release_outputs_for_smoke_check(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        update = text.split("  update:", 1)[1].split("\n  bootstrap:", 1)[0]
+        # The publication timestamp is exported both to the environment and
+        # as a job output, and the rendered release id is recorded as an
+        # output, so the deploy smoke check can bind the hosted artifact to
+        # this exact run.
+        self.assertIn('echo "run_timestamp=$run_timestamp" >> "$GITHUB_OUTPUT"', update)
+        self.assertIn("Record release id for the smoke check", update)
+
+    def test_deploy_smoke_check_binds_hosted_artifact_to_the_run(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        deploy = text.split("  deploy:", 1)[1]
+        self.assertIn("Smoke check live report", deploy)
+        self.assertIn("REPORT_URL: ${{ steps.deploy.outputs.page_url }}", deploy)
+        self.assertIn(
+            "RUN_TIMESTAMP: ${{ needs.update.outputs.run_timestamp "
+            "|| needs.bootstrap.outputs.run_timestamp }}",
+            deploy,
+        )
+        self.assertIn(
+            "RELEASE_ID: ${{ needs.update.outputs.release_id "
+            "|| needs.bootstrap.outputs.release_id }}",
+            deploy,
+        )
+        self.assertIn("release_id != expected_release_id", deploy)
+        self.assertIn("observations must be a non-empty list", deploy)
+        self.assertIn("REPORT_SMOKE_MAX_AGE_SECONDS", deploy)
+
+    def test_failure_notification_opens_one_deduplicated_issue(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("notify-failure:", text)
+        self.assertIn("if: failure()", text)
+        self.assertIn("issues: write", text)
+        self.assertIn(
+            "[solana-ecosystem-report] scheduled update failed", text,
+        )
+        # Dedupe: search for an existing open issue before creating one.
+        self.assertIn("gh issue list", text)
+        self.assertIn("gh issue comment", text)
+        self.assertIn("gh issue create", text)

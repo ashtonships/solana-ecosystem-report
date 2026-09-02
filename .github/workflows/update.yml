@@ -107,6 +107,7 @@ jobs:
               raise SystemExit("publication timestamp must include a UTC offset")
           PY
           echo "RUN_TIMESTAMP=$run_timestamp" >> "$GITHUB_ENV"
+          echo "run_timestamp=$run_timestamp" >> "$GITHUB_OUTPUT"
 
       - name: Validate candidate snapshot
         run: >-
@@ -220,6 +221,12 @@ jobs:
           python3 verify_release.py verify-package --artifacts dist
           --now "$RUN_TIMESTAMP"
 
+      - name: Record release id for the smoke check
+        run: >-
+          echo "release_id=$(python3 -c "import json;
+          print(json.load(open('dist/report.json'))['release']['release_id'])")"
+          >> "$GITHUB_OUTPUT"
+
       - name: Push committed snapshot
         run: git push origin "HEAD:${GITHUB_REF_NAME}"
 
@@ -307,3 +314,106 @@ jobs:
     steps:
       - id: deploy
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+
+      - name: Smoke check live report
+        env:
+          # Page URL comes from the deploy step's environment output.
+          REPORT_URL: ${{ steps.deploy.outputs.page_url }}
+          RUN_TIMESTAMP: ${{ needs.update.outputs.run_timestamp || needs.bootstrap.outputs.run_timestamp }}
+          SMOKE_MAX_AGE_SECONDS: ${{ vars.REPORT_SMOKE_MAX_AGE_SECONDS || '600' }}
+          RELEASE_ID: ${{ needs.update.outputs.release_id || needs.bootstrap.outputs.release_id }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.parse
+          import urllib.request
+          from datetime import datetime, timezone
+
+          base = os.environ["REPORT_URL"].rstrip("/")
+          run_timestamp = os.environ["RUN_TIMESTAMP"]
+          max_age = float(os.environ["SMOKE_MAX_AGE_SECONDS"])
+          expected_release_id = os.environ.get("RELEASE_ID", "")
+
+          bust = urllib.parse.quote(str(time.time_ns()), safe="")
+          url = f"{base}/report.json?smoke={bust}"
+          last_error = None
+          payload = None
+          for attempt in range(6):
+              try:
+                  request = urllib.request.Request(
+                      url, headers={"Cache-Control": "no-cache"}
+                  )
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      payload = json.loads(response.read(32 * 1024 * 1024))
+                  break
+              except Exception as error:  # retry until the CDN serves the update
+                  last_error = error
+                  time.sleep(10 * (attempt + 1))
+          if payload is None:
+              raise SystemExit(f"smoke check could not fetch {url}: {last_error}")
+
+          generated_at = payload.get("generated_at")
+          if not isinstance(generated_at, str):
+              raise SystemExit("smoke check: report.json has no generated_at")
+          generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+          expected = datetime.fromisoformat(run_timestamp)
+          skew = abs((generated - expected).total_seconds())
+          if skew > max_age:
+              raise SystemExit(
+                  f"smoke check: generated_at {generated_at} differs from "
+                  f"RUN_TIMESTAMP {run_timestamp} by {skew:.0f}s "
+                  f"(tolerance {max_age:.0f}s)"
+              )
+
+          release = payload.get("release") or {}
+          release_id = str(release.get("release_id", ""))
+          if expected_release_id and release_id != expected_release_id:
+              raise SystemExit(
+                  f"smoke check: release_id {release_id!r} does not match "
+                  f"artifact manifest release {expected_release_id!r}"
+              )
+
+          observations = payload.get("observations")
+          if not isinstance(observations, list) or not observations:
+              raise SystemExit("smoke check: observations must be a non-empty list")
+          print(f"smoke check ok: generated_at={generated_at} release={release_id} "
+                f"observations={len(observations)}")
+          PY
+
+  notify-failure:
+    needs: [update, bootstrap, deploy]
+    if: failure()
+    permissions:
+      issues: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Open or update deduplicated failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "[solana-ecosystem-report] scheduled update failed"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          timestamp="$(python3 - <<'PY'
+          from datetime import datetime, timezone
+          print(datetime.now(timezone.utc).isoformat(timespec="seconds"))
+          PY
+          )"
+          failing_jobs="$(gh run view "$GITHUB_RUN_ID" --json jobs \
+            --jq '[.jobs[] | select(.conclusion=="failure") | .name] | join(", ")')"
+          failing_step="$(gh run view "$GITHUB_RUN_ID" --json jobs \
+            --jq '[.jobs[] | select(.conclusion=="failure")
+              | (.steps // [])[] | select(.conclusion=="failure") | .name]
+              | join(", ")')"
+          body="$(printf 'Scheduled report update failed.\n\n- **When (UTC):** %s\n- **Run:** %s\n- **Failing jobs:** %s\n- **Failing steps:** %s\n' \
+            "$timestamp" "$RUN_URL" "${failing_jobs:-unknown}" "${failing_step:-unknown}")"
+          existing="$(gh issue list --state open --search "in:title $TITLE" \
+            --json number,title --jq ".[] | select(.title == \"$TITLE\") | .number" | head -n1)"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$TITLE" --body "$body"
+          fi
