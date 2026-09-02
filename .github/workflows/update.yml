@@ -107,6 +107,7 @@ jobs:
               raise SystemExit("publication timestamp must include a UTC offset")
           PY
           echo "RUN_TIMESTAMP=$run_timestamp" >> "$GITHUB_ENV"
+          echo "run_timestamp=$run_timestamp" >> "$GITHUB_OUTPUT"
 
       - name: Validate candidate snapshot
         run: >-
@@ -219,6 +220,12 @@ jobs:
         run: >-
           python3 verify_release.py verify-package --artifacts dist
           --now "$RUN_TIMESTAMP"
+
+      - name: Record release id for the smoke check
+        run: >-
+          echo "release_id=$(python3 -c "import json;
+          print(json.load(open('dist/report.json'))['release']['release_id'])")"
+          >> "$GITHUB_OUTPUT"
 
       - name: Push committed snapshot
         run: git push origin "HEAD:${GITHUB_REF_NAME}"
