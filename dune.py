@@ -404,7 +404,7 @@ def _success_section(
     age_seconds = (
         round((reference - ended_at).total_seconds()) if ended_at is not None else None
     )
-    return {
+    section = {
         "available": freshness == "fresh",
         "requires_api_key": True,
         "query_id": query_id,
