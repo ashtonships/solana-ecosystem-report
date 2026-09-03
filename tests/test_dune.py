@@ -108,7 +108,10 @@ class CollectDuneTests(unittest.TestCase):
         self.assertIsInstance(section["result_sha256"], str)
         self.assertEqual(len(section["result_sha256"]), 64)
         self.assertEqual(section["columns"], list(dune.EXPECTED_COLUMNS))
-        self.assertIsNone(section["last_known_good"])
+        # last_known_good is omitted entirely when there is nothing to keep:
+        # the projection contract requires an object at that path, so a
+        # null placeholder would fail the publication gate.
+        self.assertNotIn("last_known_good", section)
 
     def test_stale_triggers_execute_and_poll_then_fresh(self):
         stale_payload = _result_payload(NOW - timedelta(hours=48))
@@ -256,20 +259,6 @@ class ProjectionInvariantTests(unittest.TestCase):
             "freshness": "fresh",
             "columns": list(dune.EXPECTED_COLUMNS),
             "state": "fresh",
-            "last_known_good": {
-                "query_id": QUERY_ID,
-                "query_url": f"https://dune.com/queries/{QUERY_ID}",
-                "source_url": f"https://api.dune.com/api/v1/query/{QUERY_ID}/results",
-                "execution_id": "exec-0",
-                "execution_started_at": "2026-09-01T11:00:00+00:00",
-                "execution_ended_at": "2026-09-01T11:00:10+00:00",
-                "age_seconds": 90000,
-                "row_count": 2,
-                "datapoint_count": 12,
-                "result_sha256": "b" * 64,
-                "execution_started_at_parsed": "2026-09-01T11:00:00+00:00",
-                "execution_ended_at_parsed": "2026-09-01T11:00:10+00:00",
-            },
             "reason": None,
             "raw_rows": [{"metric_id": "daily_dex_volume_total"}],  # must be projected away
         }
@@ -285,8 +274,6 @@ class ProjectionInvariantTests(unittest.TestCase):
         self.assertNotIn("raw_rows", projected["dune"])
         allowed = render.PUBLIC_SCHEMA_OVERRIDES[9]["dune"]
         self.assertEqual(set(projected["dune"].keys()), allowed)
-        lkg_allowed = render.PUBLIC_SCHEMA_OVERRIDES[9]["dune.last_known_good"]
-        self.assertEqual(set(projected["dune"]["last_known_good"].keys()), lkg_allowed)
         # Round-trip: projecting the projection changes nothing.
         self.assertEqual(render.project_public_envelope(projected), projected)
 

@@ -337,7 +337,6 @@ def _success_section(
         "freshness": freshness,
         "columns": list(EXPECTED_COLUMNS),
         "state": "fresh" if freshness == "fresh" else "stale",
-        "last_known_good": None,
         "reason": None if freshness == "fresh" else "latest result exceeded the refresh window",
     }
 

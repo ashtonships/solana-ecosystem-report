@@ -933,7 +933,7 @@ PUBLIC_SCHEMA_OVERRIDES = {
             "available requires_api_key query_id query_url execution_id "
             "execution_started_at execution_ended_at result_age_seconds "
             "row_count datapoint_count result_sha256 source_url freshness "
-            "columns state last_known_good reason".split()
+            "columns state reason".split()
         ),
         "dune.last_known_good": frozenset(
             "query_id query_url source_url execution_id execution_started_at "
