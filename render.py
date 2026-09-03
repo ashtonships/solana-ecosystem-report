@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 import charts as charts_module
+import terms as terms_module
 import collect as collect_module
 import delta as delta_module
 import detect
@@ -10158,6 +10159,46 @@ CSS = r"""
     .prototype-page--about .development-source-dot--agave { background:var(--prototype-accent, var(--super-purple-fill)); }
     .prototype-page--about .development-source-dot--firedancer { background:var(--prototype-warning, var(--super-purple-fill)); }
     .prototype-page--about .development-source-dot--xnews { background:var(--prototype-info, var(--super-purple-fill)); }
+
+    /* Terminology tooltips: hover, keyboard focus, and touch tap. Pure CSS. */
+    .term-tip {
+      position: relative;
+      cursor: help;
+      border-bottom: 1px dashed var(--prototype-muted, currentColor);
+      outline: none;
+    }
+    .term-tip .term-tip-bubble {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: min(320px, 78vw);
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: var(--prototype-ink, #14121f);
+      color: var(--prototype-paper, #fff);
+      font-size: 12px;
+      font-weight: 480;
+      line-height: 1.45;
+      text-align: left;
+      box-shadow: 0 4px 14px rgba(0,0,0,.35);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .12s ease;
+      pointer-events: none;
+      z-index: 30;
+    }
+    .term-tip:hover .term-tip-bubble,
+    .term-tip:focus-visible .term-tip-bubble,
+    .term-tip:focus .term-tip-bubble {
+      opacity: 1;
+      visibility: visible;
+    }
+    .term-tip:focus-visible {
+      outline: 2px solid var(--prototype-violet, var(--super-purple-fill));
+      outline-offset: 2px;
+    }
     .prototype-page--about .development-events {
       margin:0;
       padding:0;
@@ -16795,8 +16836,11 @@ def render_validator_workbench(
             f"data-validator-metric-card{participation_binding} data-pulse-card role='group' aria-roledescription='slide' "
             f"aria-label='1 of {metric_total}: Validator participation' "
             "data-validator-component='validator-participation' data-metric-ids='active,delinquent'>"
-            "<header><div><span>Vote-account state</span><h3>Validator participation</h3></div><small>Recorded</small></header>"
-            f"<p class='validator-component-headline'>{html.escape(fmt(current_count))} <span>current validators</span></p>"
+            "<header><div><span>"
+            + terms_module.term("vote-account state")
+            + "</span><h3>Validator participation</h3></div><small>Recorded</small></header>"
+            f"<p class='validator-component-headline'>{html.escape(fmt(current_count))} "
+            + terms_module.term("current validators", "current validators") + "</p>"
             "<div class='validator-participation-track' aria-hidden='true'>"
             f"<i style='--current-width:{current_pct:.3f}%'></i><b style='--delinquent-width:{delinquent_pct:.3f}%'></b></div>"
             "<div class='validator-participation-values'>"
@@ -16807,11 +16851,17 @@ def render_validator_workbench(
             f"aria-label='2 of {metric_total}: Stake concentration' "
             "data-validator-component='validator-stake-concentration' "
             "data-metric-ids='active_stake,nakamoto,top_10_share'>"
-            "<header><div><span>Active stake</span><h3>Stake concentration</h3></div><small>Recorded</small></header>"
+            "<header><div><span>"
+            + terms_module.term("activated stake", "Active stake")
+            + "</span><h3>Stake concentration</h3></div><small>Recorded</small></header>"
             f"<p class='validator-component-headline'>{html.escape(fmt_sol(validators.get('active_stake_sol')))} <span>active stake</span></p>"
             "<div class='validator-stake-facts'>"
-            f"<p><strong>{html.escape(fmt(validators.get('nakamoto_coefficient')))}</strong><span>validators for 33⅓%</span></p>"
-            f"<p><strong>{html.escape(fmt(validators.get('top_10_share_pct'), '%'))}</strong><span>Top 10 share</span></p></div>"
+            f"<p><strong>{html.escape(fmt(validators.get('nakamoto_coefficient')))}</strong><span>"
+            + terms_module.term("nakamoto coefficient", "validators for 33⅓%")
+            + "</span></p>"
+            f"<p><strong>{html.escape(fmt(validators.get('top_10_share_pct'), '%'))}</strong><span>"
+            + terms_module.term("top 10 share", "Top 10 share")
+            + "</span></p></div>"
             f"{concentration_svg}</article>"
             "<article class='validator-metric-component validator-commission-component' "
             f"data-validator-metric-card{commission_binding} data-pulse-card role='group' aria-roledescription='slide' "
@@ -16820,7 +16870,9 @@ def render_validator_workbench(
             "data-metric-ids='median_commission' "
             f"data-commission-counts='{','.join(str(count) for count in commission_counts)}'>"
             "<header><div><span>Current vote accounts</span><h3>Commission distribution</h3></div><small>Recorded</small></header>"
-            f"<p class='validator-component-headline'>{html.escape(fmt(validators.get('commission', {}).get('median_pct'), '%'))} <span>median commission</span></p>"
+            f"<p class='validator-component-headline'>{html.escape(fmt(validators.get('commission', {}).get('median_pct'), '%'))} <span>"
+            + terms_module.term("commission", "median commission")
+            + "</span></p>"
             + (
                 f"<ol class='validator-commission-bars'>{commission_bars}</ol>"
                 f"<p class='validator-component-note'>{len(current_rows)} current accounts · exact commission buckets</p>"
