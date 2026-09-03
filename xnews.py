@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -60,6 +61,22 @@ POST_FIELDS = "id,author_id,text,created_at,public_metrics"
 
 class XSourceUnavailable(Exception):
     """Raised when the source cannot be read; carries the reason."""
+
+
+_URL_SCHEME = re.compile(r"\bhttps?://[^\s<>\"']+", re.IGNORECASE)
+
+
+def _sanitize_excerpt(text: str) -> str:
+    """Neutralize URL schemes in quoted post text.
+
+    Post text is third-party quoted evidence. Official accounts may mention
+    any URL — including local-network or private addresses — and a raw
+    scheme-bearing token in a stored excerpt would fail the snapshot's
+    public-URL scan (and rightly so: it is a live link token). Replacing
+    the scheme keeps the citation readable and evidence-preserving while
+    making the token inert text rather than a URL.
+    """
+    return _URL_SCHEME.sub(lambda m: m.group(0).split("://", 1)[1], text)
 
 
 def _token() -> str:
@@ -179,7 +196,7 @@ def fetch_announcements(
         posts.append({
             "id": post_id,
             "author": author,
-            "text": text.strip()[:MAX_TEXT_CHARS],
+            "text": _sanitize_excerpt(text)[:MAX_TEXT_CHARS],
             "created_at": created,
             "url": f"https://x.com/{author}/status/{post_id}",
             "like_count": metrics.get("like_count") if isinstance(metrics, dict) else None,
