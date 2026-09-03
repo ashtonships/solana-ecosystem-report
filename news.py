@@ -765,7 +765,8 @@ def summarize_source(name: str, body: Any) -> dict[str, Any]:
                 return {**base, "available": True, "items": [], "item_count": 0,
                         "reason": "the feed parsed and published no entries"}
             return {**base, "available": True, "items": items,
-                    "item_count": len(items),
+                    "item_count": len(items), "partial": False,
+                    "invalid_item_count": 0,
                     "latest_published": items[0]["published"]}
         release_body = body.get("releases") if isinstance(body, dict) else body
         tag_commits = body.get("tag_commits") if isinstance(body, dict) else None
@@ -805,6 +806,7 @@ def summarize_source(name: str, body: Any) -> dict[str, Any]:
             "item_count": len(items),
             "watched_proposal_count": len(SIMD_PROPOSAL_WATCH),
             "metadata_item_count": len(items),
+            "partial": False,
             "basis": "proposal frontmatter metadata only; document text is not republished",
         }
     elif source.get("format") in {"solana_content_posts", "solana_content_upgrades"}:

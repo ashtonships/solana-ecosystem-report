@@ -45,6 +45,8 @@ def editorial_url_matches_source(source_id: Any, value: Any) -> bool:
     host = (parsed.hostname or "").lower()
     if source_id == "agave_releases":
         return host == "github.com" and parsed.path.startswith("/anza-xyz/agave/releases/")
+    if source_id == "firedancer_releases":
+        return host == "github.com" and parsed.path.startswith("/firedancer-io/firedancer/releases/")
     if source_id == "network_status":
         return host in {"status.solana.com", "stspg.io"}
     return False
@@ -1736,7 +1738,7 @@ def semantic_failures(snapshot: dict[str, Any]) -> list[dict[str, str]]:
             item_count = required_number(source, "item_count", path, minimum=0, integer=True)
             invalid_count = required_number(
                 source, "invalid_item_count", path, minimum=0, integer=True,
-            ) if source_name != "simd_proposals" else None
+            ) if source_name not in {"simd_proposals", "simd_proposal_metadata"} else None
             if item_count is not None and item_count != len(items):
                 fail(f"{path}.item_count", "must equal len(items)")
             if not isinstance(source.get("partial"), bool):
