@@ -375,7 +375,8 @@ PUBLIC_OBJECT_FIELDS = {
         "editorial_note art_seed".split()
     ),
     "news.sources": frozenset(
-        "agave_releases solana_news simd_proposals network_status".split()
+        "agave_releases solana_news simd_proposals network_status "
+        "firedancer_releases simd_proposal_metadata".split()
     ),
     "news.sources.agave_releases": frozenset(
         "label publisher why url requires_api_key tag_commit_covered_count "
@@ -420,6 +421,25 @@ PUBLIC_OBJECT_FIELDS = {
     ),
     "news.sources.simd_proposals.items[].simd_references[]": frozenset(
         "identifier link".split()
+    ),
+    "news.sources.firedancer_releases": frozenset(
+        "label publisher why url requires_api_key available items item_count "
+        "latest_published latest_stable invalid_item_count partial reason".split()
+    ),
+    "news.sources.firedancer_releases.items[]": frozenset(
+        "id title link published author tag draft prerelease stable "
+        "release_channel".split()
+    ),
+    "news.sources.firedancer_releases.latest_stable": frozenset(
+        "id title link published author tag draft prerelease stable "
+        "release_channel".split()
+    ),
+    "news.sources.simd_proposal_metadata": frozenset(
+        "label publisher why url requires_api_key available reason items "
+        "item_count watched_proposal_count metadata_item_count basis".split()
+    ),
+    "news.sources.simd_proposal_metadata.items[]": frozenset(
+        "id identifier title status link published available reason".split()
     ),
     "news.current_status": frozenset(
         "available partial status_available incidents_available incident_response_available "
@@ -634,6 +654,8 @@ PUBLIC_LIST_PATHS = frozenset({
     "news.sources.solana_news.items", "news.sources.solana_news.unparsed_paths",
     "news.sources.simd_proposals.items", "news.sources.simd_proposals.unparsed_paths",
     "news.sources.simd_proposals.items[].simd_references",
+    "news.sources.firedancer_releases.items",
+    "news.sources.simd_proposal_metadata.items",
     "news.sources.network_status.items", "news.current_status.incidents",
     "news.current_status.incident_history", "pipeline.stages",
     "release.update_status.history.gaps", "anomalies.findings", "anomalies.conditions",
@@ -10117,6 +10139,8 @@ CSS = r"""
     .prototype-page--about .development-source-dot--news { background:var(--prototype-positive); }
     .prototype-page--about .development-source-dot--simd { background:var(--prototype-ink); }
     .prototype-page--about .development-source-dot--status { background:var(--prototype-secondary); }
+    .prototype-page--about .development-source-dot--agave { background:var(--prototype-accent, var(--super-purple-fill)); }
+    .prototype-page--about .development-source-dot--firedancer { background:var(--prototype-warning, var(--super-purple-fill)); }
     .prototype-page--about .development-events {
       margin:0;
       padding:0;
@@ -18429,6 +18453,26 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
     simd_source = sources.get("simd_proposals", {}) \
         if isinstance(sources.get("simd_proposals"), dict) else {}
     proposals = simd_source.get("proposals", []) if isinstance(simd_source.get("proposals"), list) else []
+    if not proposals:
+        # The licensed archive transform stays held; the rights-safe
+        # frontmatter-metadata source provides the watched-proposal cards.
+        metadata_source = sources.get("simd_proposal_metadata", {}) \
+            if isinstance(sources.get("simd_proposal_metadata"), dict) else {}
+        metadata_items = metadata_source.get("items", []) \
+            if isinstance(metadata_source.get("items"), list) else []
+        for item in metadata_items:
+            if not isinstance(item, dict):
+                continue
+            proposals.append({
+                "name": str(item.get("title") or item.get("identifier") or "SIMD proposal"),
+                "status": str(item.get("status") or "Unknown"),
+                "identifier": str(item.get("identifier") or ""),
+                "source": item.get("link"),
+                "created": item.get("published"),
+                "authors": [],
+                "category": None,
+                "type": "Frontmatter metadata only",
+            })
     watch_cards = []
     for index, item in enumerate(proposals[:3], start=1):
         if not isinstance(item, dict):
@@ -18461,8 +18505,10 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
 
     lane_specs = (
         ("agave_releases", "agave", "release", "Agave releases"),
+        ("firedancer_releases", "firedancer", "release", "Firedancer releases"),
         ("solana_news", "news", "announcement", "Solana News"),
         ("simd_proposals", "simd", "proposal", "SIMD activity"),
+        ("simd_proposal_metadata", "simd", "proposal", "SIMD upgrade watch"),
         ("network_status", "status", "incident", "Network status"),
     )
     events = []
@@ -18647,6 +18693,7 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         f"<button type='button' data-development-view='grid' aria-pressed='false' aria-controls='{prefix}-development-events'>Grid</button>"
         "</div></fieldset></div></div>"
         "<div class='development-lane-key' aria-label='Source lanes'><span><i class='development-source-dot--agave'></i>Agave</span>"
+        "<span><i class='development-source-dot--firedancer'></i>Firedancer</span>"
         "<span><i class='development-source-dot--news'></i>Solana News</span><span><i class='development-source-dot--simd'></i>SIMD</span><span><i class='development-source-dot--status'></i>Status</span></div>"
         f"{stream_body}<p class='development-graph-note'>{graph_note}</p>"
         "<div class='development-filter-empty' hidden>No recorded events match this filter.</div></section>"

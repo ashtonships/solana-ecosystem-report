@@ -466,8 +466,20 @@ class TestSourceTable(unittest.TestCase):
     def test_release_fetch_excludes_held_content_sources(self, fetch, _agave):
         raw = news.fetch_release_sources(7)
 
-        self.assertEqual(set(raw), {"agave_releases", "network_status"})
-        fetch.assert_called_once_with(news.SOURCES["network_status"]["url"], 7)
+        # Rights-safe sources are fetched; the held licensed-content sources
+        # (GPL solana-com archive transforms) must stay out of production fetch.
+        self.assertEqual(
+            set(raw),
+            {"agave_releases", "network_status",
+             "firedancer_releases", "simd_proposal_metadata"},
+        )
+        self.assertNotIn("solana_news", raw)
+        self.assertNotIn("simd_proposals", raw)
+        # network_status is one of the four fetch calls (agave, firedancer,
+        # SIMD metadata, status).
+        fetched_urls = [call.args[0] for call in fetch.call_args_list]
+        self.assertIn(news.SOURCES["network_status"]["url"], fetched_urls)
+        self.assertEqual(len(fetched_urls), 4)
 
     @mock.patch.object(news, "fetch_json")
     def test_annotated_agave_tag_is_dereferenced_to_commit(self, fetch_json):
@@ -502,6 +514,90 @@ class TestSourceTable(unittest.TestCase):
     def test_the_section_states_that_feed_contents_are_third_party(self):
         section = news.build_news({})
         self.assertIn("not claims", section["note"])
+
+class TestRightsSafeAdditions(unittest.TestCase):
+    """Firedancer releases and SIMD watch metadata: parse, degrade, project."""
+
+    FIXTURES = Path(__file__).resolve().parent / "fixtures"
+
+    def test_firedancer_releases_parse_from_saved_fixture(self):
+        body = (self.FIXTURES / "firedancer-releases.json").read_bytes()
+        items = news.parse_firedancer_releases(body)
+        self.assertIsInstance(items, list)
+        self.assertTrue(items)
+        self.assertIn("tag", items[0])
+        self.assertTrue(all(item["published"] for item in items))
+        stable = [item for item in items if item["stable"]]
+        self.assertTrue(stable)
+
+    def test_firedancer_malformed_body_is_unavailable_not_empty(self):
+        self.assertIsNone(news.parse_firedancer_releases(b"not json"))
+        self.assertIsNone(news.parse_firedancer_releases(b'{"object": true}'))
+        self.assertIsNone(news.parse_firedancer_releases(None))
+
+    def test_simd_metadata_parse_from_saved_fixtures(self):
+        documents = {
+            "0326-alpenglow": (self.FIXTURES / "simd-0326-alpenglow.md").read_bytes(),
+            "0525-reduce-slot-times": (
+                self.FIXTURES / "simd-0525-reduce-slot-times.md"
+            ).read_bytes(),
+        }
+        items = news.parse_simd_proposal_metadata(documents)
+        by_id = {item["identifier"]: item for item in items}
+        self.assertTrue(by_id["0326-alpenglow"]["available"])
+        self.assertEqual(by_id["0326-alpenglow"]["status"], "Review")
+        self.assertEqual(by_id["0525-reduce-slot-times"]["status"], "Draft")
+        self.assertTrue(by_id["0326-alpenglow"]["link"].startswith("https://"))
+
+    def test_simd_metadata_degrades_per_proposal_without_titles(self):
+        documents = {"0326-alpenglow": None, "0525-reduce-slot-times": b"no frontmatter"}
+        items = news.parse_simd_proposal_metadata(documents)
+        self.assertFalse(any(item["available"] for item in items))
+        self.assertTrue(all(item["reason"] for item in items))
+        # And the source summary degrades to unavailable with a reason —
+        # an optional-source outage never publishes contract-violating items.
+        summary = news.summarize_source(
+            "simd_proposal_metadata", {"documents": documents},
+        )
+        self.assertFalse(summary["available"])
+        self.assertIn("reason", summary)
+
+    def test_build_news_keeps_new_sources_and_the_section_independent(self):
+        firedancer = news.parse_firedancer_releases(
+            (self.FIXTURES / "firedancer-releases.json").read_bytes(),
+        )
+        simd = [
+            item for item in news.parse_simd_proposal_metadata({
+                "0326-alpenglow": (self.FIXTURES / "simd-0326-alpenglow.md").read_bytes(),
+                "0525-reduce-slot-times": (
+                    self.FIXTURES / "simd-0525-reduce-slot-times.md").read_bytes(),
+            })
+            if item.get("available")
+        ]
+        raw = {
+            "agave_releases": None, "network_status": None,
+            "firedancer_releases": (self.FIXTURES / "firedancer-releases.json").read_bytes(),
+            "simd_proposal_metadata": {"documents": {
+                "0326-alpenglow": (self.FIXTURES / "simd-0326-alpenglow.md").read_bytes(),
+                "0525-reduce-slot-times": (
+                    self.FIXTURES / "simd-0525-reduce-slot-times.md").read_bytes(),
+            }},
+        }
+        built = news.build_news(raw, None, news.HELD_LICENSED_CONTENT_SOURCES)
+        # Optional sources succeed; section available; core sources failed so
+        # the section honestly reports partial.
+        self.assertTrue(built["available"])
+        self.assertTrue(built["partial"])
+        self.assertIn("firedancer_releases", built["sources"])
+        self.assertIn("simd_proposal_metadata", built["sources"])
+        editorial_sources = {item["source_id"] for item in built["items"]}
+        self.assertIn("firedancer_releases", editorial_sources)
+
+    def test_optional_source_failure_does_not_flip_section_partial_alone(self):
+        # Everything core unavailable (as held/failing), only optional sources
+        # failing too: available stays False, and no exception escapes.
+        built = news.build_news({}, None, news.HELD_LICENSED_CONTENT_SOURCES)
+        self.assertFalse(built["available"])
 
 
 if __name__ == "__main__":
