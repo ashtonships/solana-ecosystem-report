@@ -109,6 +109,28 @@ def _parse_utc(value: Any) -> datetime | None:
     return parsed if parsed.tzinfo is not None else None
 
 
+
+def _payload_field(payload: dict[str, Any], key: str) -> Any:
+    """Dune keeps execution_* at the response top level; older docs put
+    them on result. Prefer top level, fall back to result."""
+    if key in payload and payload[key] is not None:
+        return payload[key]
+    result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    return result.get(key)
+
+
+def _result_count(payload: dict[str, Any], key: str) -> int | None:
+    """Row/datapoint counts live in result.metadata; top level is the
+    fallback some response versions use."""
+    result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+    for source in (metadata, result, payload):
+        value = source.get(key)
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+    return None
+
+
 def _rows_sha256(rows: Any) -> str | None:
     if not isinstance(rows, list):
         return None
@@ -207,7 +229,7 @@ def collect_dune(
     # Dune returns execution_id at the response top level; the result body
     # carries the timing and row data.
     execution_id = payload.get("execution_id") if isinstance(payload.get("execution_id"), str) else result.get("execution_id")
-    ended_at = _parse_utc(result.get("execution_ended_at"))
+    ended_at = _parse_utc(_payload_field(payload, "execution_ended_at"))
 
     columns_ok, columns_error = _validate_columns(payload)
     if not columns_ok:
@@ -243,7 +265,7 @@ def collect_dune(
     if execution is not None:
         payload = execution["payload"]
         result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
-        ended_at = _parse_utc(result.get("execution_ended_at"))
+        ended_at = _parse_utc(_payload_field(payload, "execution_ended_at"))
         columns_ok, columns_error = _validate_columns(payload)
         if not columns_ok:
             degraded = _build_unavailable(columns_error or "schema drift", query_id)
@@ -281,21 +303,19 @@ def _last_known_good(
     age_seconds: int | None,
 ) -> dict[str, Any]:
     result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
-    started_at = _parse_utc(result.get("execution_started_at"))
-    ended_at = _parse_utc(result.get("execution_ended_at"))
+    started_at = _parse_utc(_payload_field(payload, "execution_started_at"))
+    ended_at = _parse_utc(_payload_field(payload, "execution_ended_at"))
     return {
         "query_id": query_id,
         "query_url": query_url,
         "source_url": source_url,
         "execution_id": _response_execution_id(payload),
-        "execution_started_at": result.get("execution_started_at"),
-        "execution_ended_at": result.get("execution_ended_at"),
+        "execution_started_at": _payload_field(payload, "execution_started_at"),
+        "execution_ended_at": _payload_field(payload, "execution_ended_at"),
         "age_seconds": age_seconds,
-        "row_count": result.get("row_count") if isinstance(result.get("row_count"), int) else None,
+        "row_count": _result_count(payload, "row_count"),
         "datapoint_count": (
-            result.get("datapoint_count")
-            if isinstance(result.get("datapoint_count"), int)
-            else None
+            _result_count(payload, "datapoint_count")
         ),
         "result_sha256": _rows_sha256(result.get("rows")),
         "execution_started_at_parsed": started_at.isoformat(timespec="seconds") if started_at else None,
@@ -312,8 +332,8 @@ def _success_section(
     reference: datetime,
 ) -> dict[str, Any]:
     result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
-    started_at = _parse_utc(result.get("execution_started_at"))
-    ended_at = _parse_utc(result.get("execution_ended_at"))
+    started_at = _parse_utc(_payload_field(payload, "execution_started_at"))
+    ended_at = _parse_utc(_payload_field(payload, "execution_ended_at"))
     age_seconds = (
         round((reference - ended_at).total_seconds()) if ended_at is not None else None
     )
@@ -323,14 +343,12 @@ def _success_section(
         "query_id": query_id,
         "query_url": query_url,
         "execution_id": _response_execution_id(payload),
-        "execution_started_at": result.get("execution_started_at"),
-        "execution_ended_at": result.get("execution_ended_at"),
+        "execution_started_at": _payload_field(payload, "execution_started_at"),
+        "execution_ended_at": _payload_field(payload, "execution_ended_at"),
         "result_age_seconds": age_seconds,
-        "row_count": result.get("row_count") if isinstance(result.get("row_count"), int) else None,
+        "row_count": _result_count(payload, "row_count"),
         "datapoint_count": (
-            result.get("datapoint_count")
-            if isinstance(result.get("datapoint_count"), int)
-            else None
+            _result_count(payload, "datapoint_count")
         ),
         "result_sha256": _rows_sha256(result.get("rows")),
         "source_url": source_url,
