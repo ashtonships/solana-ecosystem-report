@@ -5,9 +5,12 @@
 --   daily_dex_volume_total      — TRADE-LEG DEX volume, all projects summed
 --   daily_dex_volume_by_project — TRADE-LEG DEX volume per project
 --
--- IMPORTANT BASIS NOTE: dex_solana.trades records swap legs. The DEX volume
--- metrics here are TRADE-LEG volume (sum of amount_usd per trade row). They are
--- never unique-user volume and must not be presented as trader counts.
+-- IMPORTANT BASIS NOTES:
+--   1. solana.transactions contains NO vote transactions at all (votes live in
+--      solana.vote_transactions), so no vote filter is needed — or possible.
+--   2. dex_solana.trades records swap legs. The DEX volume metrics here are
+--      TRADE-LEG volume (sum of amount_usd per trade row). They are never
+--      unique-user volume and must not be presented as trader counts.
 --
 -- Columns: metric_id VARCHAR, day DATE, dimension VARCHAR, value DOUBLE,
 --          unit VARCHAR, sample_count BIGINT. ORDER BY day DESC.
@@ -15,13 +18,10 @@
 WITH fee_payers AS (
     SELECT
         DATE_TRUNC('day', block_time) AS day,
-        COUNT(DISTINCT fee_payer)     AS value,
-        COUNT(DISTINCT fee_payer)     AS sample_count
+        COUNT(DISTINCT signer)        AS value,
+        COUNT(DISTINCT signer)        AS sample_count
     FROM solana.transactions
     WHERE block_time >= NOW() - INTERVAL '2' DAY
-      -- vote transactions are excluded from the tx table itself;
-      -- signer = fee payer is the adopted fee-payer definition.
-      AND NOT COALESCE(is_vote, false)
     GROUP BY 1
 ),
 dex_trades AS (
