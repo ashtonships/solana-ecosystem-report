@@ -91,7 +91,13 @@ def _request(url: str, token: str, timeout: int) -> dict[str, Any]:
             body = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as error:
         if error.code in (401, 403):
-            raise XSourceUnavailable("X API rejected the credentials") from error
+            detail = {
+                401: "invalid or revoked token (401)",
+                403: "token lacks Pay-Per-Use access to this endpoint (403); "
+                     "the token must come from an app inside the "
+                     "solana-ecosystem-report Pay-Per-Use project",
+            }.get(error.code, f"HTTP {error.code}")
+            raise XSourceUnavailable(f"X API rejected the credentials: {detail}") from error
         if error.code == 429:
             raise XSourceUnavailable("X API rate limit or credit cap reached") from error
         raise XSourceUnavailable(f"X API returned HTTP {error.code}") from error
