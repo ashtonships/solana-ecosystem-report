@@ -323,6 +323,73 @@ def _last_known_good(
     }
 
 
+def _derive_aggregates(rows: Any) -> dict[str, Any] | None:
+    """Compact public aggregates over the query's rows, derived at
+    collection time. Raw rows never enter the snapshot (the committed
+    snapshot must equal its public projection), so the renderer-visible
+    data is these aggregates plus full provenance.
+
+    Metric families from the report's saved query:
+      daily_non_vote_fee_payers   -> fee_payers_latest
+      daily_dex_volume_total      -> dex_volume_total_latest
+      daily_dex_volume_by_project -> dex_volume_by_project_top (max 5)
+    """
+    if not isinstance(rows, list) or not rows:
+        return None
+    fee_payers: dict[str, float] = {}
+    dex_total: dict[str, float] = {}
+    dex_by_project: dict[str, dict[str, float]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        metric_id = row.get("metric_id")
+        day = row.get("day")
+        value = row.get("value")
+        if not isinstance(day, str) or day == "" or not isinstance(value, (int, float)):
+            continue
+        value = float(value)
+        if metric_id == "daily_non_vote_fee_payers":
+            fee_payers[day] = max(fee_payers.get(day, 0.0), value)
+        elif metric_id == "daily_dex_volume_total":
+            dex_total[day] = max(dex_total.get(day, 0.0), value)
+        elif metric_id == "daily_dex_volume_by_project":
+            dimension = row.get("dimension")
+            if not isinstance(dimension, str) or not dimension:
+                continue
+            per_day = dex_by_project.setdefault(day, {})
+            per_day[dimension] = per_day.get(dimension, 0.0) + value
+    if not fee_payers and not dex_total:
+        return None
+
+    def latest(daily: dict[str, float]) -> tuple[str, float] | None:
+        if not daily:
+            return None
+        day = max(daily)
+        return day, daily[day]
+
+    fee_latest = latest(fee_payers)
+    dex_latest = latest(dex_total)
+    by_project_top: list[dict[str, Any]] = []
+    project_day: str | None = None
+    if dex_by_project:
+        project_day = max(dex_by_project)
+        top = sorted(dex_by_project[project_day].items(), key=lambda kv: kv[1], reverse=True)[:5]
+        by_project_top = [{"dimension": name, "value": value} for name, value in top]
+    candidates = [day for day, _ in (fee_latest, dex_latest) if day]
+    latest_day = max(candidates) if candidates else None
+    return {
+        "latest_day": latest_day,
+        "fee_payers_latest": fee_latest[1] if fee_latest else None,
+        "fee_payers_day": fee_latest[0] if fee_latest else None,
+        "dex_volume_total_latest_usd": dex_latest[1] if dex_latest else None,
+        "dex_volume_total_day": dex_latest[0] if dex_latest else None,
+        "dex_volume_by_project_top": by_project_top,
+        "dex_volume_by_project_day": project_day,
+        "basis": "provider-reported (Dune); trade-leg volume, not unique-user volume",
+        "scope": "fee payers exclude vote transactions; DEX volume sums swap legs",
+    }
+
+
 def _success_section(
     query_id: str,
     query_url: str,
@@ -357,6 +424,10 @@ def _success_section(
         "state": "fresh" if freshness == "fresh" else "stale",
         "reason": None if freshness == "fresh" else "latest result exceeded the refresh window",
     }
+    aggregates = _derive_aggregates(result.get("rows"))
+    if aggregates is not None:
+        section["aggregates"] = aggregates
+    return section
 
 
 def _execute_and_poll(

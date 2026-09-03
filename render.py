@@ -933,7 +933,16 @@ PUBLIC_SCHEMA_OVERRIDES = {
             "available requires_api_key query_id query_url execution_id "
             "execution_started_at execution_ended_at result_age_seconds "
             "row_count datapoint_count result_sha256 source_url freshness "
-            "columns state reason".split()
+            "columns state aggregates reason".split()
+        ),
+        "dune.aggregates": frozenset(
+            "latest_day fee_payers_latest fee_payers_day "
+            "dex_volume_total_latest_usd dex_volume_total_day "
+            "dex_volume_by_project_top dex_volume_by_project_day "
+            "basis scope".split()
+        ),
+        "dune.aggregates.dex_volume_by_project_top[]": frozenset(
+            "dimension value".split()
         ),
         "dune.last_known_good": frozenset(
             "query_id query_url source_url execution_id execution_started_at "
@@ -949,6 +958,7 @@ PUBLIC_LIST_PATHS = PUBLIC_LIST_PATHS | frozenset({
     "growth.daily_active_addresses.providers", "growth.daily_fee_payers.providers",
     "growth.tokenized_equities.volume.top_pairs", "news.sources.simd_proposals.items[].authors",
     "growth.tokenized_equities.watchlist_symbols", "dune.columns",
+    "dune.aggregates.dex_volume_by_project_top",
 })
 
 
@@ -15766,10 +15776,63 @@ def render_ecosystem_pulse(
             ),
         )
 
+    # (g) Dune aggregates — trade-leg DEX volume and fee payers from the
+    # saved public query. Derived at collection time; the raw rows never
+    # enter the snapshot, only these aggregates do.
+    dune_section = snapshot.get("dune", {}) if isinstance(snapshot.get("dune"), dict) else {}
+    dune_aggregates = dune_section.get("aggregates", {}) \
+        if isinstance(dune_section.get("aggregates"), dict) else {}
+    if dune_section.get("available") is True and dune_aggregates:
+        dex_total = dune_aggregates.get("dex_volume_total_latest_usd")
+        if is_number(dex_total):
+            dex_day = dune_aggregates.get("dex_volume_total_day") or "date unavailable"
+            top_rows = dune_aggregates.get("dex_volume_by_project_top") \
+                if isinstance(dune_aggregates.get("dex_volume_by_project_top"), list) else []
+            top_lines = "".join(
+                f"<div class='pulse-provider-row'><span>{html.escape(str(row.get('dimension')))}</span>"
+                f"<b>${fmt(row.get('value'))}</b></div>"
+                for row in top_rows if isinstance(row, dict)
+            ) if top_rows else ""
+            dex_extra = (
+                "<details class='pulse-provider-detail'>"
+                f"<summary>Top DEXs by trade-leg volume · {html.escape(str(dex_day))}</summary>"
+                f"{top_lines}"
+                "<p class='pulse-provider-note'>Trade-leg volume sums each swap leg; "
+                "it is not unique-user volume. Source query: "
+                + html.escape(str(dune_section.get("query_url") or "https://dune.com"))
+                + "</p></details>"
+            )
+            dex_card = card(
+                "DEX volume (Dune, trade-leg)",
+                f"${fmt(dex_total)}",
+                f"Dune query {dune_section.get('query_id')} · provider-reported · {dex_day} · "
+                "~1 day source lag · trade-leg basis",
+                extra=dex_extra,
+                attributes=binding("dune_dex_volume_total_latest_usd"),
+            )
+        else:
+            dex_card = card(
+                "DEX volume (Dune, trade-leg)", "Unavailable",
+                "provider-reported · no daily total in the latest query result",
+            )
+    elif dune_section.get("available") is not True:
+        reason = str(dune_section.get("reason") or "Dune query not collected this run.")
+        dex_card = card(
+            "DEX volume (Dune, trade-leg)", "Unavailable",
+            f"provider-reported · {reason}",
+        )
+    else:
+        dex_card = None
+
+    pulse_cards = [sol_card, addresses_card, fee_payers_card, app_revenue_card,
+                   rev_card, supply_card]
+    if dex_card is not None:
+        pulse_cards.append(dex_card)
+
     return (
         "<h2>Ecosystem Pulse <span class='keyless'>assembled from recorded snapshot data</span></h2>"
         "<div class='grid'>"
-        + sol_card + addresses_card + fee_payers_card + app_revenue_card + rev_card + supply_card
+        + "".join(pulse_cards)
         + "</div>"
     )
 
