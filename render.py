@@ -443,7 +443,7 @@ PUBLIC_OBJECT_FIELDS = {
         "invalid_item_count basis".split()
     ),
     "news.sources.x_announcements.items[]": frozenset(
-        "id author text published link like_count retweet_count".split()
+        "id title author text published link like_count retweet_count".split()
     ),
     "news.current_status": frozenset(
         "available partial status_available incidents_available incident_response_available "
