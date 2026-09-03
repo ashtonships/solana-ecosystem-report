@@ -15555,15 +15555,71 @@ def _pulse_provider_range_card(
     Legacy-schema rows are refused rather than relabelled: their metric
     identity and scope are not comparable, so printing a range would launder
     a different measurement under the new name.
+
+    When the source carries per-provider observations, the card's extra
+    block lists each provider's newest-day value, the median across them,
+    and the spread — the useful product answer to methodological
+    disagreement is the measured disagreement itself, not one number and
+    not an empty card.
     """
     source = source if isinstance(source, dict) else {}
     if source.get("available") is True and is_number(source.get("minimum")) \
             and is_number(source.get("maximum")):
+        extra = ""
+        observations = source.get("provider_observations")
+        if isinstance(observations, list) and observations:
+            newest: dict[str, float] = {}
+            for row in observations:
+                if not isinstance(row, dict):
+                    continue
+                provider, value, date = row.get("provider"), row.get("value"), row.get("date")
+                if (not isinstance(provider, str) or not provider
+                        or not is_number(value) or not isinstance(date, str)):
+                    continue
+                # Latest observed date wins; ties resolve to the later value.
+                current = newest.get(provider)
+                if current is None or date >= current[0]:
+                    newest[provider] = (date, float(value))
+            if newest:
+                latest_date = max(date for date, _ in newest.values())
+                latest_rows = sorted(
+                    ((provider, value) for provider, (date, value) in newest.items()
+                     if date == latest_date),
+                    key=lambda row: row[1],
+                )
+                values = [value for _, value in latest_rows]
+                midpoint = values[len(values) // 2] if len(values) % 2 \
+                    else (values[len(values) // 2 - 1] + values[len(values) // 2]) / 2
+                low, high = values[0], values[-1]
+                spread = f"{(high - low) / midpoint * 100:.1f}%" if midpoint else "unavailable"
+                provider_lines = "".join(
+                    f"<div class='pulse-provider-row'>"
+                    f"<span>{html.escape(provider)}</span>"
+                    f"<b>{fmt(value)}</b></div>"
+                    for provider, value in latest_rows
+                )
+                extra = (
+                    "<details class='pulse-provider-detail'>"
+                    f"<summary>Per-provider values · {latest_date}</summary>"
+                    f"{provider_lines}"
+                    f"<div class='pulse-provider-row pulse-provider-summary'>"
+                    f"<span>Median</span><b>{fmt(midpoint)}</b></div>"
+                    f"<div class='pulse-provider-row pulse-provider-summary'>"
+                    f"<span>Range</span><b>{fmt(low)}–{fmt(high)}</b></div>"
+                    f"<div class='pulse-provider-row pulse-provider-summary'>"
+                    f"<span>Spread</span><b>{spread}</b></div>"
+                    "<p class='pulse-provider-note'>No single network-wide value is "
+                    "asserted: providers use different definitions and methodologies. "
+                    "The sampled RPC measurement stays separate.</p>"
+                    "</details>"
+                )
         return card(
             label,
             f"{fmt(source.get('minimum'))}–{fmt(source.get('maximum'))}",
             f"Solana Data · provider-reported · {source.get('date') or 'date unavailable'} · "
-            f"{fmt(source.get('provider_count'))} providers · not network-wide · ~1 day source lag",
+            f"{fmt(source.get('provider_count'))} providers · scope-specific, not network-wide · "
+            f"~1 day source lag",
+            extra=extra,
             attributes=binding(*metric_ids),
         )
     if source.get("available") is True:
