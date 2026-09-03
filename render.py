@@ -15498,7 +15498,10 @@ def render_overview_charts(
             )
             explanation = ""
         count = len(unavailable)
-        summary = f"{count} chart{'s' if count != 1 else ''} unavailable"
+        summary = (
+            f"{count} chart{'s' if count != 1 else ''} unavailable"
+            " — see why (compact disclosure)"
+        )
         unavailable_record = indexes["derived"].get((
             "overview_unavailable_history_chart_count", window_subject,
         ))
