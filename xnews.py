@@ -46,9 +46,8 @@ X_ACCOUNT_ALLOWLIST: tuple[str, ...] = (
 # Cost ceiling: hard cap on post reads recorded per collection run.
 MAX_POSTS = 20
 
-# Timeline lookback. X dedups charges within a 24-hour UTC window, so a
-# 24h start_time keeps repeat runs within one day free of new charges.
-LOOKBACK_HOURS = 24
+# Per-run cost ceiling: hard cap on post reads recorded per collection run.
+MAX_POSTS = 20
 
 # Post text is quoted material, stored at excerpt length with attribution
 # and a canonical link back to the source post.
@@ -57,7 +56,6 @@ MAX_TEXT_CHARS = 280
 # Timeline fields requested. Keep the list minimal — everything requested
 # is stored and shown.
 POST_FIELDS = "id,author_id,text,created_at,public_metrics"
-MAX_RESULTS_PER_TIMELINE = 10  # API minimum for this endpoint is 5
 
 
 class XSourceUnavailable(Exception):
@@ -119,27 +117,27 @@ def fetch_announcements(
     charged ($0.005 each), and X dedups the same post within a 24-hour UTC
     window, so repeat runs inside a day cost no new post charges.
 
+    No start_time is sent: recent-search covers the last ~7 days natively,
+    and a start_time parameter caused silently-empty results in production
+    (2026-09-03). The MAX_POSTS cap and the UTC-day dedup are the cost
+    controls, not the window.
+
     Raises XSourceUnavailable with a reason on any failure. Pure network
     boundary: no parsing logic beyond transport.
     """
     bearer = token if token is not None else _token()
-    import datetime as _dt
-
     now = now_unix if now_unix is not None else int(time.time())
-    start_time = (
-        _dt.datetime.fromtimestamp(now - LOOKBACK_HOURS * 3600, tz=_dt.timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
     from_clause = " OR ".join(f"from:{name}" for name in X_ACCOUNT_ALLOWLIST)
     query = urllib.parse.urlencode({
         "query": f"({from_clause}) -is:retweet -is:reply",
-        "start_time": start_time,
         "max_results": MAX_POSTS,
         "tweet.fields": POST_FIELDS,
     })
     body = _request(f"{X_API_BASE}/tweets/search/recent?{query}", bearer, timeout)
+    if "title" in body and not body.get("data"):
+        # X returns client errors inside HTTP 200 for some conditions.
+        raise XSourceUnavailable(
+            f"X API error response: {body.get('title') or 'unknown'}")
     rows = body.get("data")
     if rows is None:
         # A search with no matches returns no data key: not an error.
