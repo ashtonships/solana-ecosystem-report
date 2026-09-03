@@ -18672,10 +18672,15 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         for item in metadata_items:
             if not isinstance(item, dict):
                 continue
+            identifier = str(item.get("identifier") or "")
+            # Display identifier as the canonical SIMD-NNNN form when the
+            # slug carries the proposal number.
+            number = re.search(r"(\d{3,4})", identifier)
+            display_id = f"SIMD-{number.group(1)}" if number else identifier
             proposals.append({
                 "name": str(item.get("title") or item.get("identifier") or "SIMD proposal"),
                 "status": str(item.get("status") or "Unknown"),
-                "identifier": str(item.get("identifier") or ""),
+                "identifier": display_id,
                 "source": item.get("link"),
                 "created": item.get("published"),
                 "authors": [],
@@ -18699,17 +18704,24 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         created = str(item.get("created") or "").strip()
         created_markup = (
             f"<time datetime='{html.escape(created, quote=True)}'>Created {html.escape(created)}</time>"
-            if development_event_moment(created) else "<span>Created unavailable</span>"
+            if development_event_moment(created) else ""
+        )
+        identifier_text = str(item.get("identifier") or "").strip()
+        identifier_markup = (
+            f"<code>{html.escape(identifier_text)}</code>" if identifier_text else ""
         )
         watch_cards.append(
             f"<div class='development-watch' data-development-kind='proposal'>"
-            f"<div><span>SIMD {index:02d}</span><b>{html.escape(str(item.get('status') or 'Unknown'))}</b></div>"
+            f"<div><span>{identifier_markup or html.escape(f'SIMD {index:02d}')}"
+            f" · status</span><b>{html.escape(str(item.get('status') or 'Unknown'))}</b></div>"
             f"<h4>{html.escape(name)}</h4>"
             f"<p>{html.escape(metadata)}. Lifecycle state comes only from proposal frontmatter.</p>"
-            f"<p class='development-watch__why'><strong>Authors</strong> "
-            f"{html.escape(', '.join(str(author) for author in item.get('authors', []) if author) or 'Not recorded')}</p>"
-            f"<footer><code>{html.escape(str(item.get('identifier') or '—'))}</code>"
-            f"{created_markup}{source_link}</footer></div>"
+            + (
+                f"<p class='development-watch__why'><strong>Authors</strong> "
+                f"{html.escape(', '.join(str(author) for author in item.get('authors', []) if author))}</p>"
+                if item.get("authors") else ""
+            )
+            + f"<footer>{created_markup}{source_link}</footer></div>"
         )
 
     lane_specs = (
@@ -18875,6 +18887,14 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         else "Connectors show chronology within each source lane; they do not imply dependency, merge, or causality."
     )
     stream_kicker = "Development stream" if context == "mobile" else "Upgrade watch · protocol and client"
+    simd_section = sources.get("simd_proposal_metadata", {}) \
+        if isinstance(sources.get("simd_proposal_metadata"), dict) else {}
+    watch_note = (
+        "Metadata from "
+        + html.escape(str(simd_section.get("publisher") or "the official SIMD repository"))
+    ) if simd_section.get("available") is True and watch_cards else (
+        f"Pinned source commit · {checked}"
+    )
     return (
         f"<section class='development-stream development-stream--{prefix}' id='{legacy_id}' data-development-stream "
         f"aria-labelledby='{title_id}'>"
@@ -18883,7 +18903,7 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         "<p>Recorded releases, first-party news, proposal lifecycle metadata, and incidents share one chronology without claiming causality.</p></header>"
         f"<section class='development-priority' aria-labelledby='{prefix}-development-priority-title'>"
         f"<div class='development-section-head'><div><span>Upgrade watch</span><h3 id='{prefix}-development-priority-title'>Recorded SIMD lifecycle</h3></div>"
-        f"<small>Pinned source commit · {checked}</small></div>"
+        f"<small>{watch_note}</small></div>"
         f"<div class='development-watch-grid'>{watch_body}</div></section>"
         f"<section class='development-chronology' aria-labelledby='{prefix}-development-chronology-title'>"
         "<div class='development-section-head'><div><span>Recorded chronology</span>"

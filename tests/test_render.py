@@ -1920,8 +1920,11 @@ class TestHtml(unittest.TestCase):
                 "proposals": [{"identifier": "SIMD-0600", "name": "Undated proposal"}]}},
         }
         stream = render.render_development_stream(snapshot, "desktop")
+        # The old behavior rendered a misleading "Created unavailable";
+        # now an undated proposal simply omits the created element.
         self.assertNotIn("<time datetime=''>", stream)
-        self.assertIn("Created unavailable", stream)
+        self.assertNotIn("Created unavailable", stream)
+        self.assertIn("SIMD-0600", stream)
 
     def test_development_controls_keep_44px_targets_and_native_selects_in_css(self):
         self.assertNotIn("min-height:2.25rem", render.CSS)
