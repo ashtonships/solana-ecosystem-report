@@ -14432,6 +14432,31 @@ def card(
     )
 
 
+def _header_daa_value(snapshot: dict[str, Any]) -> str:
+    """Header-strip DAA value: provider range when the Solana Data source
+    delivered observations, the honest unavailable state otherwise.
+
+    The strip is a headline surface; the range is the provider-disagreement
+    value (same basis as the Pulse card), and 'not estimated' wording keeps
+    the refusal to invent a canonical number explicit.
+    """
+    growth = snapshot.get("growth", {}) if isinstance(snapshot.get("growth"), dict) else {}
+    daa = growth.get("daily_active_addresses", {}) \
+        if isinstance(growth.get("daily_active_addresses"), dict) else {}
+    if daa.get("available") is True and is_number(daa.get("minimum")) \
+            and is_number(daa.get("maximum")):
+        day = str(daa.get("date") or "date unavailable")
+        return (
+            f"<strong class='metric__value'>{html.escape(fmt(daa.get('minimum')))}"
+            f"–{html.escape(fmt(daa.get('maximum')))}</strong>"
+            f"<span class='delta'>provider range · {html.escape(day)}</span>"
+        )
+    return (
+        "<strong class='metric__value'>—</strong>"
+        "<span class='delta delta--negative'>unavailable — not estimated</span>"
+    )
+
+
 def render_anomalies_html(analysis: dict[str, Any] | None) -> str:
     """Keep partial limits visible without discarding eligible findings."""
     if not analysis:
@@ -21024,8 +21049,10 @@ def render_html(
         f"<strong class='metric__value'><span class='metric__number'>{html.escape(fmt(median_fee))}</span>"
         f"{median_fee_unit}</strong>"
         f"{overview_delta(comparison, 'median_fee_lamports', 'sampled')}</li>",
-        f"<li class='metric'{summary_binding('network_wide_daily_active_addresses')}><span class='metric__label'>Daily Active Addresses</span>"
-        "<strong class='metric__value'>—</strong><span class='delta delta--negative'>unavailable</span></li>",
+        f"<li class='metric'{summary_binding('network_wide_daily_active_addresses')}>"
+        "<span class='metric__label'>Daily Active Addresses</span>"
+        + _header_daa_value(snapshot)
+        + "</li>",
         "</ul></section>",
         f"<p class='overview-provenance visually-hidden'>{context} · collected {collected} · source "
         f"<code>{html.escape(str(endpoint))}</code> · {html.escape(rpc_access_label(snapshot))} · no live connection</p>",
