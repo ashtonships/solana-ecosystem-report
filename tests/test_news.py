@@ -557,7 +557,7 @@ class TestRightsSafeAdditions(unittest.TestCase):
         # And the source summary degrades to unavailable with a reason —
         # an optional-source outage never publishes contract-violating items.
         summary = news.summarize_source(
-            "simd_proposal_metadata", {"documents": documents},
+            "simd_proposal_metadata", documents,
         )
         self.assertFalse(summary["available"])
         self.assertIn("reason", summary)
@@ -577,11 +577,11 @@ class TestRightsSafeAdditions(unittest.TestCase):
         raw = {
             "agave_releases": None, "network_status": None,
             "firedancer_releases": (self.FIXTURES / "firedancer-releases.json").read_bytes(),
-            "simd_proposal_metadata": {"documents": {
+            "simd_proposal_metadata": {
                 "0326-alpenglow": (self.FIXTURES / "simd-0326-alpenglow.md").read_bytes(),
                 "0525-reduce-slot-times": (
                     self.FIXTURES / "simd-0525-reduce-slot-times.md").read_bytes(),
-            }},
+            },
         }
         built = news.build_news(raw, None, news.HELD_LICENSED_CONTENT_SOURCES)
         # Optional sources succeed; section available; core sources failed so
