@@ -96,7 +96,7 @@ EDITORIAL_SOURCE_CONFIG = {
                 "Firedancer repository (Apache-2.0).",
     },
     "x_announcements": {
-        "category": "announcement",
+        "category": "ecosystem",
         "publisher": "Official ecosystem accounts on X",
         "note": "Post recorded from an allowlisted official ecosystem account on X. "
                 "Linked text is third-party content; engagement counts are "
