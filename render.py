@@ -424,19 +424,15 @@ PUBLIC_OBJECT_FIELDS = {
     ),
     "news.sources.firedancer_releases": frozenset(
         "label publisher why url requires_api_key available items item_count "
-        "latest_published latest_stable invalid_item_count partial reason".split()
+        "latest_published partial invalid_item_count reason".split()
     ),
     "news.sources.firedancer_releases.items[]": frozenset(
         "id title link published author tag draft prerelease stable "
         "release_channel".split()
     ),
-    "news.sources.firedancer_releases.latest_stable": frozenset(
-        "id title link published author tag draft prerelease stable "
-        "release_channel".split()
-    ),
     "news.sources.simd_proposal_metadata": frozenset(
         "label publisher why url requires_api_key available reason items "
-        "item_count watched_proposal_count metadata_item_count basis".split()
+        "item_count watched_proposal_count metadata_item_count partial basis".split()
     ),
     "news.sources.simd_proposal_metadata.items[]": frozenset(
         "id identifier title status link published available reason".split()
