@@ -1005,7 +1005,7 @@ class TestHtml(unittest.TestCase):
         if unavailable_count:
             self.assertIn("chart-disclosure--availability", charts)
             self.assertIn(
-                f"<summary>{unavailable_count} charts unavailable</summary>", charts,
+                f"<summary>{unavailable_count} charts unavailable — see why (compact disclosure)</summary>", charts,
             )
         else:
             self.assertNotIn("chart-disclosure--availability", charts)
@@ -1059,7 +1059,7 @@ class TestHtml(unittest.TestCase):
         plain = render.html.unescape(charts)
         reason = render.facts_module.ECONOMICS_PUBLICATION_HOLD
 
-        self.assertIn("<summary>2 charts unavailable</summary>", charts)
+        self.assertIn("<summary>2 charts unavailable — see why (compact disclosure)</summary>", charts)
         self.assertIn("<li>SOL price</li><li>Total value locked</li>", charts)
         self.assertEqual(plain.count(reason), 1)
         self.assertNotIn("Not charted, and not drawn as zero", charts)
@@ -1075,7 +1075,7 @@ class TestHtml(unittest.TestCase):
             "reason": "Price <unsafe> & unavailable",
         })
         charts = render.render_overview_charts(history)
-        self.assertIn("<summary>1 chart unavailable</summary>", charts)
+        self.assertIn("<summary>1 chart unavailable — see why (compact disclosure)</summary>", charts)
         self.assertIn("<li>SOL price</li>", charts)
         self.assertIn("Price &lt;unsafe&gt; &amp; unavailable", charts)
         self.assertNotIn("Price <unsafe>", charts)
@@ -1091,7 +1091,7 @@ class TestHtml(unittest.TestCase):
             rev.pop("sample_mean_estimate_sol", None)
 
         charts = render.render_overview_charts(history)
-        self.assertIn("<summary>2 charts unavailable</summary>", charts)
+        self.assertIn("<summary>2 charts unavailable — see why (compact disclosure)</summary>", charts)
         self.assertIn(
             "<li><strong>SOL price:</strong> Price publication held</li>", charts,
         )
