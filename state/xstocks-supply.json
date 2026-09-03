@@ -2371,14 +2371,14 @@
       "ui_amount_string": "283933.45005688"
     },
     "XsyusqQvb8RDULsY9szwvUv2CxrDKa642w7kecZPdRM": {
-      "collected_at": "2026-09-03T01:49:53+00:00",
+      "collected_at": "2026-09-03T02:02:01+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
-        "rpc_api_version": "4.3.0-beta.2",
-        "rpc_context_slot": 443849416,
+        "rpc_api_version": "4.2.1",
+        "rpc_context_slot": 443851736,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2388,20 +2388,20 @@
         }
       },
       "raw_amount": "12950000000000",
-      "rpc_api_version": "4.3.0-beta.2",
-      "rpc_context_slot": 443849417,
+      "rpc_api_version": "4.2.1",
+      "rpc_context_slot": 443851736,
       "ui_amount": 259000.0,
       "ui_amount_string": "259000"
     },
     "XszjVtyhowGjSC5odCqBpW1CtXXwXjYokymrk7fGKD3": {
-      "collected_at": "2026-09-03T01:49:54+00:00",
+      "collected_at": "2026-09-03T02:02:01+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
-        "rpc_api_version": "4.3.0-beta.2",
-        "rpc_context_slot": 443849418,
+        "rpc_api_version": "4.2.1",
+        "rpc_context_slot": 443851737,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2411,8 +2411,8 @@
         }
       },
       "raw_amount": "4529766500377",
-      "rpc_api_version": "4.3.0-beta.2",
-      "rpc_context_slot": 443849418,
+      "rpc_api_version": "4.2.1",
+      "rpc_context_slot": 443851737,
       "ui_amount": 46353.07096017,
       "ui_amount_string": "46353.07096017"
     },
@@ -2457,6 +2457,6 @@
     }
   },
   "rpc_endpoint_identity": "sha256:d6092b5f25eb26ad08e1c49bf16ff3df02faccaa5a717900ab9bf901abbab202",
-  "updated_at": "2026-09-03T01:50:36+00:00",
+  "updated_at": "2026-09-03T02:02:33+00:00",
   "version": 2
 }
