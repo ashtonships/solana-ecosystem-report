@@ -15808,7 +15808,6 @@ def render_ecosystem_pulse(
                 f"Dune query {dune_section.get('query_id')} · provider-reported · {dex_day} · "
                 "~1 day source lag · trade-leg basis",
                 extra=dex_extra,
-                attributes=binding("dune_dex_volume_total_latest_usd"),
             )
         else:
             dex_card = card(
