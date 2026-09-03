@@ -661,6 +661,7 @@ PUBLIC_LIST_PATHS = frozenset({
     "news.sources.firedancer_releases.items",
     "news.sources.simd_proposal_metadata.items",
     "news.sources.x_announcements.items",
+    "news.sources.x_announcements.account_allowlist",
     "news.sources.network_status.items", "news.current_status.incidents",
     "news.current_status.incident_history", "pipeline.stages",
     "release.update_status.history.gaps", "anomalies.findings", "anomalies.conditions",
