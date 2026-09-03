@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""Official X announcements, from a fixed allowlist of ecosystem accounts.
+
+Standard library only. The X API v2 is pay-per-use ($0.005 per post read),
+so this source is bounded three ways:
+
+  1. ACCOUNT ALLOWLIST — four official ecosystem accounts only
+     (@SolanaFndn, @solana, @anza_tech, @firedancer_io). No search, no
+     influencers, no sentiment mining.
+  2. FRESH-ONLY FETCH — the timeline request asks for posts from the last
+     24 hours (start_time), so re-running within the same UTC day reads the
+     same resources, and X's 24-hour dedup means no second charge.
+  3. PER-RUN CAP — no more than MAX_POSTS posts are recorded; the fetcher
+     stops expanding timelines once the cap is hit.
+
+The token arrives via X_BEARER_TOKEN in the environment. Missing token,
+HTTP error, rate limit, or malformed body all degrade this one source to
+{"available": False} with a reason — the report publishes regardless.
+
+Stored per post: id, author, text, created_at, url, engagement counts,
+plus the provider-reported label. No aggregate sentiment score is computed
+anywhere in this module: the counts are shown as recorded, period.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from typing import Any
+
+X_API_BASE = "https://api.x.com/2"
+X_BEARER_TOKEN_ENV = "X_BEARER_TOKEN"
+
+# Fixed allowlist: official ecosystem accounts only.
+X_ACCOUNT_ALLOWLIST: tuple[str, ...] = (
+    "SolanaFndn",
+    "solana",
+    "anza_tech",
+    "firedancer_io",
+)
+
+# Cost ceiling: hard cap on post reads recorded per collection run.
+MAX_POSTS = 20
+
+# Timeline lookback. X dedups charges within a 24-hour UTC window, so a
+# 24h start_time keeps repeat runs within one day free of new charges.
+LOOKBACK_HOURS = 24
+
+# Post text is quoted material, stored at excerpt length with attribution
+# and a canonical link back to the source post.
+MAX_TEXT_CHARS = 280
+
+# Timeline fields requested. Keep the list minimal — everything requested
+# is stored and shown.
+POST_FIELDS = "id,author_id,text,created_at,public_metrics"
+MAX_RESULTS_PER_TIMELINE = 10  # API minimum for this endpoint is 5
+
+
+class XSourceUnavailable(Exception):
+    """Raised when the source cannot be read; carries the reason."""
+
+
+def _token() -> str:
+    token = os.environ.get(X_BEARER_TOKEN_ENV, "").strip()
+    if not token:
+        raise XSourceUnavailable(
+            "X_BEARER_TOKEN is not set; official announcements from X are disabled"
+        )
+    return token
+
+
+def _request(url: str, token: str, timeout: int) -> dict[str, Any]:
+    if not token:
+        raise XSourceUnavailable(
+            "X_BEARER_TOKEN is not set; official announcements from X are disabled"
+        )
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "User-Agent": "solana-ecosystem-report/0.1",
+            "Accept": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        if error.code in (401, 403):
+            raise XSourceUnavailable("X API rejected the credentials") from error
+        if error.code == 429:
+            raise XSourceUnavailable("X API rate limit or credit cap reached") from error
+        raise XSourceUnavailable(f"X API returned HTTP {error.code}") from error
+    except (urllib.error.URLError, TimeoutError, ValueError) as error:
+        raise XSourceUnavailable("X API request failed or timed out") from error
+    if not isinstance(body, dict):
+        raise XSourceUnavailable("X API response is not a JSON object")
+    return body
+
+
+def fetch_announcements(
+    now_unix: int | None = None, timeout: int = 20,
+    token: str | None = None,
+) -> list[dict[str, Any]]:
+    """Read allowlisted timelines via recent search, capped at MAX_POSTS.
+
+    One recent-search request covers the whole allowlist (from:user OR ...),
+    so there are no per-user lookup reads ($0.010 each). Only post reads are
+    charged ($0.005 each), and X dedups the same post within a 24-hour UTC
+    window, so repeat runs inside a day cost no new post charges.
+
+    Raises XSourceUnavailable with a reason on any failure. Pure network
+    boundary: no parsing logic beyond transport.
+    """
+    bearer = token if token is not None else _token()
+    import datetime as _dt
+
+    now = now_unix if now_unix is not None else int(time.time())
+    start_time = (
+        _dt.datetime.fromtimestamp(now - LOOKBACK_HOURS * 3600, tz=_dt.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    from_clause = " OR ".join(f"from:{name}" for name in X_ACCOUNT_ALLOWLIST)
+    query = urllib.parse.urlencode({
+        "query": f"({from_clause}) -is:retweet -is:reply",
+        "start_time": start_time,
+        "max_results": MAX_POSTS,
+        "tweet.fields": POST_FIELDS,
+    })
+    body = _request(f"{X_API_BASE}/tweets/search/recent?{query}", bearer, timeout)
+    rows = body.get("data")
+    if rows is None:
+        # A search with no matches returns no data key: not an error.
+        return []
+    if not isinstance(rows, list):
+        raise XSourceUnavailable("X API response data is not a list")
+    users_by_id = {}
+    includes = body.get("includes")
+    if isinstance(includes, dict) and isinstance(includes.get("users"), list):
+        for user in includes["users"]:
+            if isinstance(user, dict) and isinstance(user.get("id"), str):
+                users_by_id[user["id"]] = user.get("username")
+    posts: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for row in rows:
+        if len(posts) >= MAX_POSTS:
+            break
+        if not isinstance(row, dict):
+            continue
+        post_id = row.get("id")
+        text = row.get("text")
+        created = row.get("created_at")
+        if not isinstance(post_id, str) or post_id in seen_ids:
+            continue
+        if not isinstance(text, str) or not text.strip():
+            continue
+        if not isinstance(created, str) or not created:
+            continue
+        author_id = row.get("author_id")
+        author = users_by_id.get(author_id)
+        # Author must be allowlisted; skip anything else the search returns.
+        if author not in X_ACCOUNT_ALLOWLIST:
+            continue
+        metrics = row.get("public_metrics")
+        posts.append({
+            "id": post_id,
+            "author": author,
+            "text": text.strip()[:MAX_TEXT_CHARS],
+            "created_at": created,
+            "url": f"https://x.com/{author}/status/{post_id}",
+            "like_count": metrics.get("like_count") if isinstance(metrics, dict) else None,
+            "retweet_count": metrics.get("retweet_count") if isinstance(metrics, dict) else None,
+        })
+        seen_ids.add(post_id)
+    posts.sort(key=lambda post: (post["created_at"], post["id"]), reverse=True)
+    return posts
+
+
+def parse_announcements(
+    posts: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    """Contract-shape the fetched posts (already bounded by the fetcher)."""
+    if posts is None:
+        return []
+    items = []
+    for post in posts:
+        if not isinstance(post, dict):
+            continue
+        items.append({
+            "id": post.get("id"),
+            "author": post.get("author"),
+            "text": post.get("text"),
+            "published": post.get("created_at"),
+            "link": post.get("url"),
+            "like_count": post.get("like_count"),
+            "retweet_count": post.get("retweet_count"),
+        })
+    return items
+
+
+def collect_x_announcements(timeout: int = 20) -> dict[str, Any]:
+    """Transport boundary for news.py: fetch + parse, or a named failure."""
+    try:
+        posts = fetch_announcements(timeout=timeout)
+    except XSourceUnavailable as error:
+        return {"available": False, "reason": str(error)}
+    return {"posts": posts}
+
+
+if __name__ == "__main__":
+    print(json.dumps(collect_x_announcements(), indent=2))

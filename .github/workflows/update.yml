@@ -89,9 +89,13 @@ jobs:
         # Rights-held economics stays disabled. The approved CoinGecko Demo
         # key transport supplies the price observation; held sources are not
         # fetched and record available:false so their hold persists.
+        # X announcements are pay-per-use: the bearer token enables a
+        # allowlisted, per-run-capped read; absent token degrades that
+        # source alone.
         env:
           REPORT_RPC_ENDPOINT: ${{ secrets.REPORT_RPC_ENDPOINT }}
           COINGECKO_DEMO_API_KEY: ${{ secrets.COINGECKO_DEMO_API_KEY }}
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
         run: python3 collect.py --with-price --endpoint "$REPORT_RPC_ENDPOINT"
 
       - id: publication_timestamp
