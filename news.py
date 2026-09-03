@@ -853,6 +853,13 @@ def summarize_source(name: str, body: Any) -> dict[str, Any]:
                                else "X announcements response is invalid"),
                     "items": [], "item_count": 0}
         items = xnews.parse_announcements(rows)
+        # The generic per-item contract requires a non-empty title on every
+        # available source's items; X posts have none, so the excerpt
+        # becomes the title (same derivation the editorial layer uses).
+        for item in items:
+            text = item.get("text")
+            excerpt = " ".join(text.strip().split()) if isinstance(text, str) else ""
+            item["title"] = excerpt[:MAX_TITLE] if excerpt else "Untitled recorded post"
         return {
             **base,
             "available": bool(items),
