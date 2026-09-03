@@ -132,6 +132,10 @@ def fetch_announcements(
         "query": f"({from_clause}) -is:retweet -is:reply",
         "max_results": MAX_POSTS,
         "tweet.fields": POST_FIELDS,
+        # expansions is free (same post read) and required: without it the
+        # response has no includes.users, so author_id cannot be mapped to
+        # a username and every row would be filtered by the allowlist check.
+        "expansions": "author_id",
     })
     body = _request(f"{X_API_BASE}/tweets/search/recent?{query}", bearer, timeout)
     if "title" in body and not body.get("data"):
