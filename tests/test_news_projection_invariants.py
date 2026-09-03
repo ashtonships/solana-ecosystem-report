@@ -30,7 +30,7 @@ def snapshot_with_new_sources():
     raw = {
         "agave_releases": None,
         "firedancer_releases": firedancer_body,
-        "simd_proposal_metadata": {"documents": simd_documents},
+        "simd_proposal_metadata": simd_documents,
         "network_status": None,
     }
     built = news.build_news(raw, None, news.HELD_LICENSED_CONTENT_SOURCES)

@@ -781,7 +781,9 @@ def summarize_source(name: str, body: Any) -> dict[str, Any]:
                 "partial": covered != len(items) or invalid_count > 0,
             })
     elif source.get("format") == "simd_metadata":
-        rows = body.get("documents") if isinstance(body, dict) else None
+        # fetch_simd_proposal_metadata returns {slug: bytes} keyed by proposal
+        # slug; summarize consumes exactly that mapping.
+        rows = body if isinstance(body, dict) else None
         if not isinstance(rows, dict):
             return {**base, "available": False,
                     "reason": "SIMD proposal metadata response is invalid",
