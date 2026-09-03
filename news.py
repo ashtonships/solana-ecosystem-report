@@ -56,6 +56,28 @@ MAX_ITEMS = 5
 # Titles longer than this are cut — a commit subject can run to a paragraph.
 MAX_TITLE = 140
 
+# Rights-safe keyless additions. Firedancer publishes Apache-2.0 release
+# metadata through the same GitHub transport already used for Agave. The SIMD
+# repository publishes proposal documents without a license file, so this
+# source records frontmatter metadata (title, status, canonical link) only —
+# never document text. Lifecycle state comes from proposal frontmatter, never
+# from a commit, PR, or merge event.
+FIREDANCER_RELEASES_URL = (
+    "https://api.github.com/repos/firedancer-io/firedancer/releases?per_page=5"
+)
+FIREDANCER_REPOSITORY = "https://github.com/firedancer-io/firedancer"
+FIREDANCER_LICENSE = "Apache-2.0"
+SIMD_REPO_RAW_BASE = (
+    "https://raw.githubusercontent.com/solana-foundation/"
+    "solana-improvement-documents/main/proposals"
+)
+SIMD_PROPOSAL_WATCH = {
+    "0326-alpenglow": "https://github.com/solana-foundation/"
+                      "solana-improvement-documents/blob/main/proposals/0326-alpenglow.md",
+    "0525-reduce-slot-times": "https://github.com/solana-foundation/"
+                              "solana-improvement-documents/blob/main/proposals/0525-reduce-slot-times.md",
+}
+
 EDITORIAL_CATEGORIES = frozenset({"release", "network", "governance", "event", "ecosystem"})
 EDITORIAL_ITEM_LIMIT = 24
 STATUS_PUBLIC_URL = "https://status.solana.com/"
@@ -64,6 +86,12 @@ EDITORIAL_SOURCE_CONFIG = {
         "category": "release",
         "publisher": "Anza",
         "note": "Validator client release recorded from the official Agave repository.",
+    },
+    "firedancer_releases": {
+        "category": "release",
+        "publisher": "Firedancer Contributors",
+        "note": "Independent validator client release recorded from the official "
+                "Firedancer repository (Apache-2.0).",
     },
     "network_status": {
         "category": "network",
@@ -112,6 +140,22 @@ SOURCES: dict[str, dict[str, str]] = {
                "newest-entry date means no incident has been posted since then, "
                "which is information in itself.",
     },
+    "firedancer_releases": {
+        "url": FIREDANCER_RELEASES_URL,
+        "format": "github_releases",
+        "label": "Firedancer releases",
+        "publisher": "firedancer-io/firedancer (official GitHub repository, Apache-2.0)",
+        "why": "Firedancer is the independent validator client in staged rollout. "
+               "A release here records how far the second client has come.",
+    },
+    "simd_proposal_metadata": {
+        "url": SIMD_REPO_RAW_BASE,
+        "format": "simd_metadata",
+        "label": "SIMD upgrade watch (metadata only)",
+        "publisher": "solana-foundation/solana-improvement-documents (official)",
+        "why": "Lifecycle state for watched upgrades comes from proposal frontmatter "
+               "in the official SIMD repository. Document text is not republished.",
+    },
 }
 
 CURRENT_STATUS_URLS = {
@@ -150,6 +194,8 @@ def fetch_release_sources(timeout: int = 20) -> dict[str, Any]:
     """Fetch only sources currently cleared for the public report."""
     return {
         "agave_releases": fetch_agave_releases(timeout),
+        "firedancer_releases": fetch_firedancer_releases(timeout),
+        "simd_proposal_metadata": fetch_simd_proposal_metadata(timeout),
         "network_status": fetch(SOURCES["network_status"]["url"], timeout),
     }
 
@@ -192,6 +238,99 @@ def fetch_agave_releases(timeout: int = 20) -> dict[str, Any]:
     commits = ({item["tag"]: resolve_agave_tag_commit(item["tag"], timeout)
                 for item in items} if items is not None else {})
     return {"releases": body, "tag_commits": commits}
+
+
+def fetch_firedancer_releases(timeout: int = 20) -> bytes | None:
+    return fetch(FIREDANCER_RELEASES_URL, timeout)
+
+
+def fetch_simd_proposal_metadata(timeout: int = 20) -> dict[str, bytes | None]:
+    """Fetch only the watched proposals' raw documents, for frontmatter metadata."""
+    return {
+        slug: fetch(f"{SIMD_REPO_RAW_BASE}/{slug}.md", timeout)
+        for slug in sorted(SIMD_PROPOSAL_WATCH)
+    }
+
+
+_SIMD_FRONTMATTER_TITLE = re.compile(r"^title:\s*(.+?)\s*$", re.MULTILINE)
+_SIMD_FRONTMATTER_STATUS = re.compile(r"^status:\s*(.+?)\s*$", re.MULTILINE)
+
+
+def parse_firedancer_releases(body: bytes | None) -> list[dict[str, Any]] | None:
+    """Same release-item shape as Agave, minus Agave-specific tag resolution.
+
+    tag_commit_sha is deliberately absent: this source does not dereference
+    tags, so no null placeholder is emitted.
+    """
+    parsed = _parse_agave_releases(body)
+    if parsed[0] is None:
+        return None
+    items = []
+    for item in parsed[0]:
+        items.append({
+            "id": item["id"],
+            "title": item["title"],
+            "link": item["link"],
+            "published": item["published"],
+            "author": item.get("author"),
+            "tag": item["tag"],
+            "draft": item["draft"],
+            "prerelease": item["prerelease"],
+            "stable": item["stable"],
+            "release_channel": item["release_channel"],
+        })
+    return items
+
+
+def parse_simd_proposal_metadata(documents: dict[str, bytes | None]) -> list[dict[str, Any]]:
+    """Frontmatter metadata for watched SIMDs. No document text is retained."""
+    items: list[dict[str, Any]] = []
+    for slug in sorted(SIMD_PROPOSAL_WATCH):
+        document = documents.get(slug)
+        link = SIMD_PROPOSAL_WATCH[slug]
+        if not document:
+            items.append({
+                "id": f"simd-watch:{slug}",
+                "identifier": slug,
+                "title": None,
+                "status": None,
+                "link": link,
+                "published": None,
+                "available": False,
+                "reason": "proposal document unreachable or empty",
+            })
+            continue
+        try:
+            text = document.decode("utf-8")
+        except UnicodeDecodeError:
+            items.append({
+                "id": f"simd-watch:{slug}", "identifier": slug, "title": None,
+                "status": None, "link": link, "published": None,
+                "available": False, "reason": "proposal document is not valid UTF-8",
+            })
+            continue
+        title_match = _SIMD_FRONTMATTER_TITLE.search(text)
+        status_match = _SIMD_FRONTMATTER_STATUS.search(text)
+        title = title_match.group(1).strip() if title_match else None
+        status = status_match.group(1).strip() if status_match else None
+        if not title or not status:
+            items.append({
+                "id": f"simd-watch:{slug}", "identifier": slug, "title": title,
+                "status": status, "link": link, "published": None,
+                "available": False,
+                "reason": "proposal frontmatter is missing title or status",
+            })
+            continue
+        items.append({
+            "id": f"simd-watch:{slug}",
+            "identifier": slug,
+            "title": _title(title),
+            "status": status,
+            "link": link,
+            "published": None,
+            "available": True,
+        })
+    return items
 
 
 def summarize_current_status(summary: Any, incidents: Any,
@@ -306,6 +445,8 @@ def _editorial_safe_url(source_id: str, value: Any) -> str | None:
     host = (parsed.hostname or "").lower()
     if source_id == "agave_releases":
         return safe if host == "github.com" and parsed.path.startswith("/anza-xyz/agave/releases/") else None
+    if source_id == "firedancer_releases":
+        return safe if host == "github.com" and parsed.path.startswith("/firedancer-io/firedancer/releases/") else None
     if source_id == "network_status":
         return safe if host in {"status.solana.com", "stspg.io"} else None
     return None
@@ -611,6 +752,21 @@ def summarize_source(name: str, body: Any) -> dict[str, Any]:
     source = SOURCES[name]
     base = source_metadata(name)
     if source.get("format") == "github_releases":
+        if name == "firedancer_releases":
+            # Firedancer uses its own item shape: no tag-commit resolution,
+            # no provenance counts. Unavailable propagates cleanly.
+            items = parse_firedancer_releases(
+                body.get("releases") if isinstance(body, dict) else body,
+            )
+            if items is None:
+                return {**base, "available": False,
+                        "reason": "source unreachable or not parseable in its declared format"}
+            if not items:
+                return {**base, "available": True, "items": [], "item_count": 0,
+                        "reason": "the feed parsed and published no entries"}
+            return {**base, "available": True, "items": items,
+                    "item_count": len(items),
+                    "latest_published": items[0]["published"]}
         release_body = body.get("releases") if isinstance(body, dict) else body
         tag_commits = body.get("tag_commits") if isinstance(body, dict) else None
         items, invalid_count = _parse_agave_releases(release_body, tag_commits)
@@ -623,6 +779,34 @@ def summarize_source(name: str, body: Any) -> dict[str, Any]:
                 "invalid_item_count": invalid_count,
                 "partial": covered != len(items) or invalid_count > 0,
             })
+    elif source.get("format") == "simd_metadata":
+        rows = body.get("documents") if isinstance(body, dict) else None
+        if not isinstance(rows, dict):
+            return {**base, "available": False,
+                    "reason": "SIMD proposal metadata response is invalid",
+                    "items": [], "item_count": 0}
+        parsed = parse_simd_proposal_metadata(rows)
+        # Pipeline contract: an available source's items each need a non-empty
+        # title, an HTTPS link, and (when present) an offset-aware timestamp.
+        # Watch rows that lack readable frontmatter degrade to the source's
+        # reason instead of publishing contract-violating items.
+        items = [item for item in parsed
+                 if item.get("available") is True
+                 and isinstance(item.get("title"), str) and item["title"].strip()
+                 and isinstance(item.get("link"), str) and item["link"].startswith("https://")]
+        return {
+            **base,
+            "available": bool(items),
+            "reason": (
+                None if items
+                else "no watched proposal produced readable frontmatter metadata"
+            ),
+            "items": items,
+            "item_count": len(items),
+            "watched_proposal_count": len(SIMD_PROPOSAL_WATCH),
+            "metadata_item_count": len(items),
+            "basis": "proposal frontmatter metadata only; document text is not republished",
+        }
     elif source.get("format") in {"solana_content_posts", "solana_content_upgrades"}:
         if not isinstance(body, dict) or body.get("available") is not True:
             reason = body.get("reason") if isinstance(body, dict) else None
@@ -673,8 +857,13 @@ def build_news(
                                  "requires_api_key": False}
     available = (any(source["available"] for source in sources.values())
                  or current.get("available") is True or current.get("partial") is True)
-    complete = (all(source["available"] and not source.get("partial")
-                    for source in sources.values())
+    # `complete` follows the pipeline's four-source contract. Optional sources
+    # degrade visibly per-source (freshness rows, section states) but must
+    # never flip the section-level partial flag, because that would turn an
+    # optional-source outage into a publication-gate failure.
+    core_sources = ("agave_releases", "solana_news", "simd_proposals", "network_status")
+    complete = (all(sources[name]["available"] and not sources[name].get("partial")
+                    for name in core_sources)
                 and current.get("available") is True and current.get("partial") is not True)
     editorial_items = normalize_editorial_items(sources, current)
     return {
