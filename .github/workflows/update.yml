@@ -96,7 +96,10 @@ jobs:
           REPORT_RPC_ENDPOINT: ${{ secrets.REPORT_RPC_ENDPOINT }}
           COINGECKO_DEMO_API_KEY: ${{ secrets.COINGECKO_DEMO_API_KEY }}
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
-        run: python3 collect.py --with-price --endpoint "$REPORT_RPC_ENDPOINT"
+          DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}
+          DUNE_QUERY_ID: ${{ vars.DUNE_QUERY_ID }}
+          DUNE_REFRESH_HOURS: ${{ vars.DUNE_REFRESH_HOURS || '24' }}
+        run: python3 collect.py --with-price --with-dune --endpoint "$REPORT_RPC_ENDPOINT"
 
       - id: publication_timestamp
         name: Capture publication timestamp

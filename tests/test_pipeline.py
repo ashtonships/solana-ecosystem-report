@@ -2384,9 +2384,13 @@ class TestWorkflowGateCoverage(unittest.TestCase):
             update,
         )
         self.assertIn(
-            'python3 collect.py --with-price --endpoint "$REPORT_RPC_ENDPOINT"',
+            'python3 collect.py --with-price --with-dune --endpoint "$REPORT_RPC_ENDPOINT"',
             update,
         )
+        # Dune rides on the repo variable query ID + refresh window; the key
+        # stays a secret. The adapter is opt-in per run and degrades alone.
+        self.assertIn("DUNE_QUERY_ID: ${{ vars.DUNE_QUERY_ID }}", update)
+        self.assertIn("DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}", update)
         # The Demo key rides only in the environment and as a request header;
         # it must never appear in a URL or a command line.
         self.assertIn(
