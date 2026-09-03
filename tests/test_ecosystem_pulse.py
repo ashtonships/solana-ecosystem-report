@@ -87,7 +87,9 @@ class EcosystemPulseTests(unittest.TestCase):
         # all-available fixture shows its explicit pending state.
         self.assertIn("Application revenue", html)
         self.assertIn("provider range pending Solana Data adoption", html)
-        self.assertNotIn(">Unavailable</div>", html)
+        # The Pulse's Dune card is excluded: the fixture has no dune section,
+        # and the sixth card here is the tokenized-equities supply card.
+        self.assertNotIn(">Unavailable</div>", html.split("DEX volume")[0])
         # Never a zero value and never a bare dash.
         self.assertNotIn("value\">0</div>", html)
         self.assertNotIn("value\">—</div>", html)
