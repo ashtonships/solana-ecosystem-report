@@ -376,7 +376,7 @@ PUBLIC_OBJECT_FIELDS = {
     ),
     "news.sources": frozenset(
         "agave_releases solana_news simd_proposals network_status "
-        "firedancer_releases simd_proposal_metadata".split()
+        "firedancer_releases simd_proposal_metadata x_announcements".split()
     ),
     "news.sources.agave_releases": frozenset(
         "label publisher why url requires_api_key tag_commit_covered_count "
@@ -436,6 +436,14 @@ PUBLIC_OBJECT_FIELDS = {
     ),
     "news.sources.simd_proposal_metadata.items[]": frozenset(
         "id identifier title status link published available reason".split()
+    ),
+    "news.sources.x_announcements": frozenset(
+        "label publisher why url requires_api_key available reason items "
+        "item_count account_allowlist max_posts_per_run partial "
+        "invalid_item_count basis".split()
+    ),
+    "news.sources.x_announcements.items[]": frozenset(
+        "id author text published link like_count retweet_count".split()
     ),
     "news.current_status": frozenset(
         "available partial status_available incidents_available incident_response_available "
@@ -652,6 +660,7 @@ PUBLIC_LIST_PATHS = frozenset({
     "news.sources.simd_proposals.items[].simd_references",
     "news.sources.firedancer_releases.items",
     "news.sources.simd_proposal_metadata.items",
+    "news.sources.x_announcements.items",
     "news.sources.network_status.items", "news.current_status.incidents",
     "news.current_status.incident_history", "pipeline.stages",
     "release.update_status.history.gaps", "anomalies.findings", "anomalies.conditions",
@@ -10137,6 +10146,7 @@ CSS = r"""
     .prototype-page--about .development-source-dot--status { background:var(--prototype-secondary); }
     .prototype-page--about .development-source-dot--agave { background:var(--prototype-accent, var(--super-purple-fill)); }
     .prototype-page--about .development-source-dot--firedancer { background:var(--prototype-warning, var(--super-purple-fill)); }
+    .prototype-page--about .development-source-dot--xnews { background:var(--prototype-info, var(--super-purple-fill)); }
     .prototype-page--about .development-events {
       margin:0;
       padding:0;
@@ -18502,6 +18512,7 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
     lane_specs = (
         ("agave_releases", "agave", "release", "Agave releases"),
         ("firedancer_releases", "firedancer", "release", "Firedancer releases"),
+        ("x_announcements", "xnews", "announcement", "Official X announcements"),
         ("solana_news", "news", "announcement", "Solana News"),
         ("simd_proposals", "simd", "proposal", "SIMD activity"),
         ("simd_proposal_metadata", "simd", "proposal", "SIMD upgrade watch"),
@@ -18690,6 +18701,7 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         "</div></fieldset></div></div>"
         "<div class='development-lane-key' aria-label='Source lanes'><span><i class='development-source-dot--agave'></i>Agave</span>"
         "<span><i class='development-source-dot--firedancer'></i>Firedancer</span>"
+        "<span><i class='development-source-dot--xnews'></i>X</span>"
         "<span><i class='development-source-dot--news'></i>Solana News</span><span><i class='development-source-dot--simd'></i>SIMD</span><span><i class='development-source-dot--status'></i>Status</span></div>"
         f"{stream_body}<p class='development-graph-note'>{graph_note}</p>"
         "<div class='development-filter-empty' hidden>No recorded events match this filter.</div></section>"

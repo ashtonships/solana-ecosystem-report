@@ -38,6 +38,8 @@ import re
 import time
 import urllib.error
 import urllib.request
+
+import xnews
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -92,6 +94,13 @@ EDITORIAL_SOURCE_CONFIG = {
         "publisher": "Firedancer Contributors",
         "note": "Independent validator client release recorded from the official "
                 "Firedancer repository (Apache-2.0).",
+    },
+    "x_announcements": {
+        "category": "announcement",
+        "publisher": "Official ecosystem accounts on X",
+        "note": "Post recorded from an allowlisted official ecosystem account on X. "
+                "Linked text is third-party content; engagement counts are "
+                "provider-reported at collection time.",
     },
     "network_status": {
         "category": "network",
@@ -156,6 +165,16 @@ SOURCES: dict[str, dict[str, str]] = {
         "why": "Lifecycle state for watched upgrades comes from proposal frontmatter "
                "in the official SIMD repository. Document text is not republished.",
     },
+    "x_announcements": {
+        "url": "https://x.com/SolanaFndn",
+        "format": "x_timeline",
+        "label": "Official X announcements",
+        "publisher": "Allowlisted official ecosystem accounts on X",
+        "why": "First-party announcements from the official Solana, Anza, and "
+               "Firedancer accounts. Pay-per-use transport, capped per run; "
+               "posts are recorded with attribution and canonical links. No "
+               "aggregate sentiment score is computed.",
+    },
 }
 
 CURRENT_STATUS_URLS = {
@@ -196,6 +215,7 @@ def fetch_release_sources(timeout: int = 20) -> dict[str, Any]:
         "agave_releases": fetch_agave_releases(timeout),
         "firedancer_releases": fetch_firedancer_releases(timeout),
         "simd_proposal_metadata": fetch_simd_proposal_metadata(timeout),
+        "x_announcements": xnews.collect_x_announcements(timeout),
         "network_status": fetch(SOURCES["network_status"]["url"], timeout),
     }
 
@@ -447,6 +467,9 @@ def _editorial_safe_url(source_id: str, value: Any) -> str | None:
         return safe if host == "github.com" and parsed.path.startswith("/anza-xyz/agave/releases/") else None
     if source_id == "firedancer_releases":
         return safe if host == "github.com" and parsed.path.startswith("/firedancer-io/firedancer/releases/") else None
+    if source_id == "x_announcements":
+        return safe if host == "x.com" and re.fullmatch(
+            r"/[A-Za-z0-9_]{1,15}/status/[0-9]+", parsed.path) else None
     if source_id == "network_status":
         return safe if host in {"status.solana.com", "stspg.io"} else None
     return None
@@ -669,8 +692,18 @@ def normalize_editorial_items(
                 continue
             if source_id == "agave_releases" and source_item.get("draft") is True:
                 continue
+            if source_id == "x_announcements":
+                # X posts have no title; the post excerpt carries the story.
+                # Enforce the excerpt shape here so the editorial item keeps
+                # a non-empty title derived from the recorded text.
+                text = source_item.get("text")
+                if not isinstance(text, str) or not text.strip():
+                    continue
+                excerpt = " ".join(text.strip().split())
+                title = excerpt if len(excerpt) <= MAX_TITLE else excerpt[:MAX_TITLE - 1].rstrip() + "…"
+            else:
+                title = source_item.get("title")
             item_id = source_item.get("id")
-            title = source_item.get("title")
             link = _editorial_safe_url(source_id, source_item.get("link"))
             published = source_item.get("published")
             if (not isinstance(item_id, str) or not item_id
@@ -810,6 +843,30 @@ def summarize_source(name: str, body: Any) -> dict[str, Any]:
             "metadata_item_count": len(items),
             "partial": False,
             "basis": "proposal frontmatter metadata only; document text is not republished",
+        }
+    elif source.get("format") == "x_timeline":
+        rows = body.get("posts") if isinstance(body, dict) else None
+        if not isinstance(rows, list):
+            return {**base, "available": False,
+                    "reason": (body.get("reason") if isinstance(body, dict)
+                               and isinstance(body.get("reason"), str)
+                               else "X announcements response is invalid"),
+                    "items": [], "item_count": 0}
+        items = xnews.parse_announcements(rows)
+        return {
+            **base,
+            "available": bool(items),
+            "reason": (
+                None if items
+                else "no allowlisted posts in the lookback window"
+            ),
+            "items": items,
+            "item_count": len(items),
+            "account_allowlist": list(xnews.X_ACCOUNT_ALLOWLIST),
+            "max_posts_per_run": xnews.MAX_POSTS,
+            "partial": False,
+            "invalid_item_count": 0,
+            "basis": "provider-reported post metadata; no sentiment score computed",
         }
     elif source.get("format") in {"solana_content_posts", "solana_content_upgrades"}:
         if not isinstance(body, dict) or body.get("available") is not True:

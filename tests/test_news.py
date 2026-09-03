@@ -17,6 +17,7 @@ that the ecosystem has been quiet.
 """
 
 import sys
+import os
 import unittest
 import json
 from pathlib import Path
@@ -25,6 +26,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import news  # noqa: E402
+import xnews  # noqa: E402
 
 FEEDS = Path(__file__).resolve().parent.parent / "fixtures" / "feeds"
 
@@ -471,12 +473,13 @@ class TestSourceTable(unittest.TestCase):
         self.assertEqual(
             set(raw),
             {"agave_releases", "network_status",
-             "firedancer_releases", "simd_proposal_metadata"},
+             "firedancer_releases", "simd_proposal_metadata",
+             "x_announcements"},
         )
         self.assertNotIn("solana_news", raw)
         self.assertNotIn("simd_proposals", raw)
-        # network_status is one of the four fetch calls (agave, firedancer,
-        # SIMD metadata, status).
+        # network_status is one of the five fetch calls (agave, firedancer,
+        # SIMD metadata, X announcements, status).
         fetched_urls = [call.args[0] for call in fetch.call_args_list]
         self.assertIn(news.SOURCES["network_status"]["url"], fetched_urls)
         self.assertEqual(len(fetched_urls), 4)
@@ -598,6 +601,77 @@ class TestRightsSafeAdditions(unittest.TestCase):
         # failing too: available stays False, and no exception escapes.
         built = news.build_news({}, None, news.HELD_LICENSED_CONTENT_SOURCES)
         self.assertFalse(built["available"])
+
+
+class TestXAnnouncements(unittest.TestCase):
+    """Allowlisted, capped, dedup-friendly X announcements (pay-per-use)."""
+
+    FIXTURES = Path(__file__).resolve().parent / "fixtures"
+
+    def _timeline_fixture(self):
+        return json.loads((self.FIXTURES / "x-user-timeline.json").read_bytes())
+
+    def test_parse_shapes_and_bounding(self):
+        posts = self._timeline_fixture()["data"]
+        items = xnews.parse_announcements([
+            {**posts[0], "author": "SolanaFndn",
+             "url": "https://x.com/SolanaFndn/status/" + posts[0]["id"]},
+            "junk",
+            {"id": None},
+        ])
+        # Only well-formed posts survive; junk rows are dropped.
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0]["author"], "SolanaFndn")
+        # parse_announcements is a pure shaper: URL enforcement happens at
+        # the editorial layer, so raw passthrough rows may carry link=None.
+        shaped = [item for item in items if item["link"]]
+        self.assertTrue(all(item["link"].startswith("https://x.com/") for item in shaped))
+
+    def test_missing_token_degrades_with_reason(self):
+        with mock.patch.dict(os.environ, {xnews.X_BEARER_TOKEN_ENV: ""}):
+            with self.assertRaises(xnews.XSourceUnavailable):
+                xnews.fetch_announcements(now_unix=1_000_000)
+
+    def test_cap_never_exceeded(self):
+        # MAX_POSTS is the cost ceiling; the fetcher must stop at it.
+        self.assertLessEqual(xnews.MAX_POSTS, 20)
+        self.assertLessEqual(len(xnews.X_ACCOUNT_ALLOWLIST), 6)
+
+    def test_summarize_reports_named_unavailable_states(self):
+        summary = news.summarize_source(
+            "x_announcements", {"available": False,
+                                "reason": "X API rate limit or credit cap reached"},
+        )
+        self.assertFalse(summary["available"])
+        self.assertIn("credit", summary["reason"])
+        # Contract fields required of every available source, present here too:
+        ok = news.summarize_source("x_announcements", {"posts": [
+            {"id": "1", "author": "solana", "text": "hello",
+             "created_at": "2026-09-02T18:00:00.000Z",
+             "url": "https://x.com/solana/status/1",
+             "like_count": 1, "retweet_count": 0},
+        ]})
+        self.assertTrue(ok["available"])
+        self.assertFalse(ok["partial"])
+        self.assertEqual(ok["invalid_item_count"], 0)
+
+    def test_editorial_items_derive_title_from_post_text(self):
+        raw = {
+            "agave_releases": None, "network_status": None,
+            "firedancer_releases": None, "simd_proposal_metadata": {},
+            "x_announcements": {"posts": [
+                {"id": "9", "author": "SolanaFndn",
+                 "text": "  Network upgrade   scheduled  ",
+                 "created_at": "2026-09-02T18:00:00.000Z",
+                 "url": "https://x.com/SolanaFndn/status/9",
+                 "like_count": 3, "retweet_count": 1},
+            ]},
+        }
+        built = news.build_news(raw, None, news.HELD_LICENSED_CONTENT_SOURCES)
+        x_items = [i for i in built["items"] if i["source_id"] == "x_announcements"]
+        self.assertEqual(len(x_items), 1)
+        self.assertEqual(x_items[0]["title"], "Network upgrade scheduled")
+        self.assertTrue(x_items[0]["canonical_url"].startswith("https://x.com/"))
 
 
 if __name__ == "__main__":

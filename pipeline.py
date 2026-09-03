@@ -47,6 +47,11 @@ def editorial_url_matches_source(source_id: Any, value: Any) -> bool:
         return host == "github.com" and parsed.path.startswith("/anza-xyz/agave/releases/")
     if source_id == "firedancer_releases":
         return host == "github.com" and parsed.path.startswith("/firedancer-io/firedancer/releases/")
+    if source_id == "x_announcements":
+        if host != "x.com":
+            return False
+        import re as _re
+        return _re.fullmatch(r"/[A-Za-z0-9_]{1,15}/status/[0-9]+", parsed.path) is not None
     if source_id == "network_status":
         return host in {"status.solana.com", "stspg.io"}
     return False
