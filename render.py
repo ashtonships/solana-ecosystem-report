@@ -18370,13 +18370,20 @@ def project_editorial_supporting(
     for item in candidates:
         source_first.setdefault(str(item.get("source_id") or "unknown"), item)
     selected = sorted(source_first.values(), key=recency, reverse=True)[:3]
+    # Bounded briefing: one story per source plus the most recent others,
+    # capped so the Project feed stays scannable (hero + 3 supporting).
+    # The overflow loop must never grow `selected` beyond the first three
+    # per-source picks when fewer sources exist.
     selected_ids = {item.get("id") for item in selected}
-    for item in candidates:
-        if item.get("id") in selected_ids:
-            continue
-        selected.append(item)
-        selected_ids.add(item.get("id"))
-        if len(selected) == 3:
+    while len(selected) < 3:
+        before = len(selected_ids)
+        for item in candidates:
+            if item.get("id") in selected_ids:
+                continue
+            selected.append(item)
+            selected_ids.add(item.get("id"))
+            break
+        if len(selected_ids) == before:
             break
     return sorted(selected, key=recency, reverse=True)
 
