@@ -33,6 +33,7 @@ import terms as terms_module
 import collect as collect_module
 import delta as delta_module
 import detect
+import cadence
 import facts as facts_module
 import news as news_module
 import pipeline
@@ -139,6 +140,8 @@ VALIDATOR_COMMISSION_BUCKETS = (
 # Explicit recursive publication schema. Unknown input keys are omitted; known
 # object/list paths with the wrong shape fail before any output directory exists.
 PUBLIC_OBJECT_FIELDS = {
+    "collection_schedule": frozenset(cadence.INTERVALS),
+    **{f"collection_schedule.{key}": frozenset("last_attempt_at last_success_at interval_seconds state".split()) for key in cadence.INTERVALS},
     "source": frozenset("endpoint endpoint_identity method requires_api_key".split()),
     "provenance": frozenset("source_revision source_tree_dirty".split()),
     "network": frozenset(
@@ -915,7 +918,7 @@ PUBLIC_ROOT_FIELDS = {
     ),
     9: frozenset(
         "schema_version collected_at provenance source network epoch performance supply inflation "
-        "validators economics activity news growth dune feature_activation pipeline release anomalies delta history upgrades "
+        "validators economics activity news growth dune feature_activation collection_schedule pipeline release anomalies delta history upgrades "
         "observations".split()
     ),
 }
@@ -3378,6 +3381,14 @@ def render_markdown(
         "The default collector uses no third-party Python packages, API keys, or account.",
         "",
     ]
+    schedule_rows = collection_schedule_rows(snapshot)
+    if schedule_rows:
+        lines += ["", "## Refresh schedule and source age", "",
+                  "Public updates are scheduled every fifteen minutes; actual scheduler delivery may be delayed. Network RPC and price refresh each run. Reused source data retains its original successful collection time. Paid-source allowance remains separate.", "",
+                  "| Source | Refresh target | State | Last successful collection |",
+                  "| --- | --- | --- | --- |"]
+        lines += ["| " + " | ".join(markdown_text(cell, table=True) for cell in row) + " |"
+                  for row in schedule_rows]
     return "\n".join(lines)
 
 
@@ -18892,12 +18903,60 @@ def render_source_flow(
 </figure>"""
 
 
+COLLECTION_LABELS = {
+    "activity": "Sampled block activity", "block_production": "Validator production",
+    "feature_activation": "Selected feature accounts", "news": "Releases and news",
+    "growth_providers": "Provider activity", "growth_tokens": "Selected token supplies",
+    "dune": "Dune registered query",
+}
+
+
+def collection_schedule_rows(snapshot: dict[str, Any]) -> list[tuple[str, str, str, str]]:
+    schedule = snapshot.get("collection_schedule")
+    if not isinstance(schedule, dict):
+        return []
+    rows = []
+    for key in cadence.INTERVALS:
+        entry = schedule.get(key, {})
+        interval = {3600: "Hourly", 21600: "Every six hours", 86400: "Daily"}[cadence.INTERVALS[key]]
+        state = {"fresh": "Refreshed", "reused": "Reused", "failed": "Refresh unavailable"}.get(entry.get("state"), "Unavailable")
+        stamp = entry.get("last_success_at")
+        if not stamp:
+            state = "Unavailable"
+        when = timestamp_label(stamp) if stamp else "No successful collection recorded"
+        if stamp:
+            age = snapshot_age_label({"collected_at": stamp}, snapshot)
+            when += " · " + ("at this publication" if age == "selected B" else age)
+        rows.append((COLLECTION_LABELS[key], interval, state, when))
+    return rows
+
+
+def render_collection_schedule(snapshot: dict[str, Any], *, mobile: bool = False) -> str:
+    rows = collection_schedule_rows(snapshot)
+    if not rows:
+        return ""
+    items = "".join(
+        f"<div><dt>{html.escape(label)} · {html.escape(interval)}</dt>"
+        f"<dd>{html.escape(state)}<br>{html.escape(when)}</dd></div>"
+        for label, interval, state, when in rows
+    )
+    classes = "mobile-method-card" if mobile else "method-card panel"
+    return (f"<details class='{classes} chart-disclosure' data-collection-schedule>"
+            "<summary>Refresh schedule and source age</summary>"
+            "<p>Public updates are scheduled every fifteen minutes. Network RPC and price refresh each run; "
+            "slower sources retain their original collection times. Scheduler delays can extend the actual interval.</p>"
+            "<p>Reused means the next source refresh is not due. Refresh unavailable means the last attempt failed; "
+            "retained evidence is not a new observation. Paid sources still require their separate allowance.</p>"
+            f"<dl>{items}</dl></details>")
+
+
 def render_methodology_content(
     snapshot: dict[str, Any],
     observation_indexes: dict[str, dict[tuple[Any, ...], dict[str, Any]]] | None = None,
 ) -> str:
     return (
         render_source_flow(snapshot, observation_indexes)
+        + render_collection_schedule(snapshot)
         + "<div class='methods-grid'>"
         "<section class='method-card panel' aria-labelledby='methods-measured-title'>"
         "<h2 class='eyebrow' id='methods-measured-title'>Measured vs sampled</h2>"
@@ -20908,7 +20967,7 @@ def render_mobile_data(
     )
 
 
-def render_mobile_methods() -> str:
+def render_mobile_methods(snapshot: dict[str, Any] | None = None) -> str:
     stage_copy = {
         "Sources": "Collect independent inputs and keep renderer context outside the snapshot.",
         "Normalize": "Standardize units, keys, and time before comparison.",
@@ -20958,7 +21017,8 @@ def render_mobile_methods() -> str:
         "<p>Detailed chart lines break across missing observations and cadence gaps. The ad-hoc Overview uses recorded-sample spacing and breaks explicit missing values.</p>"
         "<p>Every delta retains its metric key, basis, declared threshold and recorded A/B values. Feed markers record provenance; they do not establish causality.</p>"
         "<p>No aggregate confidence score is recorded. Evidence labels, missingness, coverage and observation times remain separate.</p></details>"
-        "<section class='mobile-method-card mobile-source-trail' aria-labelledby='mobile-source-trail-title'>"
+        + render_collection_schedule(snapshot or {}, mobile=True)
+        + "<section class='mobile-method-card mobile-source-trail' aria-labelledby='mobile-source-trail-title'>"
         "<h2 id='mobile-source-trail-title'>Use the source trail</h2><nav aria-label='Method destinations'>"
         "<a class='is-primary' href='#data'><span>Browse data sources</span><b aria-hidden='true'>›</b></a>"
         "<a href='#history'><span>Compare recorded snapshots</span><b aria-hidden='true'>›</b></a>"
@@ -22871,7 +22931,7 @@ def render_html(
         "<p class='lede'>Clear methods. Measured over sampled. Claims designed to be tested.</p></section>",
         render_methodology_content(snapshot, observation_bindings),
         f"<p class='page-note'>Recorded methods · snapshot {collected} · no live network request</p>",
-        render_mobile_methods(),
+        render_mobile_methods(snapshot),
         "</section>",
 
         # History: prototype selector, A/B controls, comparison chart, markers, and deltas.

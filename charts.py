@@ -182,6 +182,11 @@ def extract(snapshots: list[dict[str, Any]], spec: dict[str, Any]) -> list[dict[
             continue
         fact = facts.fact_from_snapshot(snapshot, spec["key"])
         value = fact["value"] if facts.eligible(fact) else None
+        schedule = snapshot.get("collection_schedule")
+        source_key = facts.collection_source_key(facts.PUBLIC_METRICS[spec["key"]]["path"])
+        clock = schedule.get(source_key) if isinstance(schedule, dict) else None
+        if isinstance(clock, dict) and clock.get("state") != "fresh":
+            value = None  # Re-publication is not a new source observation.
         points.append({
             "t": when,
             "at": str(snapshot.get("collected_at")),

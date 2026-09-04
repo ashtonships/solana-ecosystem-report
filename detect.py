@@ -157,6 +157,17 @@ def _source_eligible(snapshot: dict[str, Any], keys: tuple[str, ...]) -> bool:
 
 def _eligible_value(snapshot: dict[str, Any], keys: tuple[str, ...]) -> bool:
     """A metric observation usable under the shared versioned fact contract."""
+    schedule = snapshot.get("collection_schedule")
+    key = facts.collection_source_key(keys)
+    clock = schedule.get(key) if isinstance(schedule, dict) else None
+    if isinstance(clock, dict):
+        success = _parse_timestamp(clock.get("last_success_at"))
+        publication = _parse_timestamp(snapshot.get("collected_at"))
+        interval = clock.get("interval_seconds")
+        if (clock.get("state") == "failed" or success is None or publication is None
+                or type(interval) is not int
+                or not 0 <= (publication - success).total_seconds() <= interval):
+            return False
     metric_id = next((name for name, spec in facts.METRICS.items()
                       if spec["path"] == keys), None)
     return bool(metric_id and facts.eligible(facts.fact_from_snapshot(snapshot, metric_id)))

@@ -4,7 +4,7 @@ on:
   schedule:
     # Requested cadence. GitHub may delay scheduled runs; the report displays
     # its actual collection timestamp. Paid requests require durable budgets.
-    - cron: "17 * * * *"
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
     inputs:
       mode:

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 
+import cadence
 import dune
 import xnews
 
@@ -28,6 +29,17 @@ def _write_receipt(path: Path, receipt: dict) -> None:
         os.close(directory)
 
 
+def _source_due(root: Path, source_key: str, now: datetime) -> bool:
+    """Read the persisted schedule; invalid or missing cadence cannot authorize spend."""
+    try:
+        snapshot = json.loads((root / 'snapshots/latest.json').read_text())
+    except (OSError, ValueError):
+        return False
+    if not isinstance(snapshot, dict):
+        return False
+    return cadence.source_due(snapshot.get('collection_schedule'), source_key, now)
+
+
 def prepare(root: Path, output: Path, env: dict[str, str],
             now: datetime | None = None) -> dict[str, str]:
     now = now or datetime.now(timezone.utc)
@@ -40,41 +52,47 @@ def prepare(root: Path, output: Path, env: dict[str, str],
     if (env.get('DUNE_PAID_READS_ENABLED') == 'true'
             and env.get('DUNE_API_KEY_PRESENT') == 'true'):
         try:
-            snapshot = json.loads((root / 'snapshots/latest.json').read_text())
-            section = snapshot.get('dune') or {}
-            due = dune.execution_refresh_due(section, now, float(env.get('DUNE_REFRESH_HOURS') or '24'))
-            execution_reserved = False
-            if due and env.get('DUNE_EXECUTION_ENABLED') == 'true':
-                path = root / LEDGERS[0]
-                receipt = dune.reserve_execution_attempt(path, env.get('DUNE_QUERY_ID', ''), token, now)
-                receipt_path = output / 'dune-receipt.json'
-                _write_receipt(receipt_path, receipt)
-                settings.update(DUNE_EXECUTION_ENABLED='true', DUNE_EXECUTION_LEDGER=str(path),
-                                DUNE_EXECUTION_RECEIPT=str(receipt_path))
-                execution_reserved = True
-            read_path = root / LEDGERS[1]
-            read_receipt = dune.reserve_result_reads(
-                read_path, env.get('DUNE_QUERY_ID', ''), token,
-                2 if execution_reserved else 1, now,
-            )
-            read_receipt_path = output / 'dune-result-read-receipt.json'
-            _write_receipt(read_receipt_path, read_receipt)
-            settings.update(
-                DUNE_PAID_READS_ENABLED='true', DUNE_RESULT_READ_LEDGER=str(read_path),
-                DUNE_RESULT_READ_RECEIPT=str(read_receipt_path),
-            )
+            if not _source_due(root, 'dune', now):
+                print('Dune result read not reserved: collection cadence is not due or invalid.')
+            else:
+                snapshot = json.loads((root / 'snapshots/latest.json').read_text())
+                section = snapshot.get('dune') or {}
+                due = dune.execution_refresh_due(section, now, float(env.get('DUNE_REFRESH_HOURS') or '24'))
+                execution_reserved = False
+                if due and env.get('DUNE_EXECUTION_ENABLED') == 'true':
+                    path = root / LEDGERS[0]
+                    receipt = dune.reserve_execution_attempt(path, env.get('DUNE_QUERY_ID', ''), token, now)
+                    receipt_path = output / 'dune-receipt.json'
+                    _write_receipt(receipt_path, receipt)
+                    settings.update(DUNE_EXECUTION_ENABLED='true', DUNE_EXECUTION_LEDGER=str(path),
+                                    DUNE_EXECUTION_RECEIPT=str(receipt_path))
+                    execution_reserved = True
+                read_path = root / LEDGERS[1]
+                read_receipt = dune.reserve_result_reads(
+                    read_path, env.get('DUNE_QUERY_ID', ''), token,
+                    2 if execution_reserved else 1, now,
+                )
+                read_receipt_path = output / 'dune-result-read-receipt.json'
+                _write_receipt(read_receipt_path, read_receipt)
+                settings.update(
+                    DUNE_PAID_READS_ENABLED='true', DUNE_RESULT_READ_LEDGER=str(read_path),
+                    DUNE_RESULT_READ_RECEIPT=str(read_receipt_path),
+                )
         except (OSError, ValueError, TypeError, KeyError):
             settings['DUNE_EXECUTION_ENABLED'] = 'false'
             print('Dune result read not reserved: finite accounting is missing, invalid or spent.')
     if (env.get('X_PAID_READS_ENABLED') == 'true'
             and env.get('X_BEARER_TOKEN_PRESENT') == 'true'):
         try:
-            path = root / LEDGERS[2]
-            receipt = xnews.reserve_post_reads(path, token, now)
-            receipt_path = output / 'x-receipt.json'
-            _write_receipt(receipt_path, receipt)
-            settings.update(X_PAID_READS_ENABLED='true', X_READ_LEDGER=str(path),
-                            X_READ_RECEIPT=str(receipt_path))
+            if not _source_due(root, 'news', now):
+                print('X paid read not reserved: collection cadence is not due or invalid.')
+            else:
+                path = root / LEDGERS[2]
+                receipt = xnews.reserve_post_reads(path, token, now)
+                receipt_path = output / 'x-receipt.json'
+                _write_receipt(receipt_path, receipt)
+                settings.update(X_PAID_READS_ENABLED='true', X_READ_LEDGER=str(path),
+                                X_READ_RECEIPT=str(receipt_path))
         except xnews.XSourceUnavailable as error:
             print(str(error))
         except OSError:

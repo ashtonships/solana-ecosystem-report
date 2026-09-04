@@ -24,6 +24,7 @@ from urllib.parse import urlsplit
 import delta as delta_module
 import detect
 import blocks
+import cadence
 import dune as dune_module
 import feature_accounts as feature_accounts_module
 import facts as facts_module
@@ -1443,6 +1444,35 @@ def semantic_failures(snapshot: dict[str, Any]) -> list[dict[str, str]]:
         if isinstance(schema_version, int) and not isinstance(schema_version, bool)
         else 0
     )
+    if "collection_schedule" in snapshot:
+        schedule = snapshot["collection_schedule"]
+        if not isinstance(schedule, dict) or set(schedule) != set(cadence.INTERVALS):
+            fail("collection_schedule", "must contain exactly the registered source tiers")
+        else:
+            for key, interval in cadence.INTERVALS.items():
+                entry = schedule[key]
+                path = f"collection_schedule.{key}"
+                fields = {"last_attempt_at", "last_success_at", "interval_seconds", "state"}
+                if not isinstance(entry, dict) or set(entry) != fields:
+                    fail(path, "must contain exactly the source clock fields")
+                    continue
+                if type(entry["interval_seconds"]) is not int or entry["interval_seconds"] != interval:
+                    fail(path, "interval must match the registered tier")
+                if not isinstance(entry["state"], str) or entry["state"] not in ("fresh", "reused", "failed"):
+                    fail(path, "unknown collection state")
+                times = {}
+                for field in ("last_attempt_at", "last_success_at"):
+                    value = entry[field]
+                    parsed = _parse_aware_timestamp(value) if value is not None else None
+                    times[field] = parsed
+                    if value is not None and (parsed is None or collected_at is None or parsed > collected_at):
+                        fail(f"{path}.{field}", "must be aware and no later than publication collection")
+                attempt, success = times["last_attempt_at"], times["last_success_at"]
+                if success is not None and (attempt is None or success > attempt):
+                    fail(path, "success cannot follow the last attempt")
+                if entry["state"] == "fresh" and (success is None or success != attempt):
+                    fail(path, "fresh source requires matching successful attempt time")
+
     provenance = snapshot.get("provenance")
     source_revision = provenance.get("source_revision") if isinstance(provenance, dict) else None
     legacy_x_current = source_revision in LEGACY_X_CURRENT_SOURCE_REVISIONS

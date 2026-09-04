@@ -1,6 +1,25 @@
 # Operating the report
 
-The production workflow requests a run hourly at minute 17 UTC. GitHub can queue or delay it. Record the actual `collected_at`, release ID and each source's event time when evaluating freshness. A successful deployment can contain explicitly unavailable optional sources.
+The production workflow requests runs at minutes 7, 22, 37 and 52 of each UTC hour. GitHub can queue or delay it. Record the actual `collected_at`, release ID and each source's event time when evaluating freshness. A successful deployment can contain explicitly unavailable optional sources.
+
+## Source refresh tiers
+
+Core network RPC and approved price collection run on every update. Block activity,
+completed-epoch production and selected feature accounts refresh hourly. Provider
+activity and news refresh every six hours. Selected token supply and Dune refresh
+daily. Endpoint changes force new on-chain collection rather than reusing another
+endpoint's observations.
+
+Each published `collection_schedule` entry retains its last attempt, last success,
+interval and refreshed/reused/failed state. A reused source keeps its original
+observation time; another publication does not create a new independent baseline
+point. A failed refresh does not advance the last-success clock. The Methods page,
+Markdown and JSON expose these source times separately from publication time.
+Token cursor state is not rewritten when the token lane is skipped.
+
+The paid reservation step checks the same source schedule **before** reserving any
+Dune or X allowance. Missing or malformed paid-source schedule entries fail closed.
+A due source still requires every existing account and ledger authorization.
 
 ## Paid sources
 

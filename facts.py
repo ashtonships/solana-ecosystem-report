@@ -1598,8 +1598,40 @@ def _state(
     return "partial" if partial else "current"
 
 
+def collection_source_key(path: tuple[str, ...]) -> str | None:
+    """Map a metric's existing source path to its collection clock."""
+    if path[:2] == ("validators", "block_production"):
+        return "block_production"
+    if path[:1] == ("growth",):
+        return ("growth_providers" if len(path) > 1 and path[1] in
+                ("daily_active_addresses", "daily_fee_payers") else "growth_tokens")
+    if path and path[0] in ("activity", "news", "feature_activation", "dune"):
+        return path[0]
+    return None
+
+
+def source_snapshot(snapshot: dict[str, Any], key: str | None) -> dict[str, Any]:
+    """Keep canonical source facts anchored to their actual successful collection."""
+    schedule = snapshot.get("collection_schedule")
+    entry = schedule.get(key) if isinstance(schedule, dict) else None
+    stamp = entry.get("last_success_at") if isinstance(entry, dict) else None
+    section_path = {
+        "block_production": ("validators", "block_production"),
+        "growth_providers": ("growth", "daily_active_addresses"),
+        "growth_tokens": ("growth", "tokenized_equities"),
+    }.get(key, (key,))
+    section = lookup(snapshot, section_path) if key else None
+    if (isinstance(entry, dict) and entry.get("state") == "failed"
+            and (not isinstance(section, dict) or section.get("available") is not True)):
+        stamp = entry.get("last_attempt_at")
+    if _timestamp(stamp) is None:
+        return snapshot
+    return {**snapshot, "collected_at": stamp}
+
+
 def fact_from_snapshot(snapshot: dict[str, Any], metric_id: str) -> dict[str, Any]:
     spec = PUBLIC_METRICS[metric_id]
+    snapshot = source_snapshot(snapshot, collection_source_key(spec["path"]))
     schema = snapshot.get("schema_version")
     compatible = (
         isinstance(schema, int) and not isinstance(schema, bool) and schema in spec["schemas"]
@@ -2322,10 +2354,10 @@ def snapshot_facts(
         *facts_from_snapshots((snapshot,), metric_ids),
         *performance_sample_facts(snapshot),
         *validator_commission_facts(snapshot),
-        *simd_lifecycle_facts(snapshot),
-        *provider_activity_facts(snapshot),
-        *selected_usd_stablecoin_supply_facts(snapshot),
-        *xstock_labelled_mint_supply_facts(snapshot),
+        *simd_lifecycle_facts(source_snapshot(snapshot, "news")),
+        *provider_activity_facts(source_snapshot(snapshot, "growth_providers")),
+        *selected_usd_stablecoin_supply_facts(source_snapshot(snapshot, "growth_tokens")),
+        *xstock_labelled_mint_supply_facts(source_snapshot(snapshot, "growth_tokens")),
     ])
 
 
@@ -2954,10 +2986,10 @@ def public_observation_records(
         *snapshot_facts(observation_snapshot, PUBLIC_METRICS),
         *performance_sample_detail_facts(observation_snapshot),
         *validator_detail_facts(observation_snapshot),
-        *block_production_detail_facts(observation_snapshot),
+        *block_production_detail_facts(source_snapshot(observation_snapshot, "block_production")),
         *source_availability_facts(observation_snapshot),
-        *feature_activation_detail_facts(observation_snapshot),
-        *dune_activity_facts(observation_snapshot),
+        *feature_activation_detail_facts(source_snapshot(observation_snapshot, "feature_activation")),
+        *dune_activity_facts(source_snapshot(observation_snapshot, "dune")),
     ])
     for fact in public_facts:
         spec = PUBLIC_METRICS.get(fact["metric_id"])
@@ -2965,6 +2997,12 @@ def public_observation_records(
         observed_at = fact.get("event_time")
         observed_slot = fact.get("event_slot")
         collected_at = _timestamp(fact.get("collected_at"))
+        source_key = collection_source_key(tuple(str(metadata.get("source_path", "")).split(".")))
+        schedule = snapshot.get("collection_schedule")
+        clock = schedule.get(source_key) if isinstance(schedule, dict) else None
+        source_time = _timestamp(clock.get("last_success_at")) if isinstance(clock, dict) else None
+        if source_time is not None and fact.get("state") != "unavailable":
+            collected_at = source_time
         required = (
             "name", "population", "denominator", "window", "collection_method",
             "calculation_method", "type", "source_path",
@@ -2988,6 +3026,12 @@ def public_observation_records(
                 unavailable_reason,
             ) if isinstance(value, str) and value
         ]
+        if isinstance(clock, dict) and clock.get("state") != "fresh":
+            caveats.append(
+                "Scheduled reuse; original source collection time retained."
+                if clock.get("state") == "reused" else
+                "Latest source refresh failed; retained evidence is not a fresh observation."
+            )
         if collected_at is None:
             missing.append("collected_at")
         if missing:
@@ -3042,7 +3086,9 @@ def public_observation_records(
             "calculation_method": metadata.get("calculation_method") or "not applicable",
             "freshness": (
                 "unavailable" if status == "unavailable"
-                else _public_fact_freshness(observation_snapshot, fact, spec)
+                else ("reused at original source time" if isinstance(clock, dict) and clock.get("state") == "reused"
+                      else "stale" if isinstance(clock, dict) and clock.get("state") == "failed"
+                      else _public_fact_freshness(observation_snapshot, fact, spec))
             ),
             "status": status,
             "basis": fact.get("basis") or "not applicable",
