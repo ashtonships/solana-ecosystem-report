@@ -41,6 +41,7 @@ class TestRpcCollection(unittest.TestCase):
             collect.source_code_state()
 
         command = run.call_args.args[0]
+        self.assertEqual(command[:3], ["git", "--no-optional-locks", "status"])
         for path in ("snapshots/**", "history/**", "state/**", "preview/**", "dist/**"):
             self.assertIn(f":(exclude){path}", command)
 

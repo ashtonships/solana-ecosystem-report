@@ -84,7 +84,7 @@ def source_code_state(root: Path = Path(__file__).parent) -> dict[str, Any]:
         revision = None
     try:
         status = subprocess.run(
-            ["git", "status", "--porcelain", "--", ".",
+            ["git", "--no-optional-locks", "status", "--porcelain", "--", ".",
              ":(exclude)snapshots/**", ":(exclude)history/**",
              ":(exclude)state/**", ":(exclude)preview/**", ":(exclude)dist/**"],
             cwd=root, check=False,

@@ -303,7 +303,9 @@ class CollectCadenceTests(unittest.TestCase):
         self.assertEqual(raw["block_production"], retained)
         clock = raw["collection_schedule"]["block_production"]
         self.assertEqual(clock["state"], "failed")
-        self.assertEqual(clock["last_success_at"], retained["vote_enrichment_observed_at"])
+        self.assertEqual(clock["last_success_at"], "2026-09-04T19:01:00+00:00")
+        self.assertEqual(raw["block_production"]["vote_enrichment_observed_at"],
+                         "2026-09-04T19:00:00+00:00")
 
     def test_failed_due_refresh_retains_complete_prior_without_marking_success(self):
         retained = complete_production()
@@ -345,7 +347,9 @@ class CollectCadenceTests(unittest.TestCase):
         self.assertEqual(raw["block_production"], retained)
         clock = raw["collection_schedule"]["block_production"]
         self.assertEqual(clock["state"], "failed")
-        self.assertEqual(clock["last_success_at"], retained["vote_enrichment_observed_at"])
+        self.assertEqual(clock["last_success_at"], "2026-09-04T19:01:00+00:00")
+        self.assertEqual(raw["block_production"]["vote_enrichment_observed_at"],
+                         "2026-09-04T19:00:00+00:00")
 
     def test_production_fallback_rejects_new_epoch_endpoint_and_overage(self):
         cases = (
