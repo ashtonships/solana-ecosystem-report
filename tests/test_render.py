@@ -1342,6 +1342,7 @@ class TestHtml(unittest.TestCase):
             ],
         })
         workbench = render.render_validator_workbench(snapshot, "desktop")
+        mobile_workbench = render.render_validator_workbench(snapshot, "mobile")
         self.assertIn("data-validator-workbench", workbench)
         self.assertIn("Top validator concentration", workbench)
         self.assertIn(
@@ -1356,7 +1357,8 @@ class TestHtml(unittest.TestCase):
         self.assertIn("439,909,908", workbench)
         self.assertIn("Delinquent", workbench)
         self.assertIn("class='validator-bar__fill'", workbench)
-        self.assertIn("class='validator-mobile-row'", workbench)
+        self.assertNotIn("class='validator-mobile-row'", workbench)
+        self.assertIn("class='validator-mobile-row'", mobile_workbench)
         self.assertIn("<strong>390.0M SOL</strong>", workbench)
         self.assertIn("<strong>5%</strong>", workbench)
         self.assertIn(".mobile-data-workbench .validator-mobile-row {", render.CSS)
@@ -1425,6 +1427,10 @@ class TestHtml(unittest.TestCase):
                 self.assertIn(f"data-validator-component='{component}'", surface)
         self.assertIn("aria-labelledby='desktop-validator-concentration-title desktop-validator-concentration-desc'", desktop)
         self.assertIn("aria-labelledby='mobile-validator-concentration-title mobile-validator-concentration-desc'", mobile)
+        self.assertEqual(desktop.count("<tr data-page-row='desktop'>"), 100)
+        self.assertEqual(mobile.count("class='validator-mobile-row' data-page-row='mobile'"), 100)
+        self.assertIn("Showing 100 of 678 identities", desktop)
+        self.assertIn("Download all exact identity rows", mobile)
         self.assertEqual(
             {
                 metric
@@ -1640,6 +1646,7 @@ class TestHtml(unittest.TestCase):
             }],
         }
         workbench = render.render_validator_workbench(snapshot, "desktop")
+        mobile_workbench = render.render_validator_workbench(snapshot, "mobile")
         catalog = render.render_data_catalog(snapshot, None, None, [])
 
         self.assertEqual(workbench.count("data-pagination data-page-size='10' data-mobile-page-size='10'"), 1)
@@ -1647,9 +1654,11 @@ class TestHtml(unittest.TestCase):
         self.assertIn("aria-label='Ranked validator pages'", workbench)
         self.assertIn("aria-label='Completed-epoch production pages'", workbench)
         self.assertIn("data-validator-row data-page-row='desktop'", workbench)
-        self.assertIn("data-validator-row data-page-row='mobile'", workbench)
         self.assertIn("<tr data-page-row='desktop'>", workbench)
-        self.assertIn("validator-mobile-row' data-page-row='mobile'", workbench)
+        self.assertNotIn("data-page-row='mobile'", workbench)
+        self.assertIn("data-validator-row data-page-row='mobile'", mobile_workbench)
+        self.assertIn("validator-mobile-row' data-page-row='mobile'", mobile_workbench)
+        self.assertNotIn("data-page-row='desktop'", mobile_workbench)
         self.assertNotIn("data-page-row='desktop' hidden", workbench)
         self.assertNotIn("data-page-row='mobile' hidden", workbench)
 
@@ -1957,7 +1966,7 @@ class TestHtml(unittest.TestCase):
         page = render.render_mobile_project(snapshot)
 
         self.assertEqual(stream.count("data-development-date-group"), 2)
-        self.assertIn("<h4>AUG 21</h4>", stream)
+        self.assertIn("<h4>AUG 21, 2026</h4>", stream)
         self.assertIn("<span class='development-event-time'>14:34 UTC</span>", stream)
         self.assertIn("<details class='development-more-filters'><summary>Filters</summary>", stream)
         self.assertIn("id='mobile-development-source-status'", stream)
@@ -1974,7 +1983,7 @@ class TestHtml(unittest.TestCase):
         }
         stream = render.render_development_stream(snapshot, "mobile")
 
-        self.assertIn("<h4>AUG 10</h4>", stream)
+        self.assertIn("<h4>AUG 10, 2026</h4>", stream)
         self.assertIn("<span class='development-event-time'>Created date</span>", stream)
         self.assertNotIn("00:00 UTC", stream)
 
@@ -2572,7 +2581,7 @@ class TestHtml(unittest.TestCase):
         self.assertIn("<path d='m6.8 12.4 3.5 3.3 7.2-7.8'></path>", healthy_page)
         self.assertIn("<span>Healthy</span>", healthy_page)
         self.assertIn(
-            "grid-template-rows:clamp(20px,1.56vw,34px) clamp(44px,3.39vw,74px) clamp(20px,1.56vw,34px);",
+            "grid-template-rows:minmax(clamp(20px,1.56vw,34px),auto) minmax(clamp(44px,3.39vw,74px),auto) auto;",
             render.CSS,
         )
         self.assertIn("flex: 0 0 1em;", render.CSS)
@@ -3046,7 +3055,7 @@ class TestMobileFirstContracts(unittest.TestCase):
             self.assertIn(f"<strong>{label}</strong>", methods)
             self.assertIn(example, methods)
         rules = methods.split("class='mobile-method-rules'", 1)[1].split("</ul>", 1)[0]
-        self.assertEqual(rules.count("<li>"), 4)
+        self.assertEqual(rules.count("<li>"), 5)
         for href, label in (("#data", "Browse data sources"),
                             ("#history", "Compare recorded snapshots"),
                             ("report.md", "Read technical documentation"),
@@ -3397,7 +3406,7 @@ class TestMobileFirstContracts(unittest.TestCase):
         markup = render.render_project_editorial(snapshot, "desktop")
 
         self.assertIn(
-            "project-editorial__art project-editorial__art--hero-release", markup,
+            "project-editorial__art' data-release-art='v4.3.0-beta.2'", markup,
         )
         self.assertIn(
             "project-editorial__card-art project-editorial__art--release", markup,
@@ -4935,14 +4944,14 @@ class TestCarriedForwardValueLabels(unittest.TestCase):
         # Retained fee value stays visible with its adjacent label; the stale
         # price is suppressed rather than shown as current market context.
         self.assertIn("<strong class='mobile-quick-link__value'>5,527 lamports</strong>", mobile)
-        self.assertIn("<small class='mobile-quick-link__meta'>last-known-good</small>", mobile)
+        self.assertIn("<small class='mobile-quick-link__meta'>last-known-good · sample collected Aug 05, 2026 · 09:00 UTC</small>", mobile)
         self.assertIn("<span>SOL price</span><strong>—</strong>", mobile)
 
     def test_mobile_quick_links_keep_retained_fee_provenance_and_natural_height(self):
         mobile = render.render_mobile_overview(
             self.snapshot_with_stale_sources(), None, [], "Recorded snapshot")
         self.assertIn("<strong class='mobile-quick-link__value'>5,527 lamports</strong>", mobile)
-        self.assertIn("<small class='mobile-quick-link__meta'>last-known-good</small>", mobile)
+        self.assertIn("<small class='mobile-quick-link__meta'>last-known-good · sample collected Aug 05, 2026 · 09:00 UTC</small>", mobile)
         self.assertEqual(mobile.count("class='mobile-quick-link__destination'>View data"), 2)
         self.assertNotIn("min-height: 94px", render.CSS)
 
@@ -7286,6 +7295,325 @@ class TestPythonCompatibility(unittest.TestCase):
             text=True,
         )
         self.assertEqual(done.returncode, 0, done.stderr)
+
+
+class TestSeptemberRendererRecovery(unittest.TestCase):
+    def test_scoped_address_range_matches_both_layouts_and_observations(self):
+        def configure(snapshot):
+            snapshot['growth'] = {'available': True, 'daily_active_addresses': {
+                'available': True, 'date': '2026-08-05', 'provider_count': 2,
+                'minimum': 452031, 'maximum': 877460,
+                **render._PROVIDER_BENCHMARK_CONTRACTS['daily_active_addresses'],
+            }}
+        history, observations, indexes = TestPublicObservationBindings.observation_fixture(
+            configure_latest=configure)
+        page = render.render_html(history[-1], history=history, observations=observations)
+        expected_ids = [indexes['summary'][(metric, history[-1]['collected_at'])]['observation_id']
+                        for metric in ('stablecoin_active_address_provider_range_min',
+                                       'stablecoin_active_address_provider_range_max',
+                                       'stablecoin_active_address_provider_count',
+                                       'stablecoin_active_address_provider_date')]
+        for opening, label in (("<li class='metric'", "<span class='metric__label'>"),
+                               ("<div class='mobile-context-item'", '<span>')):
+            match = re.search(re.escape(opening) + r"([^>]*)>" + re.escape(label)
+                              + 'Stablecoin active addresses', page)
+            self.assertIsNotNone(match)
+            self.assertIn(' '.join(expected_ids), match.group(1))
+        self.assertEqual(page.count('daily stablecoin activity, not network-wide DAA'), 2)
+        self.assertIn('<span>452,031</span><span>–877,460</span>', page)
+        self.assertIn('Network-wide daily active addresses', page)
+        invalid = deepcopy(history[-1])
+        invalid['growth']['daily_active_addresses']['scope'] = 'network-wide'
+        self.assertNotIn('452,031', render._header_daa_value(invalid))
+
+    def test_block_collection_and_block_evidence_ages_are_distinct(self):
+        snapshot = TestCarriedForwardValueLabels.snapshot_with_stale_sources()
+        snapshot['collected_at'] = '2026-09-04T16:22:59Z'
+        snapshot['activity']['last_success_at'] = '2026-09-04T12:10:44Z'
+        snapshot['activity']['window'] = {'last_block_time': int(datetime(
+            2026, 9, 3, 23, 32, 15, tzinfo=timezone.utc).timestamp())}
+        label = render.activity_evidence_label(snapshot)
+        self.assertIn('last-known-good', label)
+        self.assertIn('sample collected Sep 04, 2026 · 12:10 UTC', label)
+        self.assertIn('last block Sep 03, 2026 · 23:32 UTC', label)
+        self.assertIn('old', label)
+        page = render.render_html(snapshot)
+        self.assertEqual(page.count(render.html.escape(label)), 2)
+
+    def test_ticker_exposes_one_metric_set_to_assistive_technology(self):
+        from html.parser import HTMLParser
+        class Reader(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.hidden = []
+                self.labels = []
+            def handle_starttag(self, tag, attrs):
+                values = dict(attrs)
+                if tag in ('ul', 'li'):
+                    self.hidden.append(values.get('aria-hidden') == 'true')
+            def handle_endtag(self, tag):
+                if tag in ('ul', 'li'):
+                    self.hidden.pop()
+            def handle_data(self, value):
+                if not any(self.hidden) and value == 'Latest TPS':
+                    self.labels.append(value)
+        ticker = render.render_ticker(load_fixture(), None)
+        reader = Reader()
+        reader.feed(ticker)
+        self.assertEqual(len(reader.labels), 1)
+        self.assertEqual(ticker.count('Latest TPS'), 6)
+
+    def test_release_art_is_exact_tag_pinned_and_embedded_only_when_displayed(self):
+        snapshot = editorial_fixture()
+        snapshot['news']['featured_item_id'] = 'github-release:1'
+        for tag, (path, digest) in render.RELEASE_ART_ASSETS.items():
+            with self.subTest(tag=tag):
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), digest)
+                snapshot['news']['items'][1]['title'] = 'Release ' + tag
+                self.assertEqual(render.used_release_art_tags(snapshot), [tag])
+                page = render.render_html(snapshot)
+                self.assertEqual(page.count('background-image:url("data:image/png;base64,'), 3)
+                for context in ('desktop', 'mobile'):
+                    self.assertIn(f"data-release-art='{tag}'", render.render_project_editorial(snapshot, context))
+                self.assertIn(f"data-release-art='{tag}'", render.render_community_news(snapshot, 'desktop'))
+        for tag in ('v4.3.0-rc.0', 'v4.3.0-beta.10', 'v4.3.0-beta.2-extra'):
+            snapshot['news']['items'][1]['title'] = 'Release ' + tag
+            self.assertEqual(render.used_release_art_tags(snapshot), [])
+            self.assertNotIn('data-release-art=', render.render_project_editorial(snapshot, 'desktop'))
+            self.assertEqual(render.editorial_art_css(snapshot).count('data:image/png'), 0)
+
+    def test_dune_day_label_is_based_on_recorded_execution_time(self):
+        snapshot = load_fixture()
+        snapshot['dune'] = {
+            'available': True, 'query_id': 123,
+            'execution_ended_at': '2026-09-03T23:30:00Z',
+            'aggregates': {'dex_volume_total_latest_usd': 123.0},
+        }
+        for day, expected in (
+            ('2026-09-02', 'completed UTC day'),
+            ('2026-09-03', 'partial UTC day at execution'),
+            ('2026-09-04', 'UTC day completeness unavailable'),
+            (None, 'UTC day completeness unavailable'),
+        ):
+            snapshot['dune']['aggregates']['dex_volume_total_day'] = day
+            pulse = render.render_ecosystem_pulse(snapshot)
+            self.assertIn(expected, pulse)
+            self.assertNotIn('~1 day source lag', pulse)
+
+    def test_dune_xstock_and_transaction_fee_aggregates_project_recursively(self):
+        snapshot = load_fixture()
+        snapshot['schema_version'] = 9
+        snapshot['dune'] = {
+            'available': True, 'aggregation_contract': 'completed-utc-days-v1',
+            'aggregates': {
+                'xstocks_dex_volume_latest_usd': 2500.5,
+                'xstocks_dex_trade_legs': 5.0,
+                'xstocks_dex_priced_trade_legs': 5.0,
+                'xstocks_dex_day': '2026-09-01',
+                'xstocks_dex_volume_available': True,
+                'xstocks_dex_volume_reason': None,
+                'xstocks_registry': dict(render.dune_module.XSTOCK_REGISTRY),
+                'xstocks_basis': 'covered xStocks DEX trade-leg volume; OR-matched rows counted once',
+                'transaction_fees_latest_sol': 500.25,
+                'transaction_fees_day': '2026-09-01',
+                'transaction_fees_basis': 'all transaction fees in gas_solana.fees; not protocol REV or Jito tips',
+            },
+        }
+        projected = render.project_public_envelope(snapshot)['dune']['aggregates']
+        self.assertEqual(projected, snapshot['dune']['aggregates'])
+        snapshot['dune']['aggregates']['xstocks_registry']['secret_marker'] = 'blocked'
+        self.assertNotIn('secret_marker', json.dumps(render.project_public_envelope(snapshot)))
+
+    def test_dune_xstock_and_transaction_fee_cards_keep_scope_and_coverage(self):
+        snapshot = load_fixture()
+        aggregates = {
+            'dex_volume_total_latest_usd': 5000.0, 'dex_volume_total_day': '2026-09-01',
+            'xstocks_dex_volume_latest_usd': 2500.5, 'xstocks_dex_trade_legs': 5.0,
+            'xstocks_dex_priced_trade_legs': 5.0, 'xstocks_dex_day': '2026-09-01',
+            'xstocks_dex_volume_available': True, 'xstocks_dex_volume_reason': None,
+            'xstocks_basis': 'covered xStocks DEX trade-leg volume; OR-matched rows counted once',
+            'transaction_fees_latest_sol': 500.25, 'transaction_fees_day': '2026-09-01',
+            'transaction_fees_basis': 'all transaction fees in gas_solana.fees; not protocol REV or Jito tips',
+        }
+        snapshot['dune'] = {
+            'available': True, 'query_id': 123, 'execution_ended_at': '2026-09-02T01:00:00Z',
+            'aggregation_contract': 'completed-utc-days-v1', 'aggregates': aggregates,
+        }
+        indexes = render.public_observation_indexes(
+            render.facts_module.public_observation_records(snapshot))
+        pulse = render.render_ecosystem_pulse(snapshot, indexes)
+        self.assertIn('Covered xStocks DEX trade-leg volume', pulse)
+        self.assertIn('$2,500.50', pulse)
+        self.assertIn('5 of 5 scoped trade legs priced', pulse)
+        self.assertIn('not all equity or unique-user volume', pulse)
+        self.assertIn('Daily all-transaction fees', pulse)
+        self.assertIn('500.25 SOL', pulse)
+        self.assertIn('not protocol REV or Jito tips', pulse)
+        self.assertGreaterEqual(pulse.count('completed UTC day'), 3)
+        for metric_id in (
+            'dune_daily_dex_volume_usd', 'dune_daily_xstocks_dex_volume_usd',
+            'dune_daily_xstocks_dex_trade_legs',
+            'dune_daily_xstocks_dex_priced_trade_legs',
+            'dune_daily_transaction_fees_sol',
+        ):
+            self.assertIn(
+                indexes['summary'][(metric_id, snapshot['collected_at'])]['observation_id'],
+                pulse,
+            )
+        aggregates['xstocks_dex_priced_trade_legs'] = 4.0
+        pulse = render.render_ecosystem_pulse(snapshot)
+        card = pulse.split('Covered xStocks DEX trade-leg volume', 1)[1].split('</div>', 3)
+        self.assertIn('Unavailable', ''.join(card))
+        self.assertIn('pricing covers 4 of 5 scoped trade legs', pulse)
+
+    def test_dune_nested_lkg_aggregates_project_and_render_as_stale(self):
+        snapshot = load_fixture()
+        snapshot['schema_version'] = 9
+        aggregates = {
+            'xstocks_dex_volume_latest_usd': 100.0, 'xstocks_dex_trade_legs': 2.0,
+            'xstocks_dex_priced_trade_legs': 2.0, 'xstocks_dex_day': '2026-09-01',
+            'xstocks_dex_volume_available': True, 'xstocks_dex_volume_reason': None,
+            'xstocks_registry': dict(render.dune_module.XSTOCK_REGISTRY),
+            'transaction_fees_latest_sol': 20.0, 'transaction_fees_day': '2026-09-01',
+        }
+        snapshot['dune'] = {'available': False, 'reason': 'current query failed',
+                            'last_known_good': {'query_id': '123',
+                                'execution_ended_at': '2026-09-02T01:00:00Z',
+                                'aggregation_contract': 'completed-utc-days-v1',
+                                'aggregates': aggregates}}
+        projected = render.project_public_envelope(snapshot)
+        self.assertEqual(projected['dune']['last_known_good']['aggregates'], aggregates)
+        pulse = render.render_ecosystem_pulse(projected)
+        self.assertIn('$100', pulse)
+        self.assertIn('last-known-good · current query unavailable', pulse)
+
+    def test_sparse_chart_discloses_endpoints_and_sample_age(self):
+        history = recorded_history_fixture(2)
+        chart = render.render_overview_charts(history)
+        self.assertIn('sparse recorded history', chart)
+        self.assertIn('first → last · 2 observations', chart)
+        self.assertIn('sample collected', chart)
+        self.assertIn('last block', chart)
+        self.assertIn('block evidence', chart)
+
+    def test_editorial_titles_decode_entities_and_bound_at_word_boundaries(self):
+        self.assertEqual(render.editorial_title('One &amp; two'), 'One & two')
+        self.assertEqual(render.editorial_title('Ship 🤝 now 🤯'), 'Ship now')
+        title = render.editorial_title('word ' * 80)
+        self.assertLessEqual(len(title), 160)
+        self.assertTrue(title.endswith('word…'))
+
+    def test_x_archive_is_unavailable_labeled_and_not_promoted_to_briefing(self):
+        snapshot = editorial_fixture()
+        snapshot['schema_version'] = 9
+        archive = {'observed_at': '2026-08-04T12:00:00Z',
+                   'latest_published': '2026-08-03T12:00:00Z',
+                   'items': [{'id': '123', 'title': 'Archived announcement',
+                              'published': '2026-08-03T12:00:00Z',
+                              'link': 'https://x.com/solana/status/123'}]}
+        snapshot['news']['sources'] = {'x_announcements': {
+            'available': False, 'items': [], 'last_known_good': archive}}
+        projected = render.project_public_envelope(snapshot)
+        self.assertEqual(projected['news']['sources']['x_announcements']['last_known_good'], archive)
+        for context in ('desktop', 'mobile'):
+            stream = render.render_development_stream(projected, context)
+            self.assertIn("data-development-status='archived'", stream)
+            self.assertIn('Archived · last successful collection Aug 04, 2026 · 12:00 UTC', stream)
+            self.assertIn('Unavailable in this snapshot · archived announcements retained', stream)
+            self.assertNotIn('Archived announcement', render.render_project_editorial(projected, context))
+        for target in (archive, archive['items'][0]):
+            target['secret_marker'] = 'blocked'
+            self.assertNotIn('secret_marker', json.dumps(render.project_public_envelope(snapshot)))
+            del target['secret_marker']
+
+    def test_requirement_guide_is_collapsed_bound_and_keeps_scope_gaps(self):
+        def configure(snapshot):
+            snapshot['growth'] = {'available': True, 'daily_active_addresses': {
+                'available': True, 'date': '2026-08-05', 'provider_count': 2,
+                'minimum': 100, 'maximum': 200,
+                **render._PROVIDER_BENCHMARK_CONTRACTS['daily_active_addresses'],
+            }}
+            snapshot['activity']['stale'] = True
+            snapshot['activity']['source_state'] = 'last_known_good'
+        history, observations, indexes = TestPublicObservationBindings.observation_fixture(configure_latest=configure)
+        for context in ('desktop', 'mobile'):
+            guide = render.render_report_coverage(history[-1], None, None, context, indexes)
+            self.assertEqual(guide.count('data-requirement='), 17)
+            self.assertNotIn(' open', guide.split('>', 1)[0])
+            def row(identifier):
+                return guide.split(f"data-requirement='{identifier}'", 1)[1].split('</tr>', 1)[0]
+            self.assertIn("class='coverage-state'>Partial", row('R16'))
+            self.assertIn('different populations', row('R16'))
+            self.assertIn("class='coverage-state'>Unavailable", row('R15'))
+            self.assertIn("class='coverage-state'>Stale", row('R14'))
+            self.assertIn("class='coverage-state'>Unavailable", row('R07'))
+            expected = indexes['summary'][('network_wide_daily_active_addresses', history[-1]['collected_at'])]['observation_id']
+            self.assertIn(expected, row('R16'))
+            self.assertIn(f"href='#{context}-people-markets'", row('R16'))
+            self.assertIn('not a completion score', guide)
+
+    def test_feature_activation_projection_and_display_preserve_absent_vs_pending(self):
+        snapshot = load_fixture()
+        snapshot['schema_version'] = 9
+        snapshot['feature_activation'] = {
+            'available': True, 'observed_at': '2026-09-04T12:00:00Z',
+            'coverage_complete': True, 'coverage_numerator': 3, 'coverage_denominator': 3,
+            'activated_feature_count': 1,
+            'source': {'method': 'getMultipleAccounts', 'commitment': 'finalized', 'rpc_context_slot': 150},
+            'metadata': {'source_url': 'https://github.com/anza-xyz/agave/blob/pinned/feature-set/src/lib.rs'},
+            'features': [
+                {'key': 'active', 'title': 'Active feature', 'state': 'activated', 'address': 'abc', 'activated_at_slot': 120},
+                {'key': 'pending', 'title': 'Pending feature', 'state': 'pending', 'address': 'def', 'activated_at_slot': None},
+                {'key': 'absent', 'title': 'Absent feature', 'state': 'account_absent', 'address': 'ghi', 'activated_at_slot': None},
+            ],
+        }
+        projected = render.project_public_envelope(snapshot)
+        self.assertEqual(projected['feature_activation'], snapshot['feature_activation'])
+        for context in ('desktop', 'mobile'):
+            markup = render.render_feature_activation(projected, context)
+            self.assertIn('Activation slot 120', markup)
+            self.assertIn('Finalized RPC context slot 150', markup)
+            self.assertIn('>Pending</strong>', markup)
+            self.assertIn('>Account absent</strong>', markup)
+            self.assertIn('does not establish activation history', markup)
+            self.assertNotIn('not activated', markup)
+        for target in (snapshot['feature_activation'], snapshot['feature_activation']['source'],
+                       snapshot['feature_activation']['metadata'], snapshot['feature_activation']['features'][0]):
+            target['secret_marker'] = 'omit'
+            self.assertNotIn('secret_marker', json.dumps(render.project_public_envelope(snapshot)))
+            del target['secret_marker']
+
+    def test_desktop_history_selector_is_bounded_native_and_keeps_latest_pair_without_js(self):
+        history, observations, indexes = TestPublicObservationBindings.observation_fixture(count=5)
+        comparison = render.bind_public_comparison(pipeline.recheck(history), indexes)
+        workspace = render.render_history_workspace(history, None, comparison, indexes)
+        self.assertEqual(workspace.count('data-desktop-history-panel='), 10)
+        controls = workspace.split('</div>', 1)[0]
+        self.assertIn('<select data-desktop-history-a', controls)
+        self.assertIn('<select data-desktop-history-b', controls)
+        self.assertEqual(controls.count('<option'), 10)
+        self.assertIn("data-desktop-history-panel='3:4'>", workspace)
+        self.assertNotIn("data-desktop-history-panel='3:4' hidden", workspace)
+        self.assertIn("data-desktop-history-panel='0:1' hidden", workspace)
+        self.assertIn('const updateDesktopHistory', render.MOBILE_CONTROLLER)
+        self.assertIn('a >= b', render.MOBILE_CONTROLLER)
+        self.assertIn('option.disabled = Number(option.value) >= b', render.MOBILE_CONTROLLER)
+        self.assertIn('option.disabled = Number(option.value) <= a', render.MOBILE_CONTROLLER)
+        self.assertIn('Older observations remain in report.json', workspace)
+
+    def test_chronology_years_source_date_and_utc_are_unambiguous(self):
+        snapshot = editorial_fixture()
+        snapshot['news']['sources'] = {'x_announcements': {
+            'available': True, 'items': [
+                {'title': 'Older entry', 'published': '2022-08-05T12:00:00Z'},
+                {'title': 'Newer entry', 'published': '2024-08-05T12:00:00Z'},
+            ]}}
+        stream = render.render_development_stream(snapshot, 'mobile')
+        self.assertIn('<h4>AUG 05, 2022</h4>', stream)
+        self.assertIn('<h4>AUG 05, 2024</h4>', stream)
+        self.assertIn('Newest entry Aug 05, 2024 · 12:00 UTC', stream)
+        self.assertIn("value='xnews'", stream)
+        self.assertNotIn('UTC · UTC', render.render_project_editorial(snapshot, 'desktop'))
 
 
 if __name__ == "__main__":

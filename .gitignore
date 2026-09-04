@@ -15,8 +15,8 @@ dist/
 # means `python3 detect.py` works immediately after clone, which is what the
 # brief means by another operator replicating the setup in an evening.
 #
-# They are ~4KB each. If the directory ever grows unreasonably, prune old
-# ones rather than ignoring the directory.
+# Evidence is append-only. Reduce future payloads through a reviewed schema
+# change; never prune committed snapshots to make the checkout smaller.
 
 # Local editor / OS noise
 .DS_Store

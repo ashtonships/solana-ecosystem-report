@@ -16,8 +16,11 @@ Two properties carry most of the weight here:
   up to a day is exactly the mistake being tested against.
 """
 
+import io
+import json
 import sys
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest import mock
 
@@ -66,6 +69,80 @@ def block(transactions, block_time=1_785_928_251, fee_reward=None):
                        [{"commission": None, "lamports": fee_reward, "postBalance": 1,
                          "pubkey": "leader1", "rewardType": "Fee"}])
     return body
+
+
+class TestRpcBudget(unittest.TestCase):
+    def test_retry_after_is_respected_inside_the_original_timeout(self):
+        clock = [0.0]
+        delays = []
+
+        def sleep(delay):
+            delays.append(delay)
+            clock[0] += delay
+
+        throttled = urllib.error.HTTPError("https://rpc.example", 429, "limited",
+                                           {"Retry-After": "2"}, None)
+        response = io.BytesIO(json.dumps({"result": 123}).encode())
+        with mock.patch("blocks.time.monotonic", side_effect=lambda: clock[0]), \
+             mock.patch("blocks.time.sleep", side_effect=sleep), \
+             mock.patch("blocks.urllib.request.urlopen", side_effect=[throttled, response]) as fetch:
+            result = blocks.call("getSlot", [], "https://rpc.example", timeout=10)
+        self.assertEqual(result, 123)
+        self.assertEqual(delays, [2])
+        self.assertEqual([call.kwargs["timeout"] for call in fetch.call_args_list], [10, 8])
+
+    def test_permanent_failure_and_retry_beyond_deadline_do_not_repeat(self):
+        for status, headers in ((403, {}), (429, {"Retry-After": "15"})):
+            with self.subTest(status=status), \
+                 self.assertLogs("blocks", level="WARNING"), \
+                 mock.patch("blocks.time.monotonic", return_value=0), \
+                 mock.patch("blocks.time.sleep") as sleep, \
+                 mock.patch("blocks.urllib.request.urlopen", side_effect=urllib.error.HTTPError(
+                     "https://rpc.example", status, "failed", headers, None,
+                 )) as fetch:
+                self.assertIsNone(blocks.call("getSlot", [], "https://rpc.example", timeout=10))
+                self.assertEqual(fetch.call_count, 1)
+                sleep.assert_not_called()
+
+    def test_failure_log_does_not_include_endpoint_or_provider_message(self):
+        secret_endpoint = "https://rpc.example/private-token?api-key=secret"
+        error = urllib.error.HTTPError(secret_endpoint, 403, "private provider message", {}, None)
+        with mock.patch("blocks.urllib.request.urlopen", side_effect=error), \
+             self.assertLogs("blocks", level="WARNING") as logs:
+            self.assertIsNone(blocks.call("getSlot", [], secret_endpoint))
+        self.assertEqual(logs.output, ["WARNING:blocks:RPC getSlot failed: HTTP 403"])
+
+    def test_skipped_slot_attempts_share_one_timeout(self):
+        clock = [0.0]
+
+        def failed_call(method, params, endpoint, timeout):
+            clock[0] += min(4, timeout)
+            return None
+
+        with mock.patch("blocks.time.monotonic", side_effect=lambda: clock[0]), \
+             mock.patch("blocks.call", side_effect=failed_call) as fetch:
+            self.assertIsNone(blocks.fetch_block(100, "https://rpc.example", timeout=5))
+        self.assertEqual([call.args[3] for call in fetch.call_args_list], [5, 1])
+        self.assertEqual(clock[0], 5)
+
+    def test_truncated_collection_keeps_the_newest_finalized_evidence(self):
+        clock = [0.0]
+        head = 1_000_000
+
+        def fetched(slot, endpoint, timeout):
+            clock[0] += timeout
+            return slot, block([transaction(9_000, [account("alice", signer=True)])])
+
+        with mock.patch("blocks.time.monotonic", side_effect=lambda: clock[0]), \
+             mock.patch("blocks.fetch_head", return_value=head), \
+             mock.patch("blocks.fetch_production_rate", return_value=1.0), \
+             mock.patch("blocks.fetch_block", side_effect=fetched) as fetch:
+            result = blocks.collect_activity("https://rpc.example", samples=16, budget_seconds=5)
+        fetch.assert_called_once_with(head - blocks.FINALITY_LAG_SLOTS, "https://rpc.example", 5)
+        self.assertEqual(result["window"]["blocks_sampled"], 1)
+        self.assertEqual(result["window"]["last_slot"], head - blocks.FINALITY_LAG_SLOTS)
+        self.assertTrue(result["window"]["truncated"])
+        self.assertIsNone(result["rev"]["sample_mean_estimate_sol"])
 
 
 class TestCompletedEpochRange(unittest.TestCase):
@@ -159,6 +236,22 @@ class TestBlockProductionRequest(unittest.TestCase):
             "https://rpc.example",
             17,
         )
+
+    def test_transient_chunk_failure_recovers_with_exact_coverage(self):
+        epoch_range = {"available": True, "epoch": 699, "first_slot": 100,
+                       "last_slot": 103, "leader_slots": 4}
+        responses = [
+            urllib.error.HTTPError("https://rpc.example", 503, "unavailable", {}, None),
+            io.BytesIO(json.dumps({"result": self.response(100, 103)}).encode()),
+        ]
+        with mock.patch("blocks.urllib.request.urlopen", side_effect=responses) as fetch, \
+             mock.patch("blocks.time.sleep"):
+            result = blocks.fetch_block_production(epoch_range, "https://rpc.example")
+        self.assertEqual(fetch.call_count, 2)
+        self.assertEqual(result["collection"]["coverage_numerator_slots"], 4)
+        self.assertEqual(result["collection"]["coverage_denominator_slots"], 4)
+        self.assertTrue(result["collection"]["coverage_complete"])
+        self.assertEqual(result["value"]["byIdentity"], {"node-A": [4, 4]})
 
     @mock.patch("blocks.call")
     def test_aggregates_a_completed_epoch_from_exact_contiguous_chunks(self, rpc_call):
@@ -820,6 +913,17 @@ class TestBuildActivity(unittest.TestCase):
 
     def test_the_endpoint_is_recorded_for_reproducibility(self):
         self.assertEqual(self.activity()["source"]["endpoint"], "https://rpc.example")
+
+    def test_partial_sample_estimate_uses_the_observed_slot_span(self):
+        summaries = [blocks.summarize_block(block([
+            transaction(1_000_000, [account("alice", signer=True)]),
+        ], block_time=1_785_800_000 + offset), slot=100 + offset)
+            for offset in (0, 100)]
+        result = blocks.build_activity(summaries, "https://rpc.example", production_rate=1.0,
+                                       samples_requested=16, truncated=True)
+        self.assertEqual(result["rev"]["estimated_blocks_in_window"], 100)
+        self.assertEqual(result["rev"]["estimate_window_seconds"], 100)
+        self.assertEqual(result["rev"]["sample_mean_estimate_sol"], 0.1)
 
 
 if __name__ == "__main__":

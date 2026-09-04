@@ -15,6 +15,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import collect
+import dune
 import growth
 import news
 import pipeline
@@ -921,6 +922,54 @@ class TestPublishGate(unittest.TestCase):
 
     def test_semantically_valid_nested_candidate_passes(self):
         result = self.gate_result(semantic_candidate())
+        self.assertTrue(result["publishable"], result)
+
+    def test_dune_transaction_fees_only_passes_the_full_publish_gate(self):
+        rows = [{
+            "metric_id": "daily_transaction_fees_sol", "day": "2026-08-23",
+            "dimension": None, "value": 400.5, "unit": "sol", "sample_count": 100,
+        }]
+        section = dune._success_section(
+            "8590950", "https://dune.com/queries/8590950", dune.SOURCE_URL,
+            {
+                "state": "QUERY_STATE_COMPLETED", "execution_id": "fees-only",
+                "result": {
+                    "execution_started_at": "2026-08-24T11:58:00+00:00",
+                    "execution_ended_at": "2026-08-24T11:59:00+00:00",
+                    "row_count": 1, "datapoint_count": 6, "rows": rows,
+                },
+            },
+            "fresh", REFERENCE_TIME,
+        )
+        result = self.gate_result(semantic_candidate(dune=section))
+        self.assertTrue(result["publishable"], result)
+
+    def test_dune_xstock_counts_only_passes_the_full_publish_gate(self):
+        rows = [
+            {
+                "metric_id": "daily_xstocks_dex_trade_legs", "day": "2026-08-23",
+                "dimension": dune.XSTOCK_DIMENSION, "value": 2,
+                "unit": "trade_legs", "sample_count": 2,
+            },
+            {
+                "metric_id": "daily_xstocks_dex_priced_trade_legs", "day": "2026-08-23",
+                "dimension": dune.XSTOCK_DIMENSION, "value": 1,
+                "unit": "trade_legs", "sample_count": 2,
+            },
+        ]
+        section = dune._success_section(
+            "8590950", "https://dune.com/queries/8590950", dune.SOURCE_URL,
+            {
+                "state": "QUERY_STATE_COMPLETED", "execution_id": "xstocks-counts-only",
+                "result": {
+                    "execution_started_at": "2026-08-24T11:58:00+00:00",
+                    "execution_ended_at": "2026-08-24T11:59:00+00:00",
+                    "row_count": 2, "datapoint_count": 12, "rows": rows,
+                },
+            },
+            "fresh", REFERENCE_TIME,
+        )
+        result = self.gate_result(semantic_candidate(dune=section))
         self.assertTrue(result["publishable"], result)
 
     def test_release_held_economics_fail_closed_outside_private_dry_run(self):
@@ -1936,6 +1985,51 @@ class TestPublishGate(unittest.TestCase):
                 result = self.gate_result(broken)
                 self.assertFalse(result["publishable"], result)
                 self.assertIn("semantic", self.failure_checks(result))
+
+    def test_schema9_accepts_only_pinned_legacy_x_projection(self):
+        candidate = semantic_candidate()
+        candidate["schema_version"] = 9
+        candidate["provenance"]["source_revision"] = next(
+            iter(pipeline.LEGACY_X_CURRENT_SOURCE_REVISIONS)
+        )
+        x_source = {
+            "available": True,
+            "requires_api_key": False,
+            "partial": False,
+            "invalid_item_count": 0,
+            "item_count": 1,
+            "account_allowlist": list(news.xnews.X_ACCOUNT_ALLOWLIST),
+            "max_posts_per_run": news.xnews.MAX_POSTS,
+            "items": [{
+                "id": "123456789",
+                "author": "solana",
+                "text": "Recorded announcement https://t.co/example",
+                "title": "Recorded announcement https://t.co/example",
+                "published": "2026-08-24T10:00:00Z",
+                "link": "https://x.com/solana/status/123456789",
+                "like_count": 1,
+                "retweet_count": 2,
+            }],
+        }
+        candidate["news"]["sources"]["x_announcements"] = x_source
+        candidate["news"]["items"] = news.normalize_editorial_items(
+            candidate["news"]["sources"], candidate["news"]["current_status"],
+            legacy_x_titles=True,
+        )
+        for item in candidate["news"]["items"]:
+            item["recorded_at"] = candidate["collected_at"]
+        candidate["news"]["featured_item_id"] = news.featured_editorial_item_id(
+            candidate["news"]["items"],
+        )
+        self.assertTrue(self.gate_result(candidate)["publishable"])
+
+        candidate["provenance"]["source_revision"] = "c" * 40
+        result = self.gate_result(candidate)
+        self.assertFalse(result["publishable"])
+        details = [failure["detail"] for failure in result["failures"]]
+        self.assertTrue(any("requires_api_key" in detail for detail in details))
+        self.assertTrue(any("latest_published" in detail for detail in details))
+        self.assertTrue(any("editorial projection" in detail for detail in details))
 
         empty = copy.deepcopy(candidate)
         empty["news"]["items"] = []

@@ -36,6 +36,7 @@ from typing import Any
 import blocks
 import economics
 import facts
+import feature_accounts
 import dune as dune_module
 import growth as growth_module
 import news as news_module
@@ -506,6 +507,7 @@ def build_snapshot(
     growth: dict[str, Any] | None = None,
     dune: dict[str, Any] | None = None,
     provenance: dict[str, Any] | None = None,
+    feature_activation: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the machine-readable snapshot. Pure — no network, no clock."""
     health = indexed.get("getHealth")
@@ -632,6 +634,7 @@ def build_snapshot(
         # 'dune' is recorded only when explicitly collected (with_dune=True);
         # default snapshots keep their exact prior shape.
         **({"dune": dune} if dune is not None else {}),
+        **({"feature_activation": feature_activation} if feature_activation is not None else {}),
     }
 
 
@@ -699,28 +702,40 @@ def apply_activity_last_known_good(
 ) -> dict[str, Any]:
     """Carry a prior block sample only within the publication freshness limit."""
     result = copy.deepcopy(snapshot)
+
+    def evidence_age(activity, fallback):
+        window = activity.get("window")
+        observed = window.get("last_block_time") if isinstance(window, dict) else None
+        try:
+            now = datetime.fromisoformat(str(result.get("collected_at")).replace("Z", "+00:00"))
+            event = (
+                datetime.fromtimestamp(observed, timezone.utc)
+                if is_finite_number(observed)
+                else datetime.fromisoformat(str(fallback).replace("Z", "+00:00"))
+            )
+            if now.utcoffset() is None or event.utcoffset() is None:
+                return None
+            return (now - event).total_seconds()
+        except (TypeError, ValueError, OverflowError, OSError):
+            return None
+
     current = result.get("activity")
     if isinstance(current, dict) and current.get("available") is True:
-        current["source_state"] = "fresh"
+        age_seconds = evidence_age(current, result.get("collected_at"))
+        stale = age_seconds is None or age_seconds < 0 or age_seconds > PUBLICATION_FRESHNESS_SECONDS
+        current["source_state"] = "stale" if stale else "fresh"
         current["last_success_at"] = result.get("collected_at")
         current["carried_forward_at"] = None
-        current["age_seconds"] = 0
-        current["stale"] = False
+        current["age_seconds"] = round(age_seconds) if age_seconds is not None else None
+        current["stale"] = stale
         return result
     prior = previous.get("activity") if isinstance(previous, dict) else None
     if not isinstance(prior, dict) or prior.get("available") is not True:
         return result
     previous_collected = previous.get("collected_at") if isinstance(previous, dict) else None
     last_success = prior.get("last_success_at") or previous_collected
-    try:
-        current_time = datetime.fromisoformat(str(result.get("collected_at")).replace("Z", "+00:00"))
-        success_time = datetime.fromisoformat(str(last_success).replace("Z", "+00:00"))
-        if current_time.utcoffset() is None or success_time.utcoffset() is None:
-            return result
-        age_seconds = (current_time - success_time).total_seconds()
-    except (TypeError, ValueError):
-        return result
-    if age_seconds < 0 or age_seconds > PUBLICATION_FRESHNESS_SECONDS:
+    age_seconds = evidence_age(prior, last_success)
+    if age_seconds is None or age_seconds < 0 or age_seconds > PUBLICATION_FRESHNESS_SECONDS:
         return result
     carried = copy.deepcopy(prior)
     carried["source_state"] = "last_known_good"
@@ -783,6 +798,7 @@ def sources(
     # Adopted release and status metadata is recorded into the snapshot so
     # rendering never re-fetches, and a broken source costs this section alone.
     feeds = news_module.collect_news() if with_news else None
+    feature_activation = feature_accounts.collect_feature_accounts(endpoint)
     if with_growth:
         growth_data, next_supply_state = growth_module.collect_growth(
             endpoint, supply_state=supply_state,
@@ -803,6 +819,7 @@ def sources(
         "economics": econ,
         "activity": activity,
         "news": feeds,
+        "feature_activation": feature_activation,
         "growth": growth_data,
         "dune": dune_data,
         "provenance": source_code_state(),
@@ -823,6 +840,7 @@ def normalize(raw: dict[str, Any]) -> dict[str, Any]:
         news=raw.get("news"), growth=raw.get("growth"),
         dune=raw.get("dune"),
         provenance=raw.get("provenance"),
+        feature_activation=raw.get("feature_activation"),
     )
 
 
@@ -969,6 +987,10 @@ def main() -> int:
         except (OSError, json.JSONDecodeError, ValueError):
             previous = None
     snapshot = apply_activity_last_known_good(snapshot, previous)
+    if isinstance(previous, dict) and isinstance(snapshot.get("news"), dict):
+        snapshot["news"] = news_module.apply_last_known_good(
+            snapshot["news"], previous.get("news"), previous.get("collected_at"),
+        )
     gate = pipeline.check_publishable(
         snapshot,
         max_age_seconds=PUBLICATION_FRESHNESS_SECONDS,

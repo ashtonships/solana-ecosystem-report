@@ -2,9 +2,8 @@ name: Update report
 
 on:
   schedule:
-    # Hourly. X spend is day-bounded (xnews.X_DAILY_POST_BUDGET), so run
-    # frequency no longer multiplies cost: X bills a post read once per
-    # 24h UTC window regardless of how many runs surface it.
+    # Requested cadence. GitHub may delay scheduled runs; the report displays
+    # its actual collection timestamp. Paid requests require durable budgets.
     - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
@@ -86,14 +85,53 @@ jobs:
             exit 1
           fi
 
+      - name: Reserve paid sources before collection
+        env:
+          DUNE_QUERY_ID: ${{ vars.DUNE_QUERY_ID }}
+          DUNE_REFRESH_HOURS: ${{ vars.DUNE_REFRESH_HOURS || '24' }}
+          DUNE_PAID_READS_ENABLED: ${{ vars.DUNE_PAID_READS_ENABLED || 'false' }}
+          DUNE_EXECUTION_ENABLED: ${{ vars.DUNE_EXECUTION_ENABLED || 'false' }}
+          DUNE_API_KEY_PRESENT: ${{ secrets.DUNE_API_KEY != '' }}
+          X_PAID_READS_ENABLED: ${{ vars.X_PAID_READS_ENABLED || 'false' }}
+          X_BEARER_TOKEN_PRESENT: ${{ secrets.X_BEARER_TOKEN != '' }}
+        run: |
+          python3 reserve_sources.py
+          python3 - <<'PY'
+          import subprocess
+          from reserve_sources import LEDGERS
+
+          changed = set(filter(None, subprocess.check_output([
+              "git", "diff", "--name-only", "-z",
+          ]).decode().split("\0")))
+          untracked = set(filter(None, subprocess.check_output([
+              "git", "ls-files", "--others", "--exclude-standard", "-z",
+          ]).decode().split("\0")))
+          if changed - set(LEDGERS) or untracked:
+              raise SystemExit("reservation modified an unexpected path")
+          PY
+          if ! git diff --quiet -- .github/dune-execution-ledger.json .github/dune-result-read-budget.json .github/x-read-budget.json; then
+            git config user.name "report-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add -- .github/dune-execution-ledger.json
+            if git ls-files --error-unmatch .github/dune-result-read-budget.json >/dev/null 2>&1; then
+              git add -- .github/dune-result-read-budget.json
+            fi
+            if git ls-files --error-unmatch .github/x-read-budget.json >/dev/null 2>&1; then
+              git add -- .github/x-read-budget.json
+            fi
+            git commit -m "chore: reserve paid source allowance [skip ci]"
+            # No paid call can occur unless the reservation survives this runner.
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+          cat "$RUNNER_TEMP/paid-sources/environment" >> "$GITHUB_ENV"
+
       - name: Collect live snapshot
         if: github.event_name != 'push'
         # Rights-held economics stays disabled. The approved CoinGecko Demo
         # key transport supplies the price observation; held sources are not
         # fetched and record available:false so their hold persists.
-        # X announcements are pay-per-use: the bearer token enables a
-        # allowlisted, per-run-capped read; absent token degrades that
-        # source alone.
+        # X reads and Dune executions consume only precommitted reservations.
+        # Missing allowance/receipt degrades the optional source alone.
         env:
           REPORT_RPC_ENDPOINT: ${{ secrets.REPORT_RPC_ENDPOINT }}
           COINGECKO_DEMO_API_KEY: ${{ secrets.COINGECKO_DEMO_API_KEY }}
@@ -101,7 +139,7 @@ jobs:
           DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}
           DUNE_QUERY_ID: ${{ vars.DUNE_QUERY_ID }}
           DUNE_REFRESH_HOURS: ${{ vars.DUNE_REFRESH_HOURS || '24' }}
-        run: python3 collect.py --with-price --with-dune --endpoint "$REPORT_RPC_ENDPOINT"
+        run: GITHUB_SHA= python3 collect.py --with-price --with-dune --endpoint "$REPORT_RPC_ENDPOINT"
 
       - id: publication_timestamp
         name: Capture publication timestamp

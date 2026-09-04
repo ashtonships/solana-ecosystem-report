@@ -55,7 +55,8 @@ No install step. Requires Python 3.10+ (uses only `urllib`, `json`, `pathlib`,
 python3 collect.py --dry-run              # print without writing
 python3 collect.py --endpoint <RPC_URL>   # alternate RPC
 python3 collect.py --dry-run --with-economics  # private research only; never writes held output
-python3 collect.py --no-news              # skip adopted Agave and Solana Status collection
+python3 collect.py --no-news              # skip first-party news and optional X announcements
+python3 collect.py --dry-run --with-price --with-dune  # optional keyed sources; no evidence writes
 python3 collect.py --no-growth            # opt out of adopted registry and finalized-RPC growth facts
 python3 render.py --snapshot <PATH>       # render a specific snapshot
 python3 pipeline.py --max-age-seconds N   # pre-publish gate: nonzero exit stops publication
@@ -124,8 +125,7 @@ renames that duration "24 hours."
 | Fee burn | Total fees minus the block's own `Fee` reward entry |
 | Address activity | Unique non-vote first-account fee payers and accounts touched in sampled blocks |
 
-Three choices here are worth stating plainly, because each is a way this
-metric is commonly got wrong:
+The sampled metrics preserve these distinctions:
 
 **Vote transactions are separated out.** They are the bulk of Solana's
 transaction count and every one pays exactly 5,000 lamports. Include them and
@@ -172,15 +172,17 @@ Current production defaults keep uncleared sources out of new public candidates.
 | DEX Screener | Defer / held | The public path does not call the API; current terms do not establish permission for automated public redistribution of derived aggregates |
 | Agave releases | Adopt, metadata/link only | Stable release flags plus resolved tag commit; no copied release bodies |
 | Solana Status | Adopt, factual metadata/link only | Current official state and incident metadata; an old newest incident is not source staleness |
-| CoinGecko | Defer | No new append-only public retention until licence, permission, or a compatible replacement is established |
+| CoinGecko Demo price | Adopt, keyed | `--with-price` uses `COINGECKO_DEMO_API_KEY`; source timestamp and USD/SOL unit retained; missing/stale price never values held metrics |
 | DeFiLlama | Defer / externally blocked | No new public republication until permission or a licensed replacement is established |
 | Solana Data numeric rows | Adopt, scoped | Owner accepted public redistribution on 2026-09-01 for Active Addresses only: provider-scoped daily ranges, never a canonical network-wide count; Fee Payers and all other rows stay held |
 | Solana Foundation token registry | Adopt at fixed revision | Exact-`xStock` mint identities only; MIT notice retained; no logos or hosted market data |
 | Selected four-mint stablecoin supply | Adopt, scoped chain fact | Finalized RPC supply for four pinned mints; not circulating supply, value, liquidity, depth, or all stablecoins |
 | xStocks public API | Defer / externally blocked | API terms need clarification; the adopted on-chain path does not call this API |
-| SIMD lifecycle metadata | Defer / externally blocked | No release-safe licensed transport is adopted; never infer status from commits, merges, or pull requests |
+| Firedancer releases | Adopt, metadata/link only | Five official release records; no copied release bodies |
+| SIMD proposal frontmatter | Adopt, metadata/link only | Watched proposal title/status/link only; proposal status is distinct from mainnet activation |
 | Solana News and curated upgrades | Defer / held | No RSS or repository-archive collection; Agave and Solana Status remain the active first-party metadata sources |
-| Direct Dune or X | Optional, owner-gated | No account, key, query, scraping, or spend by default |
+| Dune activity query | Optional, keyed | Completed UTC daily query results with execution identity, age, row hash and coverage; executions require a durable once-per-day reservation and explicit allowance |
+| X official announcements | Optional, keyed | Four-account recent search, at most 20 posts; finite total/day request reservations precede transport; missing approved remaining allowance pauses paid reads |
 
 The table above is the public source-decision summary. Endpoint, cadence,
 freshness, coverage, failure, attribution, and terms evidence must be rechecked
@@ -191,9 +193,10 @@ canonical snapshot/fact paths or advance `latest.json`. The adopted growth path
 calls only the adopted Solana Data Active Addresses feed plus the pinned
 registry and finalized RPC methods; it does not call DEX Screener, the held
 xStocks API, DeFiLlama, or any other provider endpoint; `--no-growth` is only
-an explicit opt-out from those fixed sources. The default news collector
-fetches only adopted Agave and Solana Status metadata; held Solana News,
-curated-upgrade, and SIMD sources are not requested.
+an explicit opt-out from those fixed sources. The default news collector fetches Agave, Firedancer, Solana Status and watched
+SIMD frontmatter metadata. Optional X reads require a token plus an approved
+remaining-budget ledger. Held Solana News, full proposal text and curated-upgrade
+archives are not requested.
 
 **Each optional section degrades independently.** A held, stale, rate-limited,
 or failed source renders `—` with its state, never a fabricated zero. Network-
@@ -254,7 +257,7 @@ render.py ──► pipeline.py gate ──► dist/index.html
                                   dist/report.json
 ```
 
-Two design decisions carry most of the weight:
+The pipeline uses these contracts:
 
 **Snapshots are the source of truth, and they are append-only.** Rendering
 never touches the network. `facts.py` gives anomaly, delta, and chart consumers
@@ -297,12 +300,13 @@ source-to-data-to-package chain, and an owner-set
 `REPORT_BOOTSTRAP_MANIFEST_SHA256` secret matching that manifest. Scheduled
 updates intentionally do not rewrite this archival bootstrap package.
 
-Manual `update` and the configured six-hour schedule remain disabled until the
+Manual `update` and the requested hourly schedule (`17 * * * *`, UTC) are enabled only when the
 repository variable `REPORT_AUTOMATION_ENABLED=true`. Even then, update fails
 before collection unless the `REPORT_RPC_ENDPOINT` repository secret identifies
 an owner-approved production endpoint; the secret value is not written to
-snapshots or artifacts. An enabled update tests, collects with held sources
-disabled, validates, checks the complete changed-path set, commits only the
+snapshots or artifacts. An enabled update tests, reserves eligible paid requests,
+commits and pushes their ledgers before any paid call, then collects with held
+sources disabled. It validates the complete changed-path set, commits only the
 approved data paths, renders that committed data revision with one frozen
 timestamp, and verifies all three artifacts. It pushes before archiving; a push
 failure therefore prevents artifact upload and deployment. Build/update has
@@ -310,10 +314,16 @@ only contents permission, while the separate deployment job alone receives
 Pages and OIDC permissions. Every third-party action is pinned to an immutable
 commit.
 
-The current six-hour cadence is part of history eligibility: observations less
-than five hours apart do not masquerade as separate six-hour priors. A failed
-collection, gate, render, or push stops deployment so the prior hosted release
-is left untouched.
+GitHub may delay scheduled runs. The collection timestamp and source-event
+windows are the evidence of actual freshness; an hourly cron is not an hourly
+delivery guarantee. The detector separately retains its six-hour baseline policy:
+observations less than five hours apart cannot masquerade as independent
+six-hour priors. A failed collection, gate, render or push stops deployment and
+leaves the previous hosted release in place.
+
+Paid execution/read switches default to off. A bearer token alone does not
+establish remaining allowance. See [operations and spending controls](docs/operations.md)
+for the exact ledgers, receipt order, failure recovery and account checks.
 
 **Degradation is deliberate.** If a single RPC method fails, that section
 reports `"available": false` and the report renders the section as
@@ -450,13 +460,15 @@ also in the JSON.
 ## Releases, status, and held editorial sources
 
 `news.py` and `upgrades.py` keep each source independently degradable. The
-release-safe default fetches only bounded Agave and Solana Status metadata:
+release-safe default fetches bounded first-party metadata:
 
 | Source | Implemented design | Release decision |
 | --- | --- | --- |
 | Agave GitHub releases API | Classify draft, prerelease, and stable rows from source flags and tag suffixes; retain the five newest rows plus the latest stable release; resolve retained tag commit SHAs | Adopt factual metadata and canonical links only |
 | Solana Status APIs | Retain current page state, page source-update times, and returned incident metadata; distinguish source time from collection time and missing incident evidence from zero incidents | Adopt factual metadata and links; component state is not retained |
-| SIMD repository | No default fetch; never infer lifecycle from a commit, merge, or pull request | Deferred: no accepted licensed transport |
+| Firedancer GitHub releases | Retain the five newest official release records | Adopt metadata and canonical links |
+| Watched SIMD frontmatter | Retain title, lifecycle status and canonical link | Metadata only; no proposal body or inferred activation |
+| X recent search | Four allowlisted accounts, at most 20 posts, original publication times | Optional paid read; finite precommitted allowance required. Failed reads may retain an explicitly archived previous set |
 | Solana News or Solana.com curated upgrades | No default RSS or repository-archive fetch | Held: the whole-repository archive is not a bounded production transport |
 
 Each source records unavailable, partial, or recorded evidence independently.
