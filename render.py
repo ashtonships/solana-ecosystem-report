@@ -14620,6 +14620,9 @@ CSS = r"""
       .mobile-history-ledger tbody th { color:var(--zinc-700); font-weight:500; }
       .mobile-history-ledger thead b { display:inline-grid; width:22px; height:22px; place-items:center; border:1px solid var(--super-purple); border-radius:5px; color:var(--super-purple); font-size:11px; }
       .mobile-history-ledger thead th:nth-child(3) b { background:var(--super-purple-fill); color:#fff; }
+      .mobile-history-ledger td.is-unavailable { white-space:normal; overflow-wrap:anywhere; }
+      .mobile-history-detail .evidence-term { min-height:44px; }
+      .mobile-project-reader [data-editorial-filter] { min-height:44px; }
       .mobile-history-ledger td.is-good { color:#16863d; }
       .mobile-history-ledger td.is-bad { color:#b42318; }
       .mobile-history-ledger td.is-neutral { color:var(--zinc-500); }
@@ -18154,7 +18157,9 @@ DATA_CATALOG_DATASETS = (
     "Validator set",
     "Block activity",
     "Economic indicators",
+    "Dune registered activity query",
     "Official release feeds",
+    "Selected feature-account activation",
     "Tokenized-equity registry",
     "Tokenized-equity supply",
     "Selected four-mint stablecoin total supply",
@@ -18168,6 +18173,104 @@ DATA_CATALOG_DATASETS = (
     "Snapshot delta",
 )
 DATA_CATALOG_DATASET_COUNT = len(DATA_CATALOG_DATASETS)
+DUNE_CATALOG_METRICS = (
+    "dune_daily_non_vote_fee_payers",
+    "dune_daily_dex_volume_usd",
+    "dune_daily_xstocks_dex_volume_usd",
+    "dune_daily_xstocks_dex_trade_legs",
+    "dune_daily_xstocks_dex_priced_trade_legs",
+    "dune_daily_transaction_fees_sol",
+)
+
+
+def dune_catalog_source(snapshot: dict[str, Any]) -> tuple[str, str, str, str]:
+    """Describe the selected Dune result without promoting cached metadata to data."""
+    section = snapshot.get("dune")
+    if not isinstance(section, dict):
+        return (
+            "Dune registered query",
+            "No Dune query state recorded in this snapshot",
+            "No source observation",
+            "Unavailable",
+        )
+    current = section.get("available") is True
+    last_known_good = section.get("last_known_good")
+    record = section if current else (
+        last_known_good if isinstance(last_known_good, dict) else {}
+    )
+    aggregates = record.get("aggregates") \
+        if isinstance(record.get("aggregates"), dict) else {}
+    has_daily_values = any(is_number(aggregates.get(key)) for key in (
+        "fee_payers_latest",
+        "dex_volume_total_latest_usd",
+        "xstocks_dex_volume_latest_usd",
+        "xstocks_dex_trade_legs",
+        "xstocks_dex_priced_trade_legs",
+        "transaction_fees_latest_sol",
+    ))
+    query_id = record.get("query_id") or section.get("query_id")
+    source = f"Dune query {query_id}" if query_id else "Dune registered query"
+    ended_at = record.get("execution_ended_at")
+    freshness = timestamp_label(ended_at) if ended_at else "No source observation"
+    if current:
+        return (
+            source,
+            "Current registered-query result with daily aggregates"
+            if has_daily_values else "Current result metadata recorded; daily aggregates unavailable",
+            freshness,
+            "Recorded" if has_daily_values else "Unavailable",
+        )
+    reason = str(section.get("reason") or "Current Dune query unavailable")
+    if has_daily_values:
+        return (
+            source,
+            f"Current query unavailable: {reason} · cached last-known-good daily aggregates",
+            freshness,
+            "Stale · last-known-good",
+        )
+    paused = any(word in reason.lower() for word in ("allowance", "budget", "credit"))
+    state = "Current result read paused" if paused else "Current query unavailable"
+    coverage = (
+        f"{state}: {reason} · last-known-good execution metadata only; "
+        "daily aggregate values unavailable in this snapshot"
+        if record else f"{state}: {reason} · no last-known-good result recorded"
+    )
+    return source, coverage, freshness, "Unavailable"
+
+
+def feature_catalog_source(snapshot: dict[str, Any]) -> tuple[str, str, str, str]:
+    """Describe the bounded finalized feature-account inspection."""
+    section = snapshot.get("feature_activation")
+    if not isinstance(section, dict):
+        return (
+            "getMultipleAccounts(finalized) + pinned Agave feature set",
+            "No selected feature-account inspection recorded",
+            "No source observation",
+            "Unavailable",
+        )
+    numerator = section.get("coverage_numerator")
+    denominator = section.get("coverage_denominator")
+    activated = section.get("activated_feature_count")
+    coverage = (
+        f"{fmt(numerator)} / {fmt(denominator)} pinned feature accounts inspected · "
+        f"{fmt(activated)} decoded activated states · selected set, not a complete upgrade inventory"
+    )
+    freshness = timestamp_label(section.get("observed_at")) \
+        if section.get("observed_at") else "No source observation"
+    if section.get("available") is not True:
+        return (
+            "getMultipleAccounts(finalized) + pinned Agave feature set",
+            str(section.get("reason") or "Selected feature-account inspection unavailable"),
+            freshness,
+            "Unavailable",
+        )
+    status = "Recorded" if section.get("coverage_complete") is True else "Partial"
+    return (
+        "getMultipleAccounts(finalized) + pinned Agave feature set",
+        coverage,
+        freshness,
+        status,
+    )
 
 
 def render_feature_activation(snapshot, context, observation_indexes=None) -> str:
@@ -18529,6 +18632,19 @@ def render_data_catalog(
         f"{economic_ok} of {len(economic_sources)} sources recorded"
         if economic_sources else "No eligible source observations recorded"
     )
+    dune_source, dune_coverage, dune_freshness, dune_status = dune_catalog_source(snapshot)
+    dune_binding = (
+        summary_binding(*DUNE_CATALOG_METRICS)
+        if isinstance(snapshot.get("dune"), dict) else ""
+    )
+    feature_source, feature_coverage, feature_freshness, feature_status = \
+        feature_catalog_source(snapshot)
+    feature_binding = summary_binding(
+        "feature_activation_coverage_numerator",
+        "feature_activation_coverage_denominator",
+        "feature_activated_count",
+        "feature_rpc_context_slot",
+    )
     rows = [
         ("Network & epoch", "Public Solana JSON-RPC", "measured", "Point-in-time RPC methods", collected, "Recorded", summary_binding("network_healthy", "network_slot", "network_block_time_unix", "epoch", "epoch_block_height", "epoch_transaction_count")),
         ("Performance samples", "getRecentPerformanceSamples", "measured", f"{fmt(perf.get('samples_used'))} recent samples" if perf_live else "Source unavailable", collected, "Recorded" if perf_live else "Unavailable", summary_binding("performance_samples_used")),
@@ -18537,7 +18653,9 @@ def render_data_catalog(
         ("Validator set", "getVoteAccounts", "measured", f"{fmt(validators.get('active_count'))} active validators" if validators_live else "Source unavailable", collected, "Recorded" if validators_live else "Unavailable", summary_binding("active_count")),
         ("Block activity", "getBlock · public RPC", "sampled", f"{fmt(activity.get('window', {}).get('blocks_sampled'))} evenly spaced blocks", activity_freshness, activity_status, summary_binding("activity_blocks_sampled")),
         ("Economic indicators", "CoinGecko + DeFiLlama", "measured", f"{economic_coverage} · SOL price {economics.get('price', {}).get('freshness', 'unavailable')}", collected, available_label(economics.get("available")), mixed_binding(summary_ids=("price_usd",), derived_ids=("catalog_economic_available_source_count", "catalog_economic_source_count"), derived_subject=snapshot_at)),
+        ("Dune registered activity query", dune_source, "recorded" if dune_status != "Unavailable" else "unavailable", dune_coverage, dune_freshness, dune_status, dune_binding),
         ("Official release feeds", "GitHub + Solana Status API + Atom", "recorded", f"{news_ok} of {len(news_sources)} feeds recorded · current status {news.get('current_status', {}).get('description', 'unavailable')}", collected, news_evidence_status(news), mixed_binding(summary_ids=("network_status_description",), derived_ids=("catalog_news_available_source_count", "catalog_news_source_count"), derived_subject=snapshot_at)),
+        ("Selected feature-account activation", feature_source, "measured" if feature_status != "Unavailable" else "unavailable", feature_coverage, feature_freshness, feature_status, feature_binding),
         ("Tokenized-equity registry", str(growth_registry_source.get('url') or 'Pinned Solana Foundation token registry'), "recorded", f"{fmt(equities.get('registry_asset_count'))} xStock-labelled Solana mints · {growth_registry_source.get('kind') or 'pinned registry'}", collected, growth_source_evidence_status(growth_sources, 'registry'), summary_binding("xstock_registry_asset_count")),
         ("Tokenized-equity supply", "getTokenSupply(finalized)", "measured", f"{fmt(supply_coverage.get('coverage_numerator'))} / {fmt(supply_coverage.get('coverage_denominator'))} within 72h · {fmt(supply_coverage.get('fresh_asset_count'))} fresh · {fmt(supply_coverage.get('successful_this_run_asset_count'))} successful / {fmt(supply_coverage.get('queried_this_run_asset_count'))} queried this run · oldest {supply_coverage.get('oldest_observation_at') or '—'} · newest {supply_coverage.get('newest_observation_at') or '—'}", collected, growth_source_evidence_status(growth_sources, 'supply'), summary_binding("xstock_supply_coverage_numerator", "xstock_supply_coverage_denominator", "xstock_fresh_supply_asset_count", "xstock_supply_successful_this_run", "xstock_supply_queried_this_run", "xstock_supply_oldest_observation_at", "xstock_supply_newest_observation_at")),
         ("Selected four-mint stablecoin total supply", "getTokenSupply(finalized) + pinned Solana Foundation mint list", "measured", f"{fmt(selected_stables.get('coverage_numerator'))} / {fmt(selected_stables.get('coverage_denominator'))} selected mints · universe coverage unknown · not circulating supply", selected_stables.get("newest_observation_at") or collected, growth_source_evidence_status(growth_sources, 'selected_usd_stablecoins') if selected_stable_source else "Unavailable", summary_binding("selected_stablecoin_coverage_numerator", "selected_stablecoin_coverage_denominator", "selected_stablecoin_newest_observation_at")),
@@ -20560,6 +20678,11 @@ def render_mobile_data(
     tvl_live = detect.source_eligible(snapshot, "economics", "tvl")
     stablecoins_live = detect.source_eligible(snapshot, "economics", "stablecoins")
     dex_live = detect.source_eligible(snapshot, "economics", "dex")
+    dune_source, dune_coverage, dune_freshness, dune_status = dune_catalog_source(snapshot)
+    dune_evidence = "measured" if dune_status != "Unavailable" else "unavailable"
+    feature_source, feature_coverage, feature_freshness, feature_status = \
+        feature_catalog_source(snapshot)
+    feature_evidence = "measured" if feature_status != "Unavailable" else "unavailable"
 
     groups = (
         ("network", "Network &amp; epoch", (
@@ -20575,9 +20698,11 @@ def render_mobile_data(
             ("Total value locked", "DeFiLlama", "measured", "Recorded" if tvl_live else "Unavailable", ()),
             ("USD-pegged circulating supply", "DeFiLlama · composition unavailable", "measured", "Recorded" if stablecoins_live else "Unavailable", ()),
             ("DeFiLlama-indexed Solana DEX volume", dex_scope_note(economics.get("dex", {}) if isinstance(economics.get("dex"), dict) else {}), "measured", "Partial" if dex_live else "Unavailable", ()),
+            ("Dune registered activity query", f"{dune_source} · {dune_coverage} · last result {dune_freshness}", dune_evidence, dune_status, ()),
         )),
         ("feeds", "Official feeds", (
             ("Official release feeds", "GitHub · Solana Status API · first-party feeds", "recorded", news_evidence_status(news), ()),
+            ("Selected feature-account activation", f"{feature_source} · {feature_coverage} · observed {feature_freshness}", feature_evidence, feature_status, ()),
         )),
         ("growth", "Tokenized equities &amp; growth", (
             ("Solana Foundation xStock registry", "Pinned MIT registry · xStock-labelled Solana mints", "recorded", growth_source_evidence_status(growth_sources, "registry"), ()),
@@ -20638,6 +20763,10 @@ def render_mobile_data(
         "DeFiLlama-indexed Solana DEX volume": row_summary_binding(
             "dex_volume_24h_usd",
         ),
+        "Dune registered activity query": (
+            row_summary_binding(*DUNE_CATALOG_METRICS)
+            if isinstance(snapshot.get("dune"), dict) else ""
+        ),
         "Official release feeds": mixed_observation_attribute(
             observation_indexes, collected_at,
             summary_ids=("network_status_description",),
@@ -20645,6 +20774,12 @@ def render_mobile_data(
                 "catalog_news_available_source_count", "catalog_news_source_count",
             ),
             derived_subject=collected_at,
+        ),
+        "Selected feature-account activation": row_summary_binding(
+            "feature_activation_coverage_numerator",
+            "feature_activation_coverage_denominator",
+            "feature_activated_count",
+            "feature_rpc_context_slot",
         ),
         "Solana Foundation xStock registry": row_summary_binding(
             "xstock_registry_asset_count",
@@ -20931,9 +21066,12 @@ def render_mobile_history(
                 current_value = metric_value(key, metric.get("current") if metric else None)
                 change, change_class = metric_delta(key, metric.get("change") if metric else None)
                 binding = delta_observation_attributes(metric) if metric else ""
+                previous_class = " class='is-unavailable'" if previous_value == "Unavailable" else ""
+                current_class = " class='is-unavailable'" if current_value == "Unavailable" else ""
                 rows.append(
                     f"<tr{binding}><th scope='row'>{html.escape(label)}</th>"
-                    f"<td>{html.escape(previous_value)}</td><td>{html.escape(current_value)}</td>"
+                    f"<td{previous_class}>{html.escape(previous_value)}</td>"
+                    f"<td{current_class}>{html.escape(current_value)}</td>"
                     f"<td class='{change_class}'>{html.escape(change)}</td></tr>"
                 )
             a_label = compact_snapshot_label(previous_snapshot.get("collected_at"))

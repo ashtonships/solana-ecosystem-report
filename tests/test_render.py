@@ -1774,7 +1774,10 @@ class TestHtml(unittest.TestCase):
         self.assertNotIn("data-page-row='mobile' hidden", workbench)
 
         self.assertIn("catalog-shell' id='desktop-data-sources' data-pagination data-page-size='10' data-mobile-page-size='10'", catalog)
-        self.assertEqual(catalog.count("<tr data-page-row='desktop'>"), 19)
+        self.assertEqual(
+            catalog.count("<tr data-page-row='desktop'>"),
+            len(render.DATA_CATALOG_DATASETS),
+        )
         self.assertIn("aria-label='Dataset catalog pages'", catalog)
         self.assertIn("data-pagination-controls hidden", catalog)
         self.assertIn("data-pagination-filter-controls hidden", catalog)
@@ -1782,7 +1785,11 @@ class TestHtml(unittest.TestCase):
         self.assertIn("data-pagination-filter disabled", catalog)
         self.assertIn("aria-controls='desktop-data-catalog-table'", catalog)
         self.assertIn("id='desktop-data-catalog-filter-status' aria-live='polite'", catalog)
-        self.assertIn("19 of 19 datasets", catalog)
+        self.assertIn(
+            f"{len(render.DATA_CATALOG_DATASETS)} of "
+            f"{len(render.DATA_CATALOG_DATASETS)} datasets",
+            catalog,
+        )
         self.assertIn("data-pagination-filter-empty hidden", catalog)
         self.assertIn("data-pagination-filter-reset", catalog)
         self.assertNotIn("<tr data-page-row='desktop' hidden", catalog)
@@ -3300,6 +3307,23 @@ class TestMobileFirstContracts(unittest.TestCase):
         self.assertIn(".mobile-history-trend .axis-label,.mobile-history-trend .annotation-label { fill:var(--prototype-muted); font-size:18px;", render.CSS)
         self.assertIn("Recorded · offline", newest)
 
+    def test_mobile_history_wraps_only_unavailable_values(self):
+        page = self.page(history=self.distinct_history())
+        self.assertIn(
+            "<td class='is-unavailable'>Unavailable</td>"
+            "<td class='is-unavailable'>Unavailable</td>",
+            page,
+        )
+        self.assertIn("<td>2,000.00</td>", page)
+        self.assertIn(
+            ".mobile-history-ledger td.is-unavailable { white-space:normal; overflow-wrap:anywhere; }",
+            render.CSS,
+        )
+        self.assertNotIn(
+            ".mobile-history-ledger td { white-space:normal; overflow-wrap:anywhere; }",
+            render.CSS,
+        )
+
     def test_mobile_history_pair_selector_controls_every_comparison_surface(self):
         history = self.distinct_history()
         page = self.page(history=history)
@@ -3754,7 +3778,7 @@ class TestMobileFirstContracts(unittest.TestCase):
         self.assertNotIn("data-history-comparison-limits", neutral)
         self.assertIn("data-history-comparison-limits", alert)
         self.assertIn("Latest TPS:", alert)
-        self.assertIn("<td>Unavailable</td>", alert)
+        self.assertIn("<td class='is-unavailable'>Unavailable</td>", alert)
 
     def test_programmatic_mobile_heading_focus_has_visible_outline(self):
         page = self.page()
@@ -5425,6 +5449,34 @@ class TestPublicObservationBindings(unittest.TestCase):
                     },
                 },
             }
+            snapshot["dune"] = {
+                "available": False,
+                "requires_api_key": True,
+                "reason": (
+                    "Dune result read skipped: finite owner-approved credit "
+                    "allowance is missing or spent"
+                ),
+                "query_id": "8590950",
+                "last_known_good": {
+                    "query_id": "8590950",
+                    "execution_ended_at": "2026-09-03T01:19:20Z",
+                    "row_count": 175,
+                },
+            }
+            snapshot["feature_activation"] = {
+                "available": True,
+                "observed_at": snapshot["collected_at"],
+                "coverage_complete": True,
+                "coverage_numerator": 10,
+                "coverage_denominator": 10,
+                "activated_feature_count": 3,
+                "source": {
+                    "method": "getMultipleAccounts",
+                    "commitment": "finalized",
+                    "rpc_context_slot": 444326576,
+                },
+                "features": [],
+            }
 
         return cls.observation_fixture(configure_latest=configure)
 
@@ -5492,6 +5544,9 @@ class TestPublicObservationBindings(unittest.TestCase):
                     "catalog_economic_source_count",
                 ),
             ],
+            "Dune registered activity query": summary(
+                *render.DUNE_CATALOG_METRICS,
+            ),
             "Official release feeds": [
                 *summary("network_status_description"),
                 *derived(
@@ -5499,6 +5554,12 @@ class TestPublicObservationBindings(unittest.TestCase):
                     "catalog_news_source_count",
                 ),
             ],
+            "Selected feature-account activation": summary(
+                "feature_activation_coverage_numerator",
+                "feature_activation_coverage_denominator",
+                "feature_activated_count",
+                "feature_rpc_context_slot",
+            ),
             "Tokenized-equity registry": summary("xstock_registry_asset_count"),
             "Tokenized-equity supply": summary(
                 "xstock_supply_coverage_numerator",
@@ -5561,6 +5622,13 @@ class TestPublicObservationBindings(unittest.TestCase):
         for name, expected_ids in expected.items():
             with self.subTest(name=name):
                 self.assertEqual(self.catalog_row_ids(catalog, name), expected_ids)
+
+        self.assertIn("Dune query 8590950", catalog)
+        self.assertIn("Current result read paused", catalog)
+        self.assertIn("last-known-good execution metadata only", catalog)
+        self.assertIn("daily aggregate values unavailable in this snapshot", catalog)
+        self.assertIn("10 / 10 pinned feature accounts inspected", catalog)
+        self.assertIn("selected set, not a complete upgrade inventory", catalog)
 
         dex_records = [
             indexes["summary"][(metric_id, snapshot_at)]
@@ -6339,6 +6407,13 @@ class TestPublicObservationBindings(unittest.TestCase):
         )
 
         expected_rows = {
+            "Dune registered activity query": render.DUNE_CATALOG_METRICS,
+            "Selected feature-account activation": (
+                "feature_activation_coverage_numerator",
+                "feature_activation_coverage_denominator",
+                "feature_activated_count",
+                "feature_rpc_context_slot",
+            ),
             "Finalized token supply": (
                 "xstock_supply_coverage_numerator",
                 "xstock_supply_coverage_denominator",
@@ -6370,6 +6445,9 @@ class TestPublicObservationBindings(unittest.TestCase):
                     )]["observation_id"]
                     for metric_id in metric_ids
                 ])
+        self.assertIn("Current result read paused", mobile)
+        self.assertIn("last-known-good execution metadata only", mobile)
+        self.assertIn("selected set, not a complete upgrade inventory", mobile)
 
     def test_throughput_inspector_uses_snapshot_collection_time(self):
         snapshot = load_fixture()
@@ -7634,6 +7712,37 @@ class TestSeptemberRendererRecovery(unittest.TestCase):
             pulse = render.render_ecosystem_pulse(snapshot)
             self.assertIn(expected, pulse)
             self.assertNotIn('~1 day source lag', pulse)
+
+    def test_dune_catalog_distinguishes_daily_values_from_cached_metadata(self):
+        snapshot = load_fixture()
+        snapshot['dune'] = {
+            'available': True,
+            'query_id': '8590950',
+            'execution_ended_at': '2026-09-03T01:19:20Z',
+            'aggregates': {'dex_volume_total_latest_usd': 0.0},
+        }
+        self.assertEqual(render.dune_catalog_source(snapshot)[3], 'Recorded')
+
+        snapshot['dune'] = {
+            'available': False,
+            'query_id': '8590950',
+            'reason': 'current query failed',
+            'last_known_good': {
+                'execution_ended_at': '2026-09-03T01:19:20Z',
+                'aggregates': {'xstocks_registry': {'A': 'B'}},
+            },
+        }
+        source = render.dune_catalog_source(snapshot)
+        self.assertEqual(source[3], 'Unavailable')
+        self.assertIn('execution metadata only', source[1])
+
+        snapshot['dune']['last_known_good']['aggregates'][
+            'transaction_fees_latest_sol'
+        ] = 0.0
+        self.assertEqual(
+            render.dune_catalog_source(snapshot)[3],
+            'Stale · last-known-good',
+        )
 
     def test_dune_xstock_and_transaction_fee_aggregates_project_recursively(self):
         snapshot = load_fixture()
