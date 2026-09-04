@@ -24,6 +24,8 @@ from urllib.parse import urlsplit
 import delta as delta_module
 import detect
 import blocks
+import dune as dune_module
+import feature_accounts as feature_accounts_module
 import facts as facts_module
 import growth as growth_module
 import news as news_module
@@ -78,10 +80,25 @@ STAGE_CALLS = {
 # additive-only; importing collect here would be circular (collect imports
 # pipeline), so keep this range in sync with it.
 SUPPORTED_SCHEMA_VERSIONS = frozenset(range(5, 10))
+LEGACY_X_CURRENT_SOURCE_REVISIONS = frozenset({
+    "63ecd8f297b19588ce583940f372b4807a8257e9",
+    "17f1e4d6b3351bd83102e07f45474d309df159ee",
+    "40284081553773f84776501d853e421d5d593c22",
+    "ecb2ca054c7a3f8b3b9b048854bb9bfeceb92b02",
+    "6a243aa45c12f9acd143147106013f6dfc687ffd",
+    "437d6d429f00e53f490bf2a43beba8306fde889e",
+    "35536d8896806f21ddfbba7820952ed13cdfc293",
+    "537e78b68fc770ea9767926b771b4887bd9b92a9",
+    "3f112729c0ae0fb4a67fca893cb70a88d71dfbad",
+    "6a33d9d3ae5a72aa30aa303630532050a5ae6489",
+    "895820be840fc036cf98fc51a582361efdf42489",
+    "e5ef86d298c6a6493198ed74a03a824fa6783122",
+    "ac6add3f89b49cc8133abd87a7a209ae6ddc9a32",
+})
 REQUIRED_SECTIONS = (
     "source", "network", "epoch", "performance", "supply", "inflation", "validators",
 )
-OPTIONAL_SECTIONS = ("economics", "activity", "news", "growth")
+OPTIONAL_SECTIONS = ("economics", "activity", "news", "growth", "dune", "feature_activation")
 CORE_EVIDENCE_SECTIONS = ("epoch", "performance", "supply", "inflation", "validators")
 FUTURE_TOLERANCE_SECONDS = 300
 DEFAULT_SNAPSHOT_PATH = Path(__file__).parent / "snapshots" / "latest.json"
@@ -1001,6 +1018,361 @@ def _validate_schema8_xstocks(
     if growth.get("available") is not child_evidence:
         fail("growth.available", f"must be {child_evidence!r} from child evidence")
 
+def _dune_semantic_failures(section: Any, collected_at: datetime | None) -> list[str]:
+    """Check the retained Dune contract, including degraded provenance."""
+    errors = []
+    if not isinstance(section, dict):
+        return ["must be an object"]
+    if type(section.get("available")) is not bool:
+        errors.append("available must be boolean")
+    contract = section.get("aggregation_contract")
+    if "aggregation_contract" in section and contract != dune_module.AGGREGATION_CONTRACT:
+        errors.append("aggregation_contract is unknown")
+    completed_days = contract == dune_module.AGGREGATION_CONTRACT
+    if "requires_api_key" in section and section["requires_api_key"] is not True:
+        errors.append("requires_api_key must be true")
+    if section.get("available") is not True and not isinstance(section.get("reason"), str):
+        errors.append("unavailable source requires a reason")
+    query_id = section.get("query_id")
+    if query_id is not None and (not isinstance(query_id, str) or not re.fullmatch(r"[1-9][0-9]*", query_id)):
+        errors.append("query_id must be a positive numeric string")
+    if "query_url" in section and section["query_url"] != f"https://dune.com/queries/{query_id}":
+        errors.append("query_url must match query_id")
+    if section.get("available") is True:
+        if query_id is None or section.get("requires_api_key") is not True:
+            errors.append("available source requires query identity and keyed provenance")
+        if section.get("state") != "fresh" or section.get("freshness") != "fresh":
+            errors.append("available source must declare fresh state")
+        if section.get("columns") != list(dune_module.EXPECTED_COLUMNS):
+            errors.append("columns do not match the registered query")
+    records = [(section, "source", "result_age_seconds")]
+    if "last_known_good" in section:
+        lkg = section["last_known_good"]
+        if not isinstance(lkg, dict):
+            errors.append("last_known_good must be an object")
+        else:
+            records.append((lkg, "last_known_good", "age_seconds"))
+            if lkg.get("aggregation_contract") != contract:
+                errors.append("last_known_good aggregation_contract must match its parent")
+            if lkg.get("query_id") != query_id or lkg.get("query_url") != section.get("query_url"):
+                errors.append("last_known_good query identity must match its parent")
+    for record, name, age_key in records:
+        required = name == "last_known_good" or section.get("available") is True
+        for key in ("row_count", "datapoint_count", age_key):
+            if record.get(key) is not None or required:
+                value = record.get(key)
+                if type(value) is not int or value < 0:
+                    errors.append(f"{name}.{key} must be a nonnegative integer")
+        if not required:
+            continue
+        if not isinstance(record.get("execution_id"), str) or not record["execution_id"]:
+            errors.append(f"{name}.execution_id is required")
+        if not isinstance(record.get("result_sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", record["result_sha256"]):
+            errors.append(f"{name}.result_sha256 is invalid")
+        started = _parse_aware_timestamp(record.get("execution_started_at"))
+        ended = _parse_aware_timestamp(record.get("execution_ended_at"))
+        if started is None or ended is None or started > ended or (collected_at is not None and ended > collected_at):
+            errors.append(f"{name} execution timestamps are invalid or in the future")
+    if isinstance(section.get("last_known_good"), dict):
+        lkg = section["last_known_good"]
+        retained = {
+            "available": True, "requires_api_key": True,
+            "query_id": lkg.get("query_id"), "query_url": lkg.get("query_url"),
+            "execution_id": lkg.get("execution_id"),
+            "execution_started_at": lkg.get("execution_started_at"),
+            "execution_ended_at": lkg.get("execution_ended_at"),
+            "result_age_seconds": lkg.get("age_seconds"),
+            "row_count": lkg.get("row_count"), "datapoint_count": lkg.get("datapoint_count"),
+            "result_sha256": lkg.get("result_sha256"), "source_url": lkg.get("source_url"),
+            "freshness": "fresh", "state": "fresh", "reason": None,
+            "columns": list(dune_module.EXPECTED_COLUMNS), "aggregates": lkg.get("aggregates"),
+        }
+        if "aggregation_contract" in lkg:
+            retained["aggregation_contract"] = lkg["aggregation_contract"]
+        for detail in _dune_semantic_failures(retained, collected_at):
+            errors.append("last_known_good retained aggregates: " + detail)
+    aggregates = section.get("aggregates")
+    if aggregates is None:
+        if section.get("available") is True and completed_days:
+            errors.append("available source requires completed-day aggregates")
+        return errors
+    if not isinstance(aggregates, dict):
+        return errors + ["aggregates must be an object"]
+    ended = _parse_aware_timestamp(section.get("execution_ended_at"))
+    days = []
+    for value_key, day_key in (("fee_payers_latest", "fee_payers_day"),
+                               ("dex_volume_total_latest_usd", "dex_volume_total_day")):
+        value = aggregates.get(value_key)
+        day = dune_module._day(aggregates.get(day_key))
+        if value is None:
+            if aggregates.get(day_key) is not None:
+                errors.append(f"{day_key} requires a value")
+            continue
+        if not _is_number(value) or not 0 <= value <= sys.float_info.max:
+            errors.append(f"{value_key} must be finite and nonnegative")
+        elif value_key == "fee_payers_latest" and (value != int(value) or value > dune_module.MAX_COUNT):
+            errors.append("fee_payers_latest must be an integer count")
+        if day is None or ended is None or day > ended.astimezone(timezone.utc).date():
+            errors.append(f"{day_key} must be a valid UTC day no later than execution")
+        elif completed_days and day == ended.astimezone(timezone.utc).date():
+            errors.append(f"{day_key} must be a completed UTC day before execution")
+        else:
+            days.append(day.isoformat())
+    projects = aggregates.get("dex_volume_by_project_top")
+    if not isinstance(projects, list) or len(projects) > 5:
+        return errors + ["DEX project rows must be a list of at most five"]
+    names = set()
+    for row in projects:
+        if not isinstance(row, dict):
+            errors.append("DEX project row must be an object")
+            continue
+        name, value = row.get("dimension"), row.get("value")
+        if not isinstance(name, str) or not name.strip() or name in names:
+            errors.append("DEX project dimensions must be nonempty and unique")
+        if isinstance(name, str):
+            names.add(name)
+        if not _is_number(value) or not 0 <= value <= sys.float_info.max:
+            errors.append("DEX project volume must be finite and nonnegative")
+    if projects and dune_module._day(aggregates.get("dex_volume_by_project_day")) != dune_module._day(aggregates.get("dex_volume_total_day")):
+        errors.append("DEX project day must match the total day")
+    xstock_keys = {
+        "xstocks_dex_volume_latest_usd", "xstocks_dex_trade_legs",
+        "xstocks_dex_priced_trade_legs", "xstocks_dex_day",
+        "xstocks_dex_volume_available", "xstocks_dex_volume_reason",
+        "xstocks_registry", "xstocks_basis",
+    }
+    if completed_days and not xstock_keys <= set(aggregates):
+        errors.append("completed-day aggregates require xStock coverage fields")
+    if xstock_keys & set(aggregates):
+        all_legs = aggregates.get("xstocks_dex_trade_legs")
+        priced = aggregates.get("xstocks_dex_priced_trade_legs")
+        xday = dune_module._day(aggregates.get("xstocks_dex_day"))
+        volume = aggregates.get("xstocks_dex_volume_latest_usd")
+        available = aggregates.get("xstocks_dex_volume_available")
+        reason = aggregates.get("xstocks_dex_volume_reason")
+        if aggregates.get("xstocks_registry") != dune_module.XSTOCK_REGISTRY:
+            errors.append("xStock registry provenance must match the pinned 107-mint scope")
+        if aggregates.get("xstocks_basis") != "covered xStocks DEX trade-leg volume; OR-matched rows counted once":
+            errors.append("xStock basis must retain its trade-leg and single-OR-match scope")
+        if all_legs is None and priced is None and xday is None:
+            if available is not False or volume is not None or not isinstance(reason, str) or not reason:
+                errors.append("missing xStock coverage rows require unavailable null volume with a reason")
+        xstock_valid = (
+            _is_number(all_legs) and all_legs == int(all_legs) and 0 < all_legs <= dune_module.MAX_COUNT
+            and _is_number(priced) and priced == int(priced) and 0 <= priced <= all_legs
+            and xday is not None and ended is not None and xday < ended.astimezone(timezone.utc).date()
+        )
+        if all_legs is None and priced is None and xday is None:
+            pass
+        elif not xstock_valid:
+            errors.append("xStock coverage counts/day are invalid or outside completed UTC days")
+        else:
+            days.append(xday.isoformat())
+        if xstock_valid and available is True:
+            if priced != all_legs or not _is_number(volume) or not 0 <= volume <= sys.float_info.max or reason is not None:
+                errors.append("available xStock USD volume requires complete pricing and no reason")
+        elif xstock_valid and available is False:
+            if volume is not None or priced == all_legs or not isinstance(reason, str) or not reason:
+                errors.append("withheld xStock USD volume requires incomplete pricing and a reason")
+        elif xstock_valid:
+            errors.append("xstocks_dex_volume_available must be boolean")
+    transaction_keys = {
+        "transaction_fees_latest_sol", "transaction_fees_day", "transaction_fees_basis",
+    }
+    if completed_days and not transaction_keys <= set(aggregates):
+        errors.append("completed-day aggregates require transaction-fee fields")
+    if transaction_keys & set(aggregates):
+        fee_value = aggregates.get("transaction_fees_latest_sol")
+        fee_day = dune_module._day(aggregates.get("transaction_fees_day"))
+        if aggregates.get("transaction_fees_basis") != "all transaction fees in gas_solana.fees; not protocol REV or Jito tips":
+            errors.append("transaction-fee basis must not claim protocol REV or Jito tips")
+        if fee_value is None and fee_day is not None:
+            errors.append("transaction_fees_day requires a value")
+        elif fee_value is not None and (
+            not _is_number(fee_value) or not 0 <= fee_value <= sys.float_info.max
+            or fee_day is None or ended is None or fee_day >= ended.astimezone(timezone.utc).date()
+        ):
+            errors.append("transaction fees must be finite, nonnegative and from a completed UTC day")
+        elif fee_value is not None:
+            days.append(fee_day.isoformat())
+    latest_day = dune_module._day(aggregates.get("latest_day"))
+    if not days or latest_day is None or latest_day.isoformat() != max(days):
+        errors.append("latest_day must match the available dated totals")
+    return errors
+
+
+def _feature_activation_semantic_failures(
+    section: Any, collected_at: datetime | None, snapshot_source: Any,
+) -> list[str]:
+    """The pinned account observations must support every activation/count claim."""
+    fields = {
+        "available", "observed_at", "coverage_complete", "coverage_numerator",
+        "coverage_denominator", "activated_feature_count", "source", "metadata",
+        "features", "note",
+    }
+    if not isinstance(section, dict) or set(section) != fields:
+        return ["must contain exactly the feature-account observation contract"]
+    errors = []
+    if section["metadata"] != feature_accounts_module.METADATA:
+        errors.append("metadata must match the pinned Agave source and license provenance")
+    if section["note"] != feature_accounts_module.NOTE:
+        errors.append("note must retain the bounded feature-account scope")
+    observed_at = _parse_aware_timestamp(section["observed_at"])
+    if section["observed_at"] is not None and (
+        observed_at is None or observed_at.utcoffset().total_seconds() != 0
+        or collected_at is None or observed_at > collected_at
+    ):
+        errors.append("observed_at must be aware and no later than collection")
+    source = section["source"]
+    slot = None
+    if not isinstance(source, dict) or set(source) != {
+        "method", "commitment", "endpoint", "endpoint_identity", "rpc_context_slot", "rpc_api_version",
+    }:
+        errors.append("source must contain exactly the finalized RPC provenance contract")
+    else:
+        if source["method"] != "getMultipleAccounts" or source["commitment"] != "finalized":
+            errors.append("source must be a finalized getMultipleAccounts observation")
+        endpoint, identity = source["endpoint"], source["endpoint_identity"]
+        if not isinstance(endpoint, str) or endpoint not in (
+            growth_module.PUBLIC_RPC_ENDPOINTS | {growth_module.CUSTOM_RPC_ENDPOINT_LABEL}
+        ):
+            errors.append("source endpoint must use the sanitized RPC label")
+        if not isinstance(identity, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", identity) is None:
+            errors.append("source endpoint_identity must be an opaque SHA-256 identity")
+        elif endpoint in growth_module.PUBLIC_RPC_ENDPOINTS and identity != growth_module.rpc_endpoint_identity(endpoint):
+            errors.append("source identity must match the public RPC endpoint")
+        if not isinstance(snapshot_source, dict) or any(
+            source[key] != snapshot_source.get(key) for key in ("endpoint", "endpoint_identity")
+        ):
+            errors.append("source RPC endpoint and identity must match this snapshot")
+        slot = source["rpc_context_slot"]
+        if slot is not None and (type(slot) is not int or slot < 0):
+            errors.append("rpc_context_slot must be null or a nonnegative integer")
+            slot = None
+        version = source["rpc_api_version"]
+        if version is not None and (not isinstance(version, str) or not version.strip()):
+            errors.append("rpc_api_version must be null or a nonempty string")
+    features = section["features"]
+    if not isinstance(features, list) or len(features) != len(feature_accounts_module.FEATURES):
+        return errors + ["features must contain the complete pinned ten-address scope"]
+    observed = activated = 0
+    for row, identity in zip(features, feature_accounts_module.FEATURES):
+        if not isinstance(row, dict) or set(row) != {
+            "key", "title", "simd", "address", "state", "activated_at_slot", "reason",
+        }:
+            errors.append("feature row has missing or uncontracted fields")
+            continue
+        if tuple(row[key] for key in ("key", "title", "simd", "address")) != identity:
+            errors.append("feature identity must match its pinned Agave key, title, SIMD and address")
+        state = row["state"]
+        if not isinstance(state, str) or state not in {"activated", "pending", "account_absent", "unavailable"}:
+            errors.append("feature state is unknown; account absence is not an inactive claim")
+            continue
+        observed += state != "unavailable"
+        activated += state == "activated"
+        activation = row["activated_at_slot"]
+        if state == "activated":
+            if type(activation) is not int or activation < 0 or slot is None or activation > slot:
+                errors.append("activation slot must be a nonnegative integer no later than finalized context")
+        elif activation is not None:
+            errors.append("only an activated feature may contain an activation slot")
+        if state in {"activated", "pending"}:
+            if row["reason"] is not None:
+                errors.append("decoded activated/pending observations must not carry an error reason")
+        else:
+            reasons = (
+                {"No account at this address in the finalized response."}
+                if state == "account_absent" else {
+                    "Feature account owner or executable flag is invalid.",
+                    "Feature account encoding is invalid.",
+                    "Feature account size is invalid.",
+                    "Feature activation tag is invalid.",
+                    "Feature activation slot exceeds the finalized context.",
+                    "Finalized feature response or observation time is invalid.",
+                }
+            )
+            if row["reason"] not in reasons:
+                errors.append("absent or unavailable observations require the factual parser reason")
+    for key, expected in (("coverage_numerator", observed),
+                          ("coverage_denominator", len(feature_accounts_module.FEATURES)),
+                          ("activated_feature_count", activated)):
+        if type(section[key]) is not int or section[key] != expected:
+            errors.append(f"{key} must equal the corresponding recorded feature count")
+    if type(section["available"]) is not bool or section["available"] != (observed > 0):
+        errors.append("available must reflect at least one observed account state")
+    if type(section["coverage_complete"]) is not bool or section["coverage_complete"] != (observed == len(features)):
+        errors.append("coverage_complete must reflect observation of every pinned address")
+    if observed and (observed_at is None or slot is None):
+        errors.append("observed account states require an original time and finalized context slot")
+    return errors
+
+
+def _x_post_semantic_failures(
+    items: Any, observed: datetime | None, *, allow_empty: bool,
+) -> tuple[list[str], list[datetime]]:
+    """Validate the one current/archived X row contract at publication."""
+    minimum = 0 if allow_empty else 1
+    if not isinstance(items, list) or not minimum <= len(items) <= news_module.xnews.MAX_POSTS:
+        return [f"X items must contain {minimum} to {news_module.xnews.MAX_POSTS} posts"], []
+    errors = []
+    ids = set()
+    dates = []
+    required = {"id", "author", "text", "title", "published", "link"}
+    allowed = required | {"like_count", "retweet_count"}
+    for item in items:
+        if not isinstance(item, dict) or not required <= set(item) <= allowed:
+            errors.append("archive item has missing or uncontracted fields")
+            continue
+        post_id, author = item["id"], item["author"]
+        if (not isinstance(post_id, str) or re.fullmatch(r"[0-9]{1,19}", post_id) is None
+                or post_id in ids):
+            errors.append("X post id must be 1 to 19 digits and unique")
+        if isinstance(post_id, str):
+            ids.add(post_id)
+        if author not in news_module.xnews.X_ACCOUNT_ALLOWLIST:
+            errors.append("X author must be allowlisted")
+        if item["link"] != f"https://x.com/{author}/status/{post_id}":
+            errors.append("X link must match its author and post id")
+        for key, maximum in (("text", news_module.xnews.MAX_TEXT_CHARS), ("title", news_module.MAX_TITLE)):
+            if not isinstance(item[key], str) or not item[key].strip() or len(item[key]) > maximum:
+                errors.append(f"X {key} must be a bounded nonempty string")
+        for key in ("like_count", "retweet_count"):
+            value = item.get(key)
+            if value is not None and (type(value) is not int or value < 0):
+                errors.append(f"X {key} must be null or a nonnegative integer")
+        published = _parse_aware_timestamp(item["published"])
+        if published is None or observed is None or published > observed:
+            errors.append("X publication must be aware and no later than its observation")
+        if published is not None:
+            dates.append(published)
+    if dates != sorted(dates, reverse=True):
+        errors.append("X posts must remain newest first")
+    return errors, dates
+
+
+def _x_archive_semantic_failures(source: Any, collected_at: datetime | None) -> list[str]:
+    """An archived post retains its old read time and cannot become current."""
+    if not isinstance(source, dict) or "last_known_good" not in source:
+        return []
+    errors = []
+    if source.get("available") is not False or source.get("items") or source.get("item_count", 0) != 0:
+        errors.append("archived posts require an unavailable source with no current items")
+    archive = source["last_known_good"]
+    if not isinstance(archive, dict) or set(archive) != {"observed_at", "latest_published", "items"}:
+        return errors + ["archive must contain only observed_at, latest_published and items"]
+    observed = _parse_aware_timestamp(archive["observed_at"])
+    if observed is None or collected_at is None or observed > collected_at:
+        errors.append("archive observed_at must be aware and no later than collection")
+    item_errors, dates = _x_post_semantic_failures(
+        archive["items"], observed, allow_empty=False,
+    )
+    errors.extend(item_errors)
+    latest = _parse_aware_timestamp(archive["latest_published"])
+    if not dates or latest != max(dates):
+        errors.append("archive latest_published must match its newest recorded post")
+    return errors
+
+
 def semantic_failures(snapshot: dict[str, Any]) -> list[dict[str, str]]:
     """Return nested semantic contradictions that must fail publication.
 
@@ -1071,9 +1443,11 @@ def semantic_failures(snapshot: dict[str, Any]) -> list[dict[str, str]]:
         if isinstance(schema_version, int) and not isinstance(schema_version, bool)
         else 0
     )
+    provenance = snapshot.get("provenance")
+    source_revision = provenance.get("source_revision") if isinstance(provenance, dict) else None
+    legacy_x_current = source_revision in LEGACY_X_CURRENT_SOURCE_REVISIONS
 
     if schema_version >= 8:
-        provenance = snapshot.get("provenance")
         if not isinstance(provenance, dict):
             fail("provenance", "must be an object")
         else:
@@ -1133,6 +1507,15 @@ def semantic_failures(snapshot: dict[str, Any]) -> list[dict[str, str]]:
                 fail(f"{section_name}.last_success_at", "must be offset-aware ISO-8601")
             elif collected_at is not None and parsed > collected_at:
                 fail(f"{section_name}.last_success_at", "cannot be after collected_at")
+
+    if "dune" in snapshot:
+        for detail in _dune_semantic_failures(snapshot["dune"], collected_at):
+            fail("dune", detail)
+    if "feature_activation" in snapshot:
+        for detail in _feature_activation_semantic_failures(
+            snapshot["feature_activation"], collected_at, snapshot.get("source"),
+        ):
+            fail("feature_activation", detail)
 
     epoch = snapshot.get("epoch")
     if isinstance(epoch, dict) and epoch.get("available") is True:
@@ -1593,6 +1976,10 @@ def semantic_failures(snapshot: dict[str, Any]) -> list[dict[str, str]]:
                     fail(f"{path}.estimate_window_seconds", "must equal activity.window.observed_seconds")
 
     news = snapshot.get("news")
+    news_sources = news.get("sources") if isinstance(news, dict) else None
+    x_source = news_sources.get("x_announcements") if isinstance(news_sources, dict) else None
+    for detail in _x_archive_semantic_failures(x_source, collected_at):
+        fail("news.sources.x_announcements.last_known_good", detail)
     if schema_version >= 8 and isinstance(news, dict) and (
         "available" in news or "sources" in news or "current_status" in news
     ):
@@ -1765,6 +2152,27 @@ def semantic_failures(snapshot: dict[str, Any]) -> list[dict[str, str]]:
             latest_published = source.get("latest_published")
             if latest_published is not None and _parse_aware_timestamp(latest_published) is None:
                 fail(f"{path}.latest_published", "must be offset-aware ISO-8601 when present")
+            if source_name == "x_announcements":
+                expected_requires_api_key = not legacy_x_current
+                if source.get("requires_api_key") is not expected_requires_api_key:
+                    fail(
+                        f"{path}.requires_api_key",
+                        f"must be {str(expected_requires_api_key).lower()} for its collector revision",
+                    )
+                if source.get("account_allowlist") != list(news_module.xnews.X_ACCOUNT_ALLOWLIST):
+                    fail(f"{path}.account_allowlist", "must match the pinned official account scope")
+                if source.get("max_posts_per_run") != news_module.xnews.MAX_POSTS:
+                    fail(f"{path}.max_posts_per_run", "must match the bounded request size")
+                x_errors, x_dates = _x_post_semantic_failures(
+                    items, collected_at, allow_empty=True,
+                )
+                for detail in x_errors:
+                    fail(f"{path}.items", detail)
+                parsed_latest = _parse_aware_timestamp(latest_published)
+                expected_latest = max(x_dates) if x_dates else None
+                legacy_missing_latest = legacy_x_current and "latest_published" not in source
+                if parsed_latest != expected_latest and not legacy_missing_latest:
+                    fail(f"{path}.latest_published", "must match the newest current post")
 
         agave = sources.get("agave_releases")
         if isinstance(agave, dict) and agave.get("available") is True:
@@ -1992,6 +2400,7 @@ def semantic_failures(snapshot: dict[str, Any]) -> list[dict[str, str]]:
             expected_editorial_items = news_module.normalize_editorial_items(
                 sources if isinstance(sources, dict) else {},
                 current if isinstance(current, dict) else None,
+                legacy_x_titles=legacy_x_current,
             )
         except (OSError, OverflowError, ValueError):
             expected_editorial_items = []

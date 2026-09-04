@@ -1,9 +1,11 @@
 """Offline tests for tokenized-equity registry and supply transforms."""
 
+import io
 import json
 import sys
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest.mock import patch
 
@@ -208,6 +210,34 @@ class TestRegistry(unittest.TestCase):
 
 
 class TestSupplyEvidence(unittest.TestCase):
+    def test_account_preflight_and_supply_share_the_original_deadline(self):
+        clock = [0.0]
+
+        def rpc(endpoint, method, params, timeout):
+            if method == "getAccountInfo":
+                clock[0] += 4.75
+                return rpc_mint_account()
+            return rpc_supply()
+
+        with patch("growth.time.monotonic", side_effect=lambda: clock[0]), \
+             patch("growth._rpc_result", side_effect=rpc) as fetch:
+            self.assertIsNotNone(growth.fetch_token_supply("https://rpc.example", "mint-a", timeout=5))
+        self.assertEqual([call.args[3] for call in fetch.call_args_list], [5, 0.25])
+
+    def test_transient_rpc_failure_recovers_without_bypassing_mint_provenance(self):
+        responses = [
+            urllib.error.HTTPError("https://rpc.example", 503, "unavailable", {}, None),
+            io.BytesIO(json.dumps({"result": rpc_mint_account()}).encode()),
+            io.BytesIO(json.dumps({"result": rpc_supply()}).encode()),
+        ]
+        with patch("blocks.urllib.request.urlopen", side_effect=responses) as fetch, \
+             patch("blocks.time.sleep"):
+            result = growth.fetch_token_supply("https://rpc.example", "mint-a")
+        self.assertEqual(fetch.call_count, 3)
+        self.assertEqual(result["multiplier_provenance"]["extension"], "scaledUiAmountConfig")
+        self.assertEqual(result["multiplier_provenance"]["rpc_context_slot"], 320)
+        self.assertEqual(result["context"]["slot"], 321)
+
     def test_token_supply_preflight_requires_finalized_scaled_token_2022_mint(self):
         with patch("growth._rpc_result", side_effect=[rpc_mint_account(), rpc_supply()]) as rpc:
             result = growth.fetch_token_supply("https://rpc.example", "mint-a")
@@ -711,6 +741,40 @@ class TestSupplyState(unittest.TestCase):
         self.assertIsNone(state["rpc_endpoint_identity"])
         self.assertEqual(state["observations"], {})
         self.assertIn("no RPC endpoint identity", state["reset_reason"])
+
+
+class TestCollectionPriority(unittest.TestCase):
+    def test_stablecoins_precede_the_paced_equity_sweep(self):
+        clock = [0.0]
+        calls = []
+        delays = []
+        products = [{"solana_mint": mint} for mint in ("mint-a", "mint-b")]
+
+        def stablecoins(*args, **kwargs):
+            calls.append("stablecoins")
+            return empty_selected_stablecoins()
+
+        def supply(endpoint, mint, timeout):
+            calls.append(mint)
+            return None
+
+        def sleep(delay):
+            delays.append(delay)
+            clock[0] += delay
+
+        with patch("growth.time.monotonic", side_effect=lambda: clock[0]), \
+             patch("growth.time.sleep", side_effect=sleep), \
+             patch("growth.fetch_xstocks_registry", return_value={
+                 "products": products, "coverage_complete": True,
+             }), patch("growth.fetch_token_supply", side_effect=supply), \
+             patch("growth.fetch_selected_usd_stablecoin_supplies", side_effect=stablecoins), \
+             patch("growth.fetch_json", return_value=None):
+            result, _ = growth.collect_growth("https://rpc.example")
+        self.assertEqual(calls, ["stablecoins", "mint-a", "mint-b"])
+        self.assertEqual(delays, [0.6])
+        self.assertEqual(result["sources"]["supply"]["queried_this_run_asset_count"], 2)
+        self.assertEqual(result["sources"]["supply"]["failed_this_run_asset_count"], 2)
+        self.assertFalse(result["sources"]["supply"]["available"])
 
 
 class TestMarketCoverage(unittest.TestCase):

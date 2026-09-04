@@ -56,6 +56,74 @@ def canonical_snapshot(schema=8):
     return source
 
 
+class TestNewSourcePublicObservations(unittest.TestCase):
+    def test_feature_absence_is_categorical_not_a_false_activation_or_zero_slot(self):
+        import feature_accounts
+        from tests.test_feature_accounts import response
+        source = snapshot(at="2026-09-04T13:00:00Z", schema=9)
+        source["feature_activation"] = feature_accounts.parse_feature_accounts(
+            response(), "https://api.mainnet-beta.solana.com", "2026-09-04T12:59:59Z",
+        )
+        records = facts.public_observation_records(source)
+        states = {r["subject_id"]: r for r in records if r["metric_id"] == "feature_activation_state"}
+        slots = {r["subject_id"]: r for r in records if r["metric_id"] == "feature_activated_at_slot"}
+        absent_key = feature_accounts.FEATURES[2][0]
+        self.assertEqual(states[absent_key]["value"], "account_absent")
+        self.assertEqual(states[absent_key]["status"], "current")
+        self.assertEqual(states[absent_key]["observed_slot"], 1000)
+        self.assertIsNone(slots[absent_key]["value"])
+        self.assertEqual(slots[absent_key]["status"], "unavailable")
+        active_key = feature_accounts.FEATURES[0][0]
+        self.assertEqual(slots[active_key]["value"], 900)
+        self.assertEqual(slots[active_key]["observed_slot"], 1000)
+        self.assertNotIn("feature_activation_state", {r["metric_id"] for r in facts.snapshot_facts(source)})
+
+    def test_dune_partial_and_cached_days_never_become_current_complete_totals(self):
+        source = snapshot(at="2026-09-04T13:00:00Z", schema=9)
+        record = {"available": True, "query_id": "8590950", "execution_ended_at": "2026-09-03T01:00:00Z",
+                  "aggregates": {"fee_payers_latest": 123, "fee_payers_day": "2026-09-03 00:00:00.000 UTC",
+                                 "dex_volume_total_latest_usd": 456, "dex_volume_total_day": "2026-09-02"}}
+        source["dune"] = record
+        rows = {r["metric_id"]: r for r in facts.public_observation_records(source)}
+        self.assertEqual(rows["dune_daily_non_vote_fee_payers"]["status"], "partial")
+        self.assertEqual(rows["dune_daily_dex_volume_usd"]["window"], "completed UTC day 2026-09-02")
+        self.assertEqual(rows["dune_daily_dex_volume_usd"]["observed_at"], "2026-09-02")
+        source["dune"] = {"available": False, "last_known_good": record}
+        rows = {r["metric_id"]: r for r in facts.public_observation_records(source)}
+        self.assertEqual(rows["dune_daily_dex_volume_usd"]["status"], "stale")
+        self.assertEqual(rows["dune_daily_dex_volume_usd"]["value"], 456)
+        self.assertEqual(rows["dune_daily_dex_volume_usd"]["source_path"],
+                         "dune.last_known_good.aggregates.dex_volume_total_latest_usd")
+        self.assertEqual(rows["dune_daily_dex_volume_usd"]["source_url"], "https://dune.com/queries/8590950")
+
+    def test_new_dune_rows_publish_valid_values_and_daily_event_times(self):
+        source = snapshot(at="2026-09-04T13:00:00Z", schema=9)
+        source["dune"] = {
+            "available": True, "query_id": "8590950",
+            "execution_ended_at": "2026-09-04T01:00:00Z",
+            "aggregates": {
+                "xstocks_dex_volume_latest_usd": 2500.5,
+                "xstocks_dex_trade_legs": 5,
+                "xstocks_dex_priced_trade_legs": 5,
+                "xstocks_dex_day": "2026-09-03",
+                "transaction_fees_latest_sol": 500.25,
+                "transaction_fees_day": "2026-09-03",
+            },
+        }
+        rows = {row["metric_id"]: row for row in facts.public_observation_records(source)}
+        for metric, value in (
+            ("dune_daily_xstocks_dex_volume_usd", 2500.5),
+            ("dune_daily_xstocks_dex_trade_legs", 5),
+            ("dune_daily_xstocks_dex_priced_trade_legs", 5),
+            ("dune_daily_transaction_fees_sol", 500.25),
+        ):
+            self.assertEqual(rows[metric]["value"], value)
+            self.assertEqual(rows[metric]["status"], "current")
+            self.assertEqual(rows[metric]["observed_at"], "2026-09-03")
+            self.assertEqual(rows[metric]["window"], "completed UTC day 2026-09-03")
+            self.assertTrue(rows[metric]["source_path"].startswith("dune.aggregates."))
+
+
 class TestPublicationHistory(unittest.TestCase):
     def test_unavailable_current_economics_withholds_old_values_without_mutation(self):
         earlier = snapshot()

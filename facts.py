@@ -1212,6 +1212,28 @@ for _recorded_context_metric in (
 ):
     REPORT_METRICS[_recorded_context_metric]["retain_recorded_value"] = True
 
+REPORT_METRICS.update(_report_metric_group(
+    source="solana-rpc-getMultipleAccounts-finalized",
+    source_url=SOLANA_RPC_DOCS + "getmultipleaccounts",
+    window="finalized RPC response context",
+    collection_method="read pinned official Agave feature accounts",
+    caveat="Only the pinned feature set; account absence is not a roadmap activation claim.",
+    rows=(
+        ("feature_activation_coverage_numerator", "Inspected feature gates",
+         ("feature_activation", "coverage_numerator"), "feature gates",
+         "successfully interpreted pinned feature accounts", "pinned feature set", "count valid account responses"),
+        ("feature_activation_coverage_denominator", "Pinned feature gates",
+         ("feature_activation", "coverage_denominator"), "feature gates",
+         "pinned official Agave feature set", "pinned feature set", "count requested feature addresses"),
+        ("feature_activated_count", "Activated observed feature gates",
+         ("feature_activation", "activated_feature_count"), "feature gates",
+         "successfully inspected pinned feature accounts", "pinned feature set", "count decoded activated states"),
+        ("feature_rpc_context_slot", "Feature inspection context slot",
+         ("feature_activation", "source", "rpc_context_slot"), "slot",
+         "finalized RPC response", "not applicable", "recorded RPC context slot"),
+    ),
+))
+
 PUBLIC_METRICS: dict[str, dict[str, Any]] = {**METRICS, **REPORT_METRICS}
 
 DERIVED_REPORT_METRIC_INPUTS: dict[str, tuple[str, ...]] = {
@@ -2473,6 +2495,37 @@ def _public_fact_metadata(fact: dict[str, Any]) -> dict[str, Any]:
             "source_path": f"validators.block_production.validators[].{field}",
             "source_url": GET_BLOCK_PRODUCTION_URL,
         }
+    if metric_id in {"feature_activation_state", "feature_activated_at_slot"}:
+        is_state = metric_id == "feature_activation_state"
+        return {
+            "name": f"{coverage.get('title')} {'account state' if is_state else 'activation slot'}",
+            "population": "one pinned official Agave feature account", "denominator": "not applicable",
+            "window": "finalized RPC response context", "collection_method": "getMultipleAccounts with finalized commitment",
+            "calculation_method": "decode the Feature program Option<u64> account state",
+            "caveat": fact.get("quality"),
+            "value": coverage.get("state") if is_state and fact.get("state") != "unavailable" else fact.get("value"),
+            "type": "categorical" if is_state else "numeric",
+            "source_path": "feature_activation.features[]." + ("state" if is_state else "activated_at_slot"),
+            "source_url": SOLANA_RPC_DOCS + "getmultipleaccounts",
+        }
+    if metric_id in {
+        "dune_daily_non_vote_fee_payers", "dune_daily_dex_volume_usd",
+        "dune_daily_xstocks_dex_volume_usd", "dune_daily_xstocks_dex_trade_legs",
+        "dune_daily_xstocks_dex_priced_trade_legs", "dune_daily_transaction_fees_sol",
+    }:
+        return {
+            "name": coverage.get("name"), "population": coverage.get("population"),
+            "denominator": "one UTC day within the registered query coverage",
+            "window": (
+                (("completed UTC day " if coverage.get("complete_day") else "legacy partial UTC day ")
+                 + str(coverage.get("day"))) if coverage.get("day") else "unavailable"
+            ),
+            "collection_method": "Dune execution results with recorded query/execution identity and result hash",
+            "calculation_method": coverage.get("calculation"), "caveat": fact.get("quality"),
+            "value": fact.get("value"), "type": "numeric",
+            "source_path": coverage.get("source_path"),
+            "source_url": coverage.get("source_url"),
+        }
     if metric_id == "simd_lifecycle_status":
         status = coverage.get("status")
         return {
@@ -2789,6 +2842,100 @@ def _public_observation_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
     return projected
 
 
+def feature_activation_detail_facts(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    """Public observations at the account-read grain, without new history series."""
+    section = snapshot.get("feature_activation")
+    if not isinstance(section, dict) or not isinstance(section.get("features"), list):
+        return []
+    source = section.get("source") or {}
+    metadata = section.get("metadata") or {}
+    observations = []
+    for feature in section["features"]:
+        if not isinstance(feature, dict):
+            continue
+        state = feature.get("state")
+        usable = state in {"activated", "pending", "account_absent"}
+        for metric, unit, value in (
+            ("feature_activation_state", "account state", 1 if usable else None),
+            ("feature_activated_at_slot", "slot", feature.get("activated_at_slot") if state == "activated" else None),
+        ):
+            observations.append({
+                "metric_id": metric, "subject_id": feature.get("key"),
+                "event_time": None, "event_slot": source.get("rpc_context_slot"),
+                "collected_at": snapshot.get("collected_at"), "value": value,
+                "unit": unit, "basis": "recorded", "state": "current" if value is not None else "unavailable",
+                "source": "solana-rpc-getMultipleAccounts-finalized",
+                "source_revision": metadata.get("source_revision"), "source_schema": snapshot.get("schema_version"),
+                "coverage": {"title": feature.get("title"), "state": state, "address": feature.get("address")},
+                "quality": feature.get("reason") or (
+                    "Finalized feature-account state; account absence does not establish roadmap status. "
+                    "The observation slot is the RPC context, not the activation slot or a wall-clock timestamp."
+                ),
+            })
+    return dedupe_facts(observations)
+
+
+def dune_activity_facts(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    """Daily values keep their query day and cached execution age in the registry."""
+    section = snapshot.get("dune")
+    if not isinstance(section, dict):
+        return []
+    record = section if section.get("available") is True else section.get("last_known_good", section)
+    if not isinstance(record, dict):
+        return []
+    aggregates = record.get("aggregates") or {}
+    ended = _timestamp(record.get("execution_ended_at"))
+    query_id = record.get("query_id") or section.get("query_id")
+    source_url = f"https://dune.com/queries/{query_id}" if query_id else None
+    observations = []
+    for metric, label, key, day_key, unit, population, calculation in (
+        ("dune_daily_non_vote_fee_payers", "Dune daily non-vote fee payers", "fee_payers_latest", "fee_payers_day", "fee payers",
+         "distinct non-vote transaction fee payers covered by the registered query", "query COUNT(DISTINCT fee payer) over its UTC day"),
+        ("dune_daily_dex_volume_usd", "Dune daily DEX trade-leg volume", "dex_volume_total_latest_usd", "dex_volume_total_day", "USD",
+         "indexed DEX swap legs covered by the registered query", "query SUM(amount_usd); legitimate multi-hop legs remain separate"),
+        ("dune_daily_xstocks_dex_volume_usd", "Dune daily xStock DEX trade-leg volume", "xstocks_dex_volume_latest_usd", "xstocks_dex_day", "USD",
+         "DEX trade legs where either mint is in the pinned 107-mint xStock registry", "SUM(amount_usd) only when every matched leg has valid pricing; each OR-matched row counted once"),
+        ("dune_daily_xstocks_dex_trade_legs", "Dune daily xStock DEX trade legs", "xstocks_dex_trade_legs", "xstocks_dex_day", "trade legs",
+         "DEX trade legs where either mint is in the pinned 107-mint xStock registry", "COUNT(*) after one OR match per DEX trade leg"),
+        ("dune_daily_xstocks_dex_priced_trade_legs", "Dune daily priced xStock DEX trade legs", "xstocks_dex_priced_trade_legs", "xstocks_dex_day", "trade legs",
+         "matched xStock DEX trade legs with finite nonnegative amount_usd", "COUNT_IF(amount_usd is valid) over matched legs"),
+        ("dune_daily_transaction_fees_sol", "Dune daily all-transaction fees", "transaction_fees_latest_sol", "transaction_fees_day", "SOL",
+         "vote and non-vote Solana transactions indexed by gas_solana.fees", "SUM(tx_fee) for a complete UTC day; transaction fees only, not REV or Jito tips"),
+    ):
+        value = aggregates.get(key)
+        value = value if _is_number(value) and value >= 0 else None
+        day = aggregates.get(day_key)
+        day = day[:10] if isinstance(day, str) and re.match(r"^\d{4}-\d{2}-\d{2}", day) else None
+        complete = bool(day and ended and day < ended[:10])
+        if value is None or day is None or ended is None:
+            status = "unavailable"
+        elif section.get("available") is not True or record.get("freshness") == "stale":
+            status = "stale"
+        else:
+            status = "current" if complete else "partial"
+        observations.append({
+            "metric_id": metric, "subject_id": None, "event_time": _source_event_time(day), "event_slot": None,
+            "collected_at": snapshot.get("collected_at"), "value": value, "unit": unit,
+            "basis": "recorded", "state": status, "source": "dune-registered-activity-query",
+            "source_revision": None, "source_schema": snapshot.get("schema_version"),
+            "coverage": {"name": label, "population": population, "calculation": calculation,
+                         "day": day, "complete_day": complete, "source_url": source_url,
+                         "source_path": ("dune.aggregates." if record is section else "dune.last_known_good.aggregates.") + key,
+                         "unavailable_reason": (aggregates.get("xstocks_dex_volume_reason")
+                                                if metric == "dune_daily_xstocks_dex_volume_usd" else None)},
+            "quality": (
+                (coverage_reason if isinstance(coverage_reason := (
+                    aggregates.get("xstocks_dex_volume_reason")
+                    if metric == "dune_daily_xstocks_dex_volume_usd" else None
+                ), str) and coverage_reason else "Dune daily aggregate unavailable in selected and archived source.")
+                if value is None or day is None else
+                "Completed UTC day; execution time is query provenance, not the measurement window."
+                if complete else "Legacy partial UTC-day aggregate; not a completed daily total."
+            ) + (" Cached previous execution; refresh unavailable." if status == "stale" else ""),
+        })
+    return dedupe_facts(observations)
+
+
 def public_observation_records(
     snapshot: dict[str, Any], history: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
@@ -2802,6 +2949,8 @@ def public_observation_records(
         *validator_detail_facts(observation_snapshot),
         *block_production_detail_facts(observation_snapshot),
         *source_availability_facts(observation_snapshot),
+        *feature_activation_detail_facts(observation_snapshot),
+        *dune_activity_facts(observation_snapshot),
     ])
     for fact in public_facts:
         spec = PUBLIC_METRICS.get(fact["metric_id"])

@@ -21,11 +21,14 @@ import math
 import re
 import statistics
 import sys
+import textwrap
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 import charts as charts_module
+import dune as dune_module
 import terms as terms_module
 import collect as collect_module
 import delta as delta_module
@@ -62,6 +65,20 @@ EDITORIAL_ART_ASSETS = {
         "0254c6b6b206e0ec81dc890c5fccde9ba128af85e9711360b836a00b95ae3208",
     ),
 }
+RELEASE_ART_ASSETS = {
+    "v4.3.0-beta.0": (
+        Path(__file__).parent / "assets" / "editorial" / "releases" / "v4.3.0-beta.0.png",
+        "1eeb9cfdece0322864d2a1add93a5011207c856345b0e2db79ebdf0d77663f04",
+    ),
+    "v4.3.0-beta.1": (
+        Path(__file__).parent / "assets" / "editorial" / "releases" / "v4.3.0-beta.1.png",
+        "6a09e43deb482b121341ad7a5396efb796bdeb32c4be4b974db47d9b8692f1a6",
+    ),
+    "v4.3.0-beta.2": (
+        Path(__file__).parent / "assets" / "editorial" / "releases" / "v4.3.0-beta.2.png",
+        "e9a93aa9a2d5883b55587d0fca830eb28d6b61882eb3e4622b94e8d07b937d47",
+    ),
+}
 XSTOCK_REGISTRY_LICENSE_NOTICE = """MIT License
 
 Copyright (c) 2026 Solana Foundation
@@ -88,6 +105,21 @@ XSTOCK_REGISTRY_LICENSE_URL = (
     "661a6f0ca466ccf74ea967dae7e3abbcdc088bc0/LICENSE"
 )
 PUBLIC_PROJECTION_VERSION = 2
+DUNE_AGGREGATE_PUBLIC_FIELDS = frozenset(
+    "latest_day fee_payers_latest fee_payers_day "
+    "dex_volume_total_latest_usd dex_volume_total_day "
+    "dex_volume_by_project_top dex_volume_by_project_day "
+    "xstocks_dex_volume_latest_usd xstocks_dex_trade_legs "
+    "xstocks_dex_priced_trade_legs xstocks_dex_day xstocks_dex_volume_available "
+    "xstocks_dex_volume_reason xstocks_registry xstocks_basis "
+    "transaction_fees_latest_sol transaction_fees_day transaction_fees_basis "
+    "basis scope".split()
+)
+DUNE_DAILY_METRIC_IDS = frozenset({
+    "dune_daily_non_vote_fee_payers", "dune_daily_dex_volume_usd",
+    "dune_daily_xstocks_dex_volume_usd", "dune_daily_xstocks_dex_trade_legs",
+    "dune_daily_xstocks_dex_priced_trade_legs", "dune_daily_transaction_fees_sol",
+})
 CONTENT_SECURITY_POLICY = (
     "default-src 'none'; base-uri 'none'; connect-src 'none'; font-src data:; "
     "form-action 'none'; frame-src 'none'; img-src data:; media-src data:; "
@@ -441,9 +473,15 @@ PUBLIC_OBJECT_FIELDS = {
     "news.sources.x_announcements": frozenset(
         "label publisher why url requires_api_key available reason items "
         "item_count account_allowlist max_posts_per_run partial "
-        "invalid_item_count basis".split()
+        "invalid_item_count basis latest_published last_known_good".split()
     ),
     "news.sources.x_announcements.items[]": frozenset(
+        "id title author text published link like_count retweet_count".split()
+    ),
+    "news.sources.x_announcements.last_known_good": frozenset(
+        "observed_at latest_published items".split()
+    ),
+    "news.sources.x_announcements.last_known_good.items[]": frozenset(
         "id title author text published link like_count retweet_count".split()
     ),
     "news.current_status": frozenset(
@@ -643,6 +681,8 @@ PUBLIC_OBJECT_FIELDS = {
 }
 
 PUBLIC_LIST_PATHS = frozenset({
+    "feature_activation.features",
+    "dune.last_known_good.aggregates.dex_volume_by_project_top",
     "performance.samples", "inflation.source_methods", "validators.ranked_validators",
     "validators.all_validators", "validators.top_validators", "validators.top_delinquent",
     "validators.block_production.validators",
@@ -662,6 +702,7 @@ PUBLIC_LIST_PATHS = frozenset({
     "news.sources.firedancer_releases.items",
     "news.sources.simd_proposal_metadata.items",
     "news.sources.x_announcements.items",
+    "news.sources.x_announcements.last_known_good.items",
     "news.sources.x_announcements.account_allowlist",
     "news.sources.network_status.items", "news.current_status.incidents",
     "news.current_status.incident_history", "pipeline.stages",
@@ -874,7 +915,7 @@ PUBLIC_ROOT_FIELDS = {
     ),
     9: frozenset(
         "schema_version collected_at provenance source network epoch performance supply inflation "
-        "validators economics activity news growth dune pipeline release anomalies delta history upgrades "
+        "validators economics activity news growth dune feature_activation pipeline release anomalies delta history upgrades "
         "observations".split()
     ),
 }
@@ -885,6 +926,20 @@ PUBLIC_SCHEMA_OVERRIDES = {
     7: LEGACY_PUBLIC_OBJECT_OVERRIDES,
     8: {},
     9: {
+        "feature_activation": frozenset(
+            "available observed_at coverage_complete coverage_numerator coverage_denominator "
+            "activated_feature_count source metadata features note".split()
+        ),
+        "feature_activation.source": frozenset(
+            "method commitment endpoint endpoint_identity rpc_context_slot rpc_api_version".split()
+        ),
+        "feature_activation.metadata": frozenset(
+            "repository source_revision source_path source_url license license_url "
+            "license_sha256 feature_program_id".split()
+        ),
+        "feature_activation.features[]": frozenset(
+            "key title simd address state activated_at_slot reason".split()
+        ),
         "news": frozenset(
             "available partial requires_api_key featured_item_id items sources current_status note".split()
         ),
@@ -934,22 +989,23 @@ PUBLIC_SCHEMA_OVERRIDES = {
             "available requires_api_key query_id query_url execution_id "
             "execution_started_at execution_ended_at result_age_seconds "
             "row_count datapoint_count result_sha256 source_url freshness "
-            "columns state aggregates last_known_good reason".split()
+            "columns state aggregates last_known_good reason aggregation_contract".split()
         ),
-        "dune.aggregates": frozenset(
-            "latest_day fee_payers_latest fee_payers_day "
-            "dex_volume_total_latest_usd dex_volume_total_day "
-            "dex_volume_by_project_top dex_volume_by_project_day "
-            "basis scope".split()
-        ),
+        "dune.aggregates": DUNE_AGGREGATE_PUBLIC_FIELDS,
+        "dune.aggregates.xstocks_registry": frozenset(dune_module.XSTOCK_REGISTRY),
         "dune.aggregates.dex_volume_by_project_top[]": frozenset(
             "dimension value".split()
         ),
         "dune.last_known_good": frozenset(
             "query_id query_url source_url execution_id execution_started_at "
-            "execution_ended_at age_seconds row_count datapoint_count "
+            "execution_ended_at age_seconds row_count datapoint_count aggregation_contract aggregates "
             "result_sha256 execution_started_at_parsed "
             "execution_ended_at_parsed".split()
+        ),
+        "dune.last_known_good.aggregates": DUNE_AGGREGATE_PUBLIC_FIELDS,
+        "dune.last_known_good.aggregates.xstocks_registry": frozenset(dune_module.XSTOCK_REGISTRY),
+        "dune.last_known_good.aggregates.dex_volume_by_project_top[]": frozenset(
+            "dimension value".split()
         ),
     },
 }
@@ -1025,7 +1081,7 @@ def about_recorded_art_css() -> str:
     )
 
 
-def editorial_art_css() -> str:
+def editorial_art_css(snapshot: dict[str, Any] | None = None) -> str:
     """Embed reviewed editorial illustrations without runtime requests."""
     rules = []
     for key, (path, expected_hash) in EDITORIAL_ART_ASSETS.items():
@@ -1038,6 +1094,17 @@ def editorial_art_css() -> str:
             + '{background-image:url("data:image/webp;base64,'
             + payload
             + '")}'
+        )
+    for tag in used_release_art_tags(snapshot or {}):
+        path, expected_hash = RELEASE_ART_ASSETS[tag]
+        artwork = path.read_bytes()
+        if hashlib.sha256(artwork).hexdigest() != expected_hash:
+            raise ValueError(f"embedded release artwork {tag} does not match its pinned hash")
+        payload = base64.b64encode(artwork).decode("ascii")
+        rules.append(
+            f'[data-release-art="{tag}"]'
+            + '{background-image:url("data:image/png;base64,' + payload
+            + '");background-size:contain;background-position:center;background-repeat:no-repeat}'
         )
     return "".join(rules)
 
@@ -1092,6 +1159,23 @@ def stale_provenance_label(block: Any) -> str:
     if isinstance(freshness, str) and freshness in ("stale", "missing", "unavailable"):
         return f" · {freshness}"
     return ""
+
+
+def activity_evidence_label(snapshot: dict[str, Any], reference_at: Any = None) -> str:
+    """Keep sample collection time distinct from the newest sampled block."""
+    activity = snapshot.get("activity", {})
+    if activity.get("available") is not True:
+        return "Block sample unavailable"
+    state = (stale_provenance_label(activity).removeprefix(" · ") or "sampled")
+    collected = activity.get("last_success_at") or snapshot.get("collected_at")
+    last_block = activity.get("window", {}).get("last_block_time")
+    parts = [state, f"sample collected {timestamp_label(collected)}"]
+    if is_number(last_block):
+        parts.append(f"last block {timestamp_label(unix_timestamp_label(last_block))}")
+        reference = development_event_moment(reference_at or snapshot.get("collected_at"))
+        if reference is not None and reference.timestamp() >= last_block:
+            parts.append(f"block evidence {compact_duration(reference.timestamp() - last_block)} old")
+    return " · ".join(parts)
 
 
 def sol_price_usd(snapshot: dict[str, Any]) -> float | None:
@@ -3288,6 +3372,31 @@ def render_markdown(
 # ── HTML ─────────────────────────────────────────────────────────────────────
 
 CSS = r"""
+    [data-desktop-history-panel][hidden], [data-desktop-history-controls][hidden] { display:none; }
+    .desktop-history-picker { display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; margin-bottom:20px; }
+    .desktop-history-picker label { display:grid; gap:7px; font-size:12px; font-weight:600; }
+    .desktop-history-picker select { min-width:0; min-height:44px; padding:8px 12px; color:var(--ink); background:var(--paper); border:1px solid var(--rule); border-radius:6px; }
+    .desktop-history-picker p { grid-column:1 / -1; margin:0; color:var(--muted); font-size:11px; }
+
+    .report-coverage { margin:16px 0 24px; border:1px solid var(--rule); border-radius:8px; padding:0 14px; }
+    .report-coverage > summary { min-height:44px; padding:12px 0; cursor:pointer; font-weight:650; }
+    .report-coverage > p { font-size:12px; line-height:1.6; max-width:78ch; }
+    .report-coverage table { width:100%; font-size:12px; }
+    .report-coverage th[scope='row'] { width:24%; text-align:left; font-weight:600; }
+    .report-coverage td { vertical-align:top; }
+    .report-coverage td span, .report-coverage td small, .report-coverage th small { display:block; }
+    .feature-activation code { overflow-wrap:anywhere; }
+    .report-coverage small { color:var(--muted); font-weight:400; line-height:1.5; margin:4px 0; }
+    .coverage-state { display:block; margin-bottom:5px; }
+    .report-coverage a { text-decoration:underline; text-underline-offset:3px; }
+    @media (max-width: 760px) {
+      .report-coverage { margin:12px 0; padding:0 12px; }
+      .report-coverage thead { display:none; }
+      .report-coverage tr { display:block; padding:10px 0; border-bottom:1px solid var(--rule); }
+      .report-coverage th[scope='row'], .report-coverage td { display:block; width:auto; padding:4px 0; border:0; }
+      .report-coverage td a { display:inline-block; min-height:44px; padding:12px 0; }
+    }
+
     :root {
       color-scheme: light;
       --super-purple: light-dark(#5522e0, #b9a6ff);
@@ -4170,7 +4279,7 @@ CSS = r"""
 
     .prototype-page--report .metric {
       display: grid;
-      grid-template-rows: 16px minmax(38px, auto) 18px;
+      grid-template-rows: minmax(24px, auto) minmax(38px, auto) auto;
       align-content: start;
       min-width: 0;
       padding: 15px clamp(14px, 1.7vw, 25px) 14px;
@@ -4183,13 +4292,11 @@ CSS = r"""
 
     .prototype-page--report .metric__label {
       display: block;
-      overflow: hidden;
       color: var(--prototype-body);
       font-size: 10px;
       font-weight: 500;
       line-height: 1.2;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      white-space: normal;
     }
 
     .prototype-page--report .metric__value {
@@ -4212,6 +4319,14 @@ CSS = r"""
       font-weight: 500;
       letter-spacing: -0.01em;
     }
+
+    .prototype-page--report .metric__value--range {
+      flex-wrap: wrap;
+      gap: 2px 4px;
+      font-size: clamp(18px, 1.75vw, 26px);
+    }
+    .prototype-page--report .metric__value--range span { overflow-wrap: anywhere; white-space: normal; }
+    .prototype-page--report .metric__evidence { margin: 0; font-size: 10px; line-height: 1.4; color: var(--prototype-muted); }
 
     .prototype-page--report .metric__value--healthy {
       color: var(--positive);
@@ -4463,6 +4578,7 @@ CSS = r"""
       justify-content: space-between;
       margin-top: 0;
       padding-right: 0;
+      padding-bottom: 5px;
       color: var(--prototype-muted);
       font-size: 8px;
       line-height: 1;
@@ -4554,12 +4670,18 @@ CSS = r"""
     }
     .prototype-page--report .sparkline .chart-endpoint { pointer-events:none; }
     .prototype-page--report .sparkline .chart-hover-guide {
+      opacity: 0;
       stroke: rgba(76, 2, 207, .38);
       stroke-width: 1;
       stroke-dasharray: 3 3;
       pointer-events: none;
       vector-effect: non-scaling-stroke;
     }
+    .prototype-page--report .sparkline:hover .chart-hover-guide,
+    .prototype-page--report .sparkline:focus-within .chart-hover-guide,
+    .prototype-page--report .sparkline:has([data-chart-active]) .chart-hover-guide { opacity: 1; }
+    .prototype-page--report .chart-title-note,
+    .prototype-page--report .chart-evidence { margin: 0; color: var(--prototype-muted); font-size: 10px; line-height: 1.4; }
     .prototype-page--report [data-overview-chart] { cursor: crosshair; }
     .prototype-page--report .chart-card,
     .prototype-page--report .plot,
@@ -9826,7 +9948,7 @@ CSS = r"""
         grid-template-columns: 64px minmax(0, 1fr);
         gap: 10px;
         align-items: center;
-        padding: 3px 0;
+        padding: 18px 0;
       }
 
       .project-editorial__card-art {
@@ -10383,7 +10505,7 @@ CSS = r"""
       .prototype-page--about .development-stream--desktop .development-chronology { margin-top:clamp(2rem,3vw,3rem); }
       .prototype-page--about .development-stream--desktop .development-section-head { flex-wrap:wrap; align-items:flex-end; margin-bottom:1rem; }
       .prototype-page--about .development-stream--desktop .development-section-head > div:first-child { flex:1 1 16rem; }
-      .prototype-page--about .development-stream--desktop .development-controls { flex:1 1 44rem; align-items:flex-end; gap:8px; }
+      .prototype-page--about .development-stream--desktop .development-controls { flex:0 1 auto; min-width:0; align-items:flex-end; gap:8px; }
       .prototype-page--about .development-stream--desktop .development-select select { min-width:148px; }
       .prototype-page--about .development-stream--desktop .development-lane-key { display:none; }
       .prototype-page--about .development-stream--desktop .development-events { overflow:visible; border:0; border-radius:0; }
@@ -12282,7 +12404,7 @@ CSS = r"""
       .prototype-page--report h1 { margin-bottom:10px; font-size:clamp(36px,2.8vw,52px); font-weight:800; line-height:1.02; letter-spacing:-.03em; white-space:nowrap; }
       .prototype-page--report .lede { max-width:40em; font-size:16px; font-weight:600; line-height:1.4; }
       .prototype-page--report .metrics { grid-template-columns:.9fr repeat(4,1fr); margin-top:clamp(18px,1.43vw,31px); overflow:visible; border:0; border-radius:0; }
-      .prototype-page--report .metric { grid-template-rows:clamp(20px,1.56vw,34px) clamp(44px,3.39vw,74px) clamp(20px,1.56vw,34px); min-height:clamp(96px,7.49vw,164px); padding:0 0 0 clamp(22px,2.86vw,62px); }
+      .prototype-page--report .metric { grid-template-rows:minmax(clamp(20px,1.56vw,34px),auto) minmax(clamp(44px,3.39vw,74px),auto) auto; row-gap:6px; min-height:clamp(96px,7.49vw,164px); padding:0 0 0 clamp(22px,2.86vw,62px); }
       .prototype-page--report .metric:first-child { padding-left:0; }
       .prototype-page--report .metric__label { font-size:clamp(10px,.85vw,18px); font-weight:500; }
       .prototype-page--report .metric__value { font-size:clamp(26px,2.21vw,48px); font-weight:600; }
@@ -12443,6 +12565,9 @@ CSS = r"""
       .mobile-context-item + .mobile-context-item { padding-left:14px; border-left:1px solid var(--prototype-rule); }
       .mobile-context-item span,.mobile-context-item small { display:block; color:var(--prototype-muted); font-size:9px; }
       .mobile-context-item strong { display:block; margin:4px 0 2px; font-size:20px; line-height:1; }
+      .mobile-context-item--network-daa { grid-column:1 / -1; border-top:1px solid var(--prototype-rule); }
+      .mobile-context-item--network-daa:last-child { border-left:0; padding-left:0; }
+      .mobile-context-item .metric__value--range span { font:inherit; color:inherit; }
       .mobile-overview-panel { margin:0 0 20px; padding-top:2px; }
       .mobile-overview-panel .change-list { display:grid; gap:0; margin:0; padding:0; list-style:none; }
       .mobile-overview-panel .change-list li { display:grid; grid-template-columns:minmax(0,1fr) minmax(150px,42%); gap:12px; padding:10px 0; border-top:1px solid var(--prototype-rule); font-size:11px; }
@@ -13389,7 +13514,7 @@ CSS = r"""
       .prototype-wordmark__copy { display:none; }
       .prototype-status { display:none; }
       .prototype-page--report .metric {
-        grid-template-rows:minmax(24px,auto) minmax(38px,auto) 18px;
+        grid-template-rows:minmax(24px,auto) minmax(38px,auto) auto;
       }
       .prototype-page--report .metric:last-child .metric__label {
         overflow:visible;
@@ -14474,23 +14599,16 @@ def card(
 
 
 def _header_daa_value(snapshot: dict[str, Any]) -> str:
-    """Header-strip DAA value: provider range when the Solana Data source
-    delivered observations, the honest unavailable state otherwise.
-
-    The strip is a headline surface; the range is the provider-disagreement
-    value (same basis as the Pulse card), and 'not estimated' wording keeps
-    the refusal to invent a canonical number explicit.
-    """
-    growth = snapshot.get("growth", {}) if isinstance(snapshot.get("growth"), dict) else {}
-    daa = growth.get("daily_active_addresses", {}) \
-        if isinstance(growth.get("daily_active_addresses"), dict) else {}
-    if daa.get("available") is True and is_number(daa.get("minimum")) \
+    """A scoped stablecoin-address benchmark, never network-wide DAA."""
+    daa = corrected_provider_benchmark(snapshot, "daily_active_addresses")
+    if daa and is_number(daa.get("minimum")) \
             and is_number(daa.get("maximum")):
         day = str(daa.get("date") or "date unavailable")
         return (
-            f"<strong class='metric__value'>{html.escape(fmt(daa.get('minimum')))}"
-            f"–{html.escape(fmt(daa.get('maximum')))}</strong>"
-            f"<span class='delta'>provider range · {html.escape(day)}</span>"
+            f"<strong class='metric__value metric__value--range'><span>{html.escape(fmt(daa.get('minimum')))}</span>"
+            f"<span>–{html.escape(fmt(daa.get('maximum')))}</span></strong>"
+            f"<small class='metric__evidence'>{html.escape(fmt(daa.get('provider_count')))} providers · {html.escape(day)}"
+            " · daily stablecoin activity, not network-wide DAA</small>"
         )
     return (
         "<strong class='metric__value'>—</strong>"
@@ -15378,7 +15496,7 @@ def render_overview_charts(
         )
         return svg, labels
 
-    def change_markup(key: str, stats: dict[str, Any]) -> str:
+    def change_markup(key: str, stats: dict[str, Any], qualifier: str = "") -> str:
         record = indexes["derived"].get((
             f"history_{key}_first_to_last_change_pct", window_subject,
         ))
@@ -15394,11 +15512,11 @@ def render_overview_charts(
             return "<span class='delta'>Recorded history</span>"
         change = (last - first) / abs(first) * 100
         if abs(change) < 0.005:
-            return f"<span class='delta'{binding}>→ 0%</span>"
+            return f"<span class='delta'{binding}>→ 0%{qualifier}</span>"
         arrow = "↑" if change > 0 else "↓"
         favorable = change < 0 if key == "mean_slot_time_secs" else change > 0
         css_class = "" if favorable else " delta--negative"
-        return f"<span class='delta{css_class}'{binding}>{arrow} {abs(change):.1f}%</span>"
+        return f"<span class='delta{css_class}'{binding}>{arrow} {abs(change):.1f}%{qualifier}</span>"
     by_key = {spec["key"]: spec for spec in charts_module.SERIES}
     figures: list[str] = []
     unavailable: list[tuple[str, str]] = []
@@ -15423,6 +15541,20 @@ def render_overview_charts(
         latest = stats["last"]
         latest_text = charts_module.fmt_endlabel(latest, spec["decimals"])
         first_date, last_date = date_labels(points)
+        sparse = not any(
+            len(run) >= 3 for run in charts_module.segments(points, gap_factor=math.inf)
+        )
+        qualifier = (
+            " first → last across gaps" if any(point["value"] is None for point in points)
+            else f" first → last · {stats['points']} observations"
+        ) if sparse else ""
+        evidence = ""
+        if key in ("median_fee_lamports", "sample_mean_rev_sol"):
+            latest_at = next(point["at"] for point in reversed(points) if point["value"] is not None)
+            sampled_snapshot = next(item for item in history if item.get("collected_at") == latest_at)
+            evidence = activity_evidence_label(sampled_snapshot, history[-1].get("collected_at"))
+            if latest_at != history[-1].get("collected_at"):
+                evidence = "Historical sample · " + evidence
         svg, axis_labels = prototype_chart_svg(spec, points, stats)
         point_records = [
             indexes["summary"].get((key, point["at"]))
@@ -15449,10 +15581,13 @@ def render_overview_charts(
             f"{point_binding}{count_binding}>"
             f"<figcaption data-window='{'Sampled' if spec['basis'] == 'sampled' else 'Recorded'}'>"
             f"<span class='chart-title'>{html.escape(display_labels[key])}</span></figcaption>"
+            + ("<p class='chart-title-note'>sparse recorded history</p>" if sparse else "")
+            + (f"<p class='chart-evidence'>{html.escape(evidence)}</p>" if evidence else "")
+            +
             f"<div class='chart-value'><strong>{html.escape(latest_text)}"
             f"{'' if spec['unit'] == '%' else ' '}"
             f"<span class='chart-unit'>{html.escape(spec['unit'])}</span></strong>"
-            f"{change_markup(key, stats)}</div>"
+            f"{change_markup(key, stats, qualifier)}</div>"
             f"<div class='plot'><div class='plot__field'><div class='sparkline'>{svg}</div>"
             "<div class='chart-inspector' data-overview-chart-inspector hidden role='status'>"
             f"<span data-inspector-label>{html.escape(display_labels[key])}</span>"
@@ -15849,12 +15984,43 @@ def render_ecosystem_pulse(
     # saved public query. Derived at collection time; the raw rows never
     # enter the snapshot, only these aggregates do.
     dune_section = snapshot.get("dune", {}) if isinstance(snapshot.get("dune"), dict) else {}
-    dune_aggregates = dune_section.get("aggregates", {}) \
-        if isinstance(dune_section.get("aggregates"), dict) else {}
-    if dune_section.get("available") is True and dune_aggregates:
+    dune_current = dune_section.get("available") is True
+    dune_record = dune_section if dune_current else dune_section.get("last_known_good", {})
+    dune_record = dune_record if isinstance(dune_record, dict) else {}
+    dune_aggregates = dune_record.get("aggregates", {}) \
+        if isinstance(dune_record.get("aggregates"), dict) else {}
+    dune_state = "provider-reported" if dune_current else "last-known-good · current query unavailable"
+    def day_description(day: Any) -> str:
+        moment = development_event_moment(day)
+        if moment is None and re.fullmatch(r"\d{4}-\d{2}-\d{2} 00:00:00(?:\.0+)? UTC", str(day)):
+            moment = development_event_moment(str(day)[:10])
+        ended = development_event_moment(dune_record.get("execution_ended_at"))
+        description = "UTC day completeness unavailable"
+        if moment and ended:
+            if moment.date() < ended.astimezone(timezone.utc).date():
+                description = "completed UTC day"
+            elif moment.date() == ended.astimezone(timezone.utc).date():
+                description = "partial UTC day at execution"
+        if dune_record.get("aggregation_contract") != "completed-utc-days-v1":
+            description = "legacy result · " + description
+        return description
+    if dune_aggregates:
         dex_total = dune_aggregates.get("dex_volume_total_latest_usd")
         if is_number(dex_total):
             dex_day = dune_aggregates.get("dex_volume_total_day") or "date unavailable"
+            day_moment = development_event_moment(dex_day)
+            if day_moment is None and re.fullmatch(r"\d{4}-\d{2}-\d{2} 00:00:00(?:\.0+)? UTC", str(dex_day)):
+                day_moment = development_event_moment(str(dex_day)[:10])
+            execution_moment = development_event_moment(dune_record.get("execution_ended_at"))
+            day_basis = "UTC day completeness unavailable"
+            if day_moment and execution_moment:
+                execution_day = execution_moment.astimezone(timezone.utc).date()
+                if day_moment.date() < execution_day:
+                    day_basis = "completed UTC day"
+                elif day_moment.date() == execution_day:
+                    day_basis = "partial UTC day at execution"
+            if dune_record.get("aggregation_contract") != "completed-utc-days-v1":
+                day_basis = "legacy result · " + day_basis
             top_rows = dune_aggregates.get("dex_volume_by_project_top") \
                 if isinstance(dune_aggregates.get("dex_volume_by_project_top"), list) else []
             top_lines = "".join(
@@ -15868,15 +16034,16 @@ def render_ecosystem_pulse(
                 f"{top_lines}"
                 "<p class='pulse-provider-note'>Trade-leg volume sums each swap leg; "
                 "it is not unique-user volume. Source query: "
-                + html.escape(str(dune_section.get("query_url") or "https://dune.com"))
+                + html.escape(str(dune_record.get("query_url") or dune_section.get("query_url") or "https://dune.com"))
                 + "</p></details>"
             )
             dex_card = card(
                 "DEX volume (Dune, trade-leg)",
                 f"${fmt(dex_total)}",
-                f"Dune query {dune_section.get('query_id')} · provider-reported · {dex_day} · "
-                "~1 day source lag · trade-leg basis",
+                f"Dune query {dune_record.get('query_id') or dune_section.get('query_id')} · {dune_state} · {dex_day} · "
+                f"{day_basis} · trade-leg basis",
                 extra=dex_extra,
+                attributes=binding("dune_daily_dex_volume_usd"),
             )
         else:
             dex_card = card(
@@ -15892,10 +16059,57 @@ def render_ecosystem_pulse(
     else:
         dex_card = None
 
+    xstock_volume = dune_aggregates.get("xstocks_dex_volume_latest_usd")
+    xstock_legs = dune_aggregates.get("xstocks_dex_trade_legs")
+    xstock_priced = dune_aggregates.get("xstocks_dex_priced_trade_legs")
+    xstock_day = dune_aggregates.get("xstocks_dex_day") or "date unavailable"
+    xstock_complete = (
+        dune_aggregates.get("xstocks_dex_volume_available") is True
+        and is_number(xstock_volume) and is_number(xstock_legs) and is_number(xstock_priced)
+        and float(xstock_legs) == float(xstock_priced)
+    )
+    xstock_coverage = (
+        f"{fmt(xstock_priced)} of {fmt(xstock_legs)} scoped trade legs priced"
+        if is_number(xstock_legs) and is_number(xstock_priced) else "trade-leg coverage unavailable"
+    )
+    xstock_reason = str(
+        dune_aggregates.get("xstocks_dex_volume_reason")
+        or (f"USD volume withheld because pricing covers {fmt(xstock_priced)} of {fmt(xstock_legs)} scoped trade legs"
+            if is_number(xstock_legs) and is_number(xstock_priced)
+            and float(xstock_legs) != float(xstock_priced)
+            else "registered query result did not contain pinned xStock coverage rows")
+    )
+    xstock_card = card(
+        "Covered xStocks DEX trade-leg volume",
+        f"${fmt(xstock_volume)}" if xstock_complete else "Unavailable",
+        f"Dune · {dune_state} · {xstock_day} · {day_description(xstock_day)} · {xstock_coverage} · "
+        + ("OR-matched scoped rows counted once; not all equity or unique-user volume"
+           if xstock_complete else xstock_reason),
+        attributes=binding(
+            "dune_daily_xstocks_dex_volume_usd", "dune_daily_xstocks_dex_trade_legs",
+            "dune_daily_xstocks_dex_priced_trade_legs",
+        ),
+    ) if dune_aggregates else None
+
+    transaction_fees = dune_aggregates.get("transaction_fees_latest_sol")
+    transaction_fee_day = dune_aggregates.get("transaction_fees_day") or "date unavailable"
+    transaction_fee_card = card(
+        "Daily all-transaction fees",
+        f"{fmt(transaction_fees)} SOL" if is_number(transaction_fees) else "Unavailable",
+        f"Dune · {dune_state} · {transaction_fee_day} · {day_description(transaction_fee_day)} · "
+        + str(dune_aggregates.get("transaction_fees_basis")
+              or "all transaction fees unavailable; not protocol REV or Jito tips"),
+        attributes=binding("dune_daily_transaction_fees_sol"),
+    ) if dune_aggregates else None
+
     pulse_cards = [sol_card, addresses_card, fee_payers_card, app_revenue_card,
                    rev_card, supply_card]
     if dex_card is not None:
         pulse_cards.append(dex_card)
+    if xstock_card is not None:
+        pulse_cards.append(xstock_card)
+    if transaction_fee_card is not None:
+        pulse_cards.append(transaction_fee_card)
 
     return (
         "<h2>Ecosystem Pulse <span class='keyless'>assembled from recorded snapshot data</span></h2>"
@@ -16547,6 +16761,7 @@ def render_validator_workbench(
     """Ranked, inspectable validator surface from native vote-account state."""
     validators = snapshot.get("validators", {})
     prefix = "".join(char for char in context.lower() if char.isalnum() or char == "-") or "report"
+    mobile_context = prefix == "mobile"
     title_id = f"{prefix}-validator-title"
     validators_live = detect.source_eligible(snapshot, "validators")
     raw_rows = validators.get("ranked_validators") if validators_live else []
@@ -16556,6 +16771,10 @@ def render_validator_workbench(
     active_count = validators.get("active_count") if validators_live and is_number(validators.get("active_count")) else len(rows)
     production = recorded_block_production(snapshot) if validators_live else {}
     production_rows = [row for row in production.get("validators", []) if isinstance(row, dict)]
+    production_display_rows = sorted(
+        production_rows,
+        key=lambda row: (-int(row.get("leader_slots") or 0), str(row.get("identity") or "")),
+    )[:100]
     unmatched_production = sum(row.get("vote_identity_matched") is False for row in production_rows)
     snapshot_at = str(snapshot.get("collected_at"))
 
@@ -16933,7 +17152,8 @@ def render_validator_workbench(
                 f"<span class='validator-bar__track'><i class='validator-bar__fill' style='--bar-width:{bar_width:.2f}%'></i></span>"
                 f"<strong>{html.escape(fmt(share_pct, '%'))}</strong></li>"
             )
-        desktop_rows.append(
+        if not mobile_context:
+            desktop_rows.append(
             f"<tr{row_binding} data-validator-row data-page-row='desktop' data-search='{html.escape(search_blob, quote=True)}' "
             f"data-rank='{rank}' data-stake_sol='{stake_sol if is_number(stake_sol) else ''}' "
             f"data-share_pct='{share_pct if is_number(share_pct) else ''}' "
@@ -16949,8 +17169,9 @@ def render_validator_workbench(
             f"<td data-label='State'><span class='validator-state validator-state--{state}'>{state_label}</span></td>"
             f"<td data-label='Last vote'>{html.escape(fmt(last_vote))}</td>"
             f"<td data-label='Root slot'>{html.escape(fmt(root_slot))}</td></tr>"
-        )
-        mobile_rows.append(
+            )
+        if mobile_context:
+            mobile_rows.append(
             f"<details class='validator-mobile-row'{row_binding} data-validator-row data-page-row='mobile' data-search='{html.escape(search_blob, quote=True)}' "
             f"data-rank='{rank}' data-stake_sol='{stake_sol if is_number(stake_sol) else ''}' "
             f"data-share_pct='{share_pct if is_number(share_pct) else ''}' "
@@ -16968,7 +17189,7 @@ def render_validator_workbench(
             f"<div><dt>Node identity</dt><dd><code>{html.escape(identity)}</code></dd></div>"
             f"<div><dt>Vote account</dt><dd><code>{html.escape(vote_account)}</code></dd></div>"
             "</dl></details>"
-        )
+            )
 
     if not rows:
         evidence = (
@@ -16976,16 +17197,9 @@ def render_validator_workbench(
             "<p>The current snapshot does not include ranked vote-account rows. No empty table or zero values are substituted.</p></div>"
         )
     else:
-        evidence = (
-            "<div class='validator-visual'>"
-            "<div class='validator-visual__head'><div><span>Stake distribution</span>"
-            "<h3>Top validator concentration</h3></div><small>Share of recorded activated stake</small></div>"
-            f"<ol class='validator-bars'>{''.join(bars)}</ol></div>"
-            "<div class='validator-table-panel' data-pagination data-page-size='10' data-mobile-page-size='10'>"
-            "<div class='validator-table-tools'><label>Filter validators"
-            f"<input type='search' data-validator-filter disabled aria-controls='{prefix}-validator-table' "
-            "placeholder='Identity, vote account, or state' autocomplete='off'></label>"
-            f"<span><b data-validator-visible>{len(rows)}</b> of {fmt(active_count)} active validators · top ranked evidence</span></div>"
+        validator_rows_markup = (
+            f"<div class='validator-mobile-list'>{''.join(mobile_rows)}</div>"
+            if mobile_context else
             f"<div class='validator-table-scroll'><table id='{prefix}-validator-table' data-validator-table>"
             "<caption>Ranked validators from native getVoteAccounts state</caption><thead><tr>"
             "<th scope='col' aria-sort='ascending'><button type='button' data-sort-key='rank' disabled>#</button></th>"
@@ -16997,14 +17211,25 @@ def render_validator_workbench(
             "<th scope='col'><button type='button' data-sort-key='last_vote' disabled>Last vote</button></th>"
             "<th scope='col'><button type='button' data-sort-key='root_slot' disabled>Root slot</button></th>"
             f"</tr></thead><tbody>{''.join(desktop_rows)}</tbody></table></div>"
-            f"<div class='validator-mobile-list'>{''.join(mobile_rows)}</div>"
+        )
+        evidence = (
+            "<div class='validator-visual'>"
+            "<div class='validator-visual__head'><div><span>Stake distribution</span>"
+            "<h3>Top validator concentration</h3></div><small>Share of recorded activated stake</small></div>"
+            f"<ol class='validator-bars'>{''.join(bars)}</ol></div>"
+            "<div class='validator-table-panel' data-pagination data-page-size='10' data-mobile-page-size='10'>"
+            "<div class='validator-table-tools'><label>Filter validators"
+            f"<input type='search' data-validator-filter disabled aria-controls='{prefix}-validator-table' "
+            "placeholder='Identity, vote account, or state' autocomplete='off'></label>"
+            f"<span><b data-validator-visible>{len(rows)}</b> of {fmt(active_count)} active validators · top ranked evidence</span></div>"
+            f"{validator_rows_markup}"
             f"{pagination_controls('Ranked validator pages')}"
             "<div class='validator-filter-empty' hidden>No validators match this local filter.</div></div>"
         )
 
     production_desktop_rows = []
     production_mobile_rows = []
-    for row in production_rows:
+    for row in production_display_rows:
         identity = str(row.get("identity") or "—")
         matched = "Matched" if row.get("vote_identity_matched") is True else "Unmatched"
         rate = fmt_rate(row.get("skip_rate"))
@@ -17022,7 +17247,8 @@ def render_validator_workbench(
                 if is_number(value)
             ),
         )
-        production_desktop_rows.append(
+        if not mobile_context:
+            production_desktop_rows.append(
             f"<tr{production_row_binding} data-page-row='desktop'>"
             f"<td data-label='Node identity'><code>{html.escape(identity)}</code></td>"
             f"<td data-label='Leader slots'>{html.escape(fmt(row.get('leader_slots')))}</td>"
@@ -17031,8 +17257,9 @@ def render_validator_workbench(
             f"<td data-label='Skip rate'>{html.escape(rate)}</td>"
             f"<td data-label='Vote-account join'>{matched}</td>"
             f"<td data-label='Vote accounts'>{html.escape(fmt(row.get('vote_account_count')))}</td></tr>"
-        )
-        production_mobile_rows.append(
+            )
+        if mobile_context:
+            production_mobile_rows.append(
             f"<details class='validator-mobile-row'{production_row_binding} data-page-row='mobile'>"
             f"<summary><span><b>{matched}</b><code>{html.escape(identity)}</code></span>"
             f"<span><strong>{html.escape(fmt(row.get('blocks_produced')))}</strong><small>blocks produced</small></span></summary>"
@@ -17043,9 +17270,19 @@ def render_validator_workbench(
             f"<div><dt>Vote accounts</dt><dd>{html.escape(fmt(row.get('vote_account_count')))}</dd></div>"
             f"<div><dt>Node identity</dt><dd><code>{html.escape(identity)}</code></dd></div>"
             "</dl></details>"
-        )
+            )
     production_evidence = ""
     if production:
+        production_rows_markup = (
+            f"<div class='validator-mobile-list'>{''.join(production_mobile_rows)}</div>"
+            if mobile_context else
+            "<div class='validator-table-scroll'>"
+            "<table data-validator-table><caption>Identity-level finalized completed-epoch production</caption>"
+            "<thead><tr><th scope='col'>Node identity</th><th scope='col'>Leader slots</th>"
+            "<th scope='col'>Produced</th><th scope='col'>Skipped</th><th scope='col'>Skip rate</th>"
+            "<th scope='col'>Vote-account join</th><th scope='col'>Vote accounts</th></tr></thead>"
+            f"<tbody>{''.join(production_desktop_rows)}</tbody></table></div>"
+        )
         production_evidence = (
             "<section class='validator-production' aria-label='Completed-epoch block production'>"
             "<div class='validator-visual__head'><div><span>Finalized completed epoch</span>"
@@ -17055,14 +17292,11 @@ def render_validator_workbench(
             f"{html.escape(fmt(production.get('skipped_slots')))} skipped · "
             f"{html.escape(fmt_rate(production.get('skip_rate')))} skip rate</small></div>"
             "<div class='validator-table-panel' data-pagination data-page-size='25' data-mobile-page-size='10'>"
-            "<div class='validator-table-scroll'>"
-            "<table data-validator-table><caption>Identity-level finalized completed-epoch production</caption>"
-            "<thead><tr><th scope='col'>Node identity</th><th scope='col'>Leader slots</th>"
-            "<th scope='col'>Produced</th><th scope='col'>Skipped</th><th scope='col'>Skip rate</th>"
-            "<th scope='col'>Vote-account join</th><th scope='col'>Vote accounts</th></tr></thead>"
-            f"<tbody>{''.join(production_desktop_rows)}</tbody></table></div>"
-            f"<div class='validator-mobile-list'>{''.join(production_mobile_rows)}</div>"
+            f"{production_rows_markup}"
             f"{pagination_controls('Completed-epoch production pages')}"
+            f"<p class='validator-component-note'>Showing {len(production_display_rows)} of "
+            f"{len(production_rows)} identities, highest leader-slot counts first. "
+            "<a href='report.json' download>Download all exact identity rows.</a></p>"
             "</div></section>"
         )
 
@@ -17195,6 +17429,188 @@ DATA_CATALOG_DATASETS = (
     "Snapshot delta",
 )
 DATA_CATALOG_DATASET_COUNT = len(DATA_CATALOG_DATASETS)
+
+
+def render_feature_activation(snapshot, context, observation_indexes=None) -> str:
+    """Show source-native feature account state without inferring proposal activation."""
+    section = snapshot.get('feature_activation')
+    if not isinstance(section, dict):
+        return ''
+    prefix = 'mobile' if context == 'mobile' else 'desktop'
+    source = section.get('source', {})
+    metadata = section.get('metadata', {})
+    snapshot_at = str(snapshot.get('collected_at'))
+    summary_binding = summary_observation_attribute(
+        observation_indexes, snapshot_at,
+        ('feature_activation_coverage_numerator', 'feature_activation_coverage_denominator',
+         'feature_activated_count', 'feature_rpc_context_slot'),
+    )
+    rows = []
+    labels = {'activated': 'Activated', 'pending': 'Pending',
+              'account_absent': 'Account absent', 'unavailable': 'Unavailable'}
+    for feature in section.get('features', []):
+        binding = ''
+        if observation_indexes is not None:
+            records = [record for key, record in observation_indexes['subject'].items()
+                       if key[0] in ('feature_activation_state', 'feature_activated_at_slot')
+                       and key[1] == feature.get('key') and key[-1] == snapshot_at]
+            if len(records) != 2:
+                raise ValueError(f"feature account has no complete public observation: {feature.get('key')}")
+            binding = observation_ids_attribute([record['observation_id'] for record in records])
+        state = feature.get('state')
+        if state == 'activated':
+            evidence = f"Activation slot {fmt_id(feature.get('activated_at_slot'))}"
+        elif state == 'pending':
+            evidence = 'Valid feature account without an activation slot.'
+        elif state == 'account_absent':
+            evidence = 'No account returned at this finalized context; this does not establish activation history.'
+        else:
+            evidence = str(feature.get('reason') or 'No usable account observation.')
+        rows.append(
+            f"<tr data-feature-key='{html.escape(str(feature.get('key')), quote=True)}'{binding}>"
+            f"<th scope='row'>{html.escape(str(feature.get('title') or feature.get('key')))}"
+            f"<small>{html.escape(str(feature.get('simd') or 'Protocol feature'))}</small></th>"
+            f"<td><strong>{labels.get(state, 'Unavailable')}</strong><span>{html.escape(evidence)}</span>"
+            f"<small><code>{html.escape(str(feature.get('address') or 'Address unavailable'))}</code></small></td></tr>"
+        )
+    url = safe_external_href(metadata.get('source_url'))
+    reference = (f"<a href='{html.escape(url, quote=True)}' target='_blank' rel='noopener noreferrer'>Pinned Agave definitions</a>"
+                 if url else 'Pinned source definitions unavailable')
+    checked = f"{fmt(section.get('coverage_numerator'))} of {fmt(section.get('coverage_denominator'))} selected accounts observed"
+    return (
+        f"<details class='report-coverage feature-activation' id='{prefix}-feature-activation'>"
+        "<summary>On-chain feature activation</summary>"
+        f"<p{summary_binding}>{html.escape(checked)} · {html.escape(development_time_label(section.get('observed_at')))}. "
+        f"Finalized RPC context slot {html.escape(fmt_id(source.get('rpc_context_slot')))}.</p>"
+        "<p>This watch covers selected Alpenglow, slot-timing and rent gates. Account state is separate from "
+        "proposal acceptance, software release, and a full cluster software census. "
+        f"{reference}.</p><div class='table-wrap'><table>"
+        "<caption class='visually-hidden'>Selected protocol feature accounts and activation evidence</caption>"
+        "<thead><tr><th scope='col'>Feature</th><th scope='col'>Recorded account evidence</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table></div></details>"
+    )
+
+
+REPORT_COVERAGE_REQUIREMENTS = (
+    ('R01', 'Total and non-vote TPS', ('latest_tps', 'latest_non_vote_tps'), 'overview', 'Recent RPC performance samples; includes consensus votes in total TPS.'),
+    ('R02', 'Slot time', ('mean_slot_time_secs',), 'overview', 'Observed slot cadence; not a protocol activation claim.'),
+    ('R03', 'Block height', ('epoch_block_height',), 'data', 'Point-in-time block height in the recorded data appendix.'),
+    ('R04', 'Epoch progress', ('epoch_progress_pct',), 'overview', 'Recorded epoch position; the end-time forecast remains estimated.'),
+    ('R05', 'Active and delinquent validators', ('active_count', 'delinquent_validator_count'), 'validators', 'Vote accounts, not unique operators.'),
+    ('R06', 'Stake distribution and top validators', ('active_stake_sol', 'nakamoto_coefficient'), 'validators', 'Active stake and ranked vote-account concentration.'),
+    ('R07', 'Commission tracking', ('validator_mean_commission_pct',), 'history', 'Vote-account commission changes across the selected snapshot pair.'),
+    ('R08', 'Delinquency alerts', ('delinquent_pct',), 'overview', 'Stake-weighted delinquency; alerts need a compatible recorded baseline.'),
+    ('R09', 'Ecosystem and community news', (), 'project', 'Recorded first-party releases, announcements and incidents; archives remain labeled.'),
+    ('R10', 'SOL price movements', ('price_usd', 'price_change_24h_pct'), 'overview', 'Provider price and its recorded 24-hour percentage change.'),
+    ('R11', 'Stablecoin supply', ('usd_pegged_circulating_usd', 'selected_stablecoin_total_supply'), 'markets', 'Ecosystem circulating supply and selected four-mint total supply are different scopes.'),
+    ('R12', 'DEX volume', ('dex_volume_24h_usd', 'dune_daily_dex_volume_usd'), 'data', 'Provider rolling 24-hour volume or Dune daily trade-leg volume; windows differ.'),
+    ('R13', 'Real Economic Value', ('sample_mean_rev_sol',), 'data', 'Estimate over the observed block window; no date-aligned daily REV benchmark.'),
+    ('R14', 'Median transaction fee', ('median_fee_lamports',), 'data', 'Actual transaction fees from non-vote transactions in the retained block sample.'),
+    ('R15', 'Tokenized-asset trading volume', ('xstock_total_trading_volume_24h_usd', 'xstock_indexed_dex_volume_24h_usd', 'dune_daily_xstocks_dex_volume_usd'), 'markets', 'Equity focus: scoped xStock trading coverage; token supply does not measure trading volume.'),
+    ('R16', 'Daily active addresses', ('network_wide_daily_active_addresses', 'stablecoin_active_address_provider_range_min', 'stablecoin_active_address_provider_range_max'), 'markets', 'Network-wide count and stablecoin-address provider ranges are different populations.'),
+    ('R17', 'Upcoming network upgrades', (), 'project', 'Alpenglow and SIMD-525 watch: proposal metadata and releases do not establish activation.'),
+)
+
+
+def render_report_coverage(snapshot, analysis, comparison, context, observation_indexes=None) -> str:
+    """A reading guide bound to recorded evidence, never a completion score."""
+    if observation_indexes is None:
+        return ""
+    indexes = observation_indexes
+    snapshot_at = str(snapshot.get('collected_at'))
+    prefix = 'mobile' if context == 'mobile' else 'desktop'
+    routes = {
+        'overview': ('#overview', 'Overview'), 'history': ('#history', 'History'),
+        'project': ('#project', 'Project'),
+        'data': ('#mobile-data-sources' if prefix == 'mobile' else '#data', 'Data sources'),
+        'validators': (f'#{prefix}-validator-evidence', 'Validator evidence'),
+        'markets': (f'#{prefix}-people-markets', 'People & markets'),
+        'features': (f'#{prefix}-feature-activation', 'Feature accounts'),
+    }
+    rows = []
+    for identifier, label, metric_ids, destination, scope in REPORT_COVERAGE_REQUIREMENTS:
+        records = [indexes['summary'].get((metric_id, snapshot_at)) for metric_id in metric_ids]
+        records = [record for record in records if record is not None]
+        usable = [record for record in records if record.get('value') is not None
+                  and record.get('status') not in ('unavailable', 'held', 'withheld')]
+        if not usable:
+            state = 'Unavailable'
+        elif any(record.get('status') == 'stale' for record in usable):
+            state = 'Stale'
+        elif len(usable) < len(metric_ids) or any(record.get('status') == 'partial' for record in usable):
+            state = 'Partial'
+        elif any(record.get('basis') == 'sampled' for record in usable):
+            state = 'Sampled'
+        else:
+            state = 'Recorded'
+        evidence_ids = [record['observation_id'] for record in records]
+        window = str((usable or records)[0].get('window') or '') if records else ''
+        when = str(usable[0].get('observed_at') or snapshot_at) if usable else ''
+        if identifier == 'R07':
+            commission = (comparison or {}).get('validator_commission', {})
+            if state == 'Recorded' and commission.get('status') != 'ok':
+                state = 'Partial'
+            evidence_ids.extend(commission.get('observation_ids', {}).values())
+            if commission.get('status') == 'ok':
+                window = f"{comparison.get('previous_collected_at')} → {comparison.get('current_collected_at')}"
+        elif identifier == 'R08':
+            coverage = (analysis or {}).get('coverage', {}).get('delinquency', {})
+            if state == 'Recorded' and (not coverage.get('current_eligible') or coverage.get('insufficient_baseline', True)):
+                state = 'Partial'
+            evidence_ids.extend(coverage.get('observation_ids', {}).values())
+        elif identifier == 'R09':
+            news = snapshot.get('news', {})
+            state = news_evidence_status(news)
+            when = snapshot_at if state != 'Unavailable' else ''
+            window = 'Publication times remain attached to each recorded story.'
+            evidence_ids.extend(record['observation_id'] for key, record in indexes['subject'].items()
+                                if key[0] == 'news_source_available' and key[-1] == snapshot_at)
+        elif identifier == 'R12':
+            dune = snapshot.get('dune', {})
+            aggregates = dune.get('aggregates', {})
+            if dune.get('available') is True and is_number(aggregates.get('dex_volume_total_latest_usd')):
+                state = 'Partial' if state == 'Unavailable' else state
+                window = f"Dune trade-leg day {aggregates.get('dex_volume_total_day') or 'unavailable'}; execution {dune.get('execution_ended_at') or 'unavailable'}"
+                when = ''
+            elif dune.get('last_known_good') and state == 'Unavailable':
+                window = 'Current DEX volume unavailable; an older Dune result is retained in JSON.'
+        elif identifier in ('R13', 'R14') and usable:
+            window = activity_evidence_label(snapshot)
+            when = ''
+        elif identifier == 'R17':
+            source = snapshot.get('news', {}).get('sources', {}).get('simd_proposal_metadata', {})
+            state = 'Partial' if source.get('available') is True else 'Unavailable'
+            window = 'Watched proposal frontmatter only; cluster activation is unverified.'
+            when = snapshot_at if state == 'Partial' else ''
+            activation = snapshot.get('feature_activation', {})
+            if activation:
+                destination = 'features'
+                window = 'Selected on-chain feature gates have separate activated, pending, absent and unavailable states.'
+                when = activation.get('observed_at') or ''
+                if activation.get('available') is True:
+                    state = 'Recorded' if activation.get('coverage_complete') is True else 'Partial'
+                evidence_ids.extend(record['observation_id'] for key, record in indexes['subject'].items()
+                                    if key[0] == 'feature_activation_state' and key[-1] == snapshot_at)
+        href, link_label = routes[destination]
+        timing = f"Observed {development_time_label(when)} · " if when else ''
+        rows.append(
+            f"<tr data-requirement='{identifier}'{observation_ids_attribute(list(dict.fromkeys(evidence_ids)))}>"
+            f"<th scope='row'><small>{identifier}</small>{html.escape(label)}</th>"
+            f"<td><strong class='coverage-state'>{html.escape(state)}</strong>"
+            f"<span>{html.escape(scope)}</span><small>{html.escape(timing + window)}</small></td>"
+            f"<td><a href='{href}'>{html.escape(link_label)}</a></td></tr>"
+        )
+    return (
+        f"<details class='report-coverage' id='{prefix}-report-coverage'>"
+        "<summary>Report coverage and reading guide</summary>"
+        "<p>Find the requested measurements and their recorded limits. States describe this snapshot's evidence, "
+        "not a completion score. Read the <a href='#methods'>methods</a> or inspect the full "
+        "<a href='report.json' download>observation records</a>.</p>"
+        "<div class='table-wrap'><table><caption class='visually-hidden'>Requested report measurements and evidence</caption>"
+        "<thead><tr><th scope='col'>Measurement</th><th scope='col'>Recorded coverage</th>"
+        "<th scope='col'>Read more</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table></div></details>"
+    )
 
 
 def render_data_catalog(
@@ -17585,7 +18001,7 @@ def render_source_flow(
     <div class='mobile-stage'><strong>Snapshot &amp; report outputs</strong><span>HTML · Markdown · JSON</span></div>
     <div class='mobile-loop'>Re-render and reconciliation loop</div>
   </div>
-  <figcaption class='flow-caption' id='methods-source-flow-description'>Selected-snapshot source state. Unavailable sources remain explicit gaps and are not described as collected. {escaped_simd_note} Rendering performs no network requests.</figcaption>
+  <figcaption class='flow-caption' id='methods-source-flow-description'>Selected-snapshot source state. Unavailable sources remain explicit gaps and are not described as collected. {escaped_simd_note} Selected feature-account activation is separate from proposal or release status; inspect the <a href='#data'>Data evidence</a>. Rendering performs no network requests.</figcaption>
 </figure>"""
 
 
@@ -18085,7 +18501,7 @@ def render_history_context(
         "Each line is an independent recent-performance sample window.",
         "Missing samples remain explicit gaps; the A-to-B gap is never interpolated.",
         "Feed markers identify material stored with B and do not claim causality.",
-        "Snapshot selectors remain fixed in this self-contained recorded export.",
+        "The latest five recorded snapshots are selectable; older observations remain in report.json.",
     )
     return (
         "<section class='comparison-context' aria-label='Comparison details and notes'>"
@@ -18159,6 +18575,97 @@ def render_change_markers(
     )
 
 
+def render_selected_history_readings(comparison: dict[str, Any]) -> str:
+    """Show A/B source readings for a non-latest pair without a delta claim."""
+    rows = []
+    items = {item.get('key'): item for item in (
+        comparison.get('changes', []) + comparison.get('steady', [])
+        + comparison.get('not_comparable', []))}
+    for key in ('latest_tps', 'mean_slot_time_secs', 'median_fee_lamports', 'delinquent_pct'):
+        item = items.get(key)
+        if not item:
+            continue
+        attributes = observation_ids_attribute([
+            item[name] for name in ('previous_observation_id', 'current_observation_id')
+            if isinstance(item.get(name), str)
+        ])
+        rows.append(
+            f"<div class='comparison-summary-metric'{attributes}><span>{html.escape(str(item.get('label') or key))}</span>"
+            f"<strong>A {html.escape(fmt_delta_value(item.get('previous'), str(item.get('unit') or '')))} · "
+            f"B {html.escape(fmt_delta_value(item.get('current'), str(item.get('unit') or '')))}</strong>"
+            "<small>Recorded readings</small></div>"
+        )
+    return ("<aside class='comparison-summary' aria-label='Selected pair readings'>"
+            "<section class='comparison-summary-section'><h3>Selected readings</h3>"
+            + (''.join(rows) or "<p class='unavailable'>No comparable readings.</p>")
+            + "</section></aside>")
+
+
+def render_desktop_history_picker(history, analysis, observation_indexes, default_markup):
+    """Bound desktop selection to the same five recorded inputs used by mobile."""
+    snapshots = history[-5:]
+    if len({item.get('collected_at') for item in snapshots}) < 2:
+        return default_markup
+    selected_pair = f'{len(snapshots) - 2}:{len(snapshots) - 1}'
+    options = []
+    for side in ('a', 'b'):
+        selected_index = len(snapshots) - (2 if side == 'a' else 1)
+        options.append(''.join(
+            f"<option value='{index}'{' selected' if index == selected_index else ''}>"
+            f"{html.escape(timestamp_label(item.get('collected_at')))}</option>"
+            for index, item in enumerate(snapshots)
+        ))
+    controls = (
+        "<div class='desktop-history-picker' data-desktop-history-controls hidden>"
+        "<label>Snapshot A<select data-desktop-history-a aria-label='Previous snapshot A'>"
+        + options[0] + "</select></label>"
+        "<label>Snapshot B<select data-desktop-history-b aria-label='Current snapshot B'>"
+        + options[1] + "</select></label>"
+        "<p>Compare the latest five recorded snapshots. Older observations remain in report.json.</p>"
+        "<p data-desktop-history-summary role='status' aria-live='polite'></p></div>"
+    )
+    panels = [f"<div data-desktop-history-panel='{selected_pair}'>{default_markup}</div>"]
+    for b in range(1, len(snapshots)):
+        for a in range(b):
+            if f'{a}:{b}' == selected_pair:
+                continue
+            previous, current = snapshots[a], snapshots[b]
+            pair = delta_module.compare(previous, current)
+            if observation_indexes is not None:
+                pair = bind_public_comparison(pair, observation_indexes) or pair
+            prefix = f'history-desktop-{a}-{b}'
+            context = render_history_context(previous, current, observation_indexes)
+            for suffix in ('details-title', 'notes-title'):
+                context = context.replace(f'history-{suffix}', f'{prefix}-{suffix}')
+            panels.append(
+                f"<div data-desktop-history-panel='{a}:{b}' hidden>"
+                "<div class='archive-layout' aria-label='Snapshot comparison workspace'>"
+                "<section class='panel comparison-panel'>"
+                "<div class='comparison-head'><h2 class='panel-heading'>Comparing snapshots</h2>"
+                f"{render_ab_chart_meta(pair)}"
+                "<div class='select-pair' aria-label='Selected snapshot comparison'>"
+                f"<output class='select-like select-like--static'><span class='tag'>A</span><span>{html.escape(compact_snapshot_label(previous.get('collected_at')))}</span></output>"
+                "<span class='versus'>vs.</span>"
+                f"<output class='select-like select-like--static'><span class='tag'>B</span><span>{html.escape(compact_snapshot_label(current.get('collected_at')))}</span></output></div>"
+                "<div class='range-controls'><span class='range-control is-active is-wide'>Samples</span>"
+                "<span class='range-window'>Independent sample windows, not a continuous series</span></div></div>"
+                f"<div class='history-chart-instrument'>{render_ab_chart(previous, current, pair, prefix, include_meta=False, observation_indexes=observation_indexes)}</div>"
+                f"{render_selected_history_readings(pair)}</section>"
+                "<section class='panel deltas'><h2 class='panel-heading'>Threshold review</h2>"
+                "<p class='unavailable'>Threshold findings are published for the latest pair only. "
+                "This selected pair keeps its recorded A and B readings visible without adding a historical-delta ledger.</p>"
+                "</section><div class='archive-support'>"
+                "<aside class='panel snapshot-panel'><h2 class='panel-heading'>Selected observations</h2>"
+                f"<p>A · {html.escape(timestamp_label(previous.get('collected_at')))}</p>"
+                f"<p>B · {html.escape(timestamp_label(current.get('collected_at')))}</p>"
+                "<p>Use the selectors above to choose another recorded pair.</p></aside>"
+                "<aside class='panel change-panel'><h2 class='panel-heading'>Evidence scope</h2>"
+                "<p>Each chart series is an independent recorded RPC sample window; the gap is not interpolated.</p>"
+                f"</aside></div></div>{context}</div>"
+            )
+    return controls + ''.join(panels)
+
+
 def render_history_workspace(
     history: list[dict[str, Any]], analysis: dict[str, Any] | None,
     comparison: dict[str, Any] | None,
@@ -18215,7 +18722,7 @@ def render_history_workspace(
         f"<p class='snapshot-overflow-note'{hidden_count_binding}>{hidden_count} older snapshot(s) remain in report.json.</p>"
         if hidden_count else ""
     )
-    return (
+    default_markup = (
         "<div class='archive-layout' aria-label='Snapshot comparison workspace'>"
         "<section class='panel comparison-panel' aria-labelledby='history-comparison-title'>"
         "<div class='comparison-head'>"
@@ -18241,16 +18748,15 @@ def render_history_workspace(
         "<fieldset class='snapshot-list' disabled aria-describedby='history-static-control-note'>"
         "<legend class='visually-hidden'>Available report snapshots</legend>"
         f"{''.join(rail)}</fieldset>"
-        "<button class='static-button' type='button' disabled aria-describedby='history-static-control-note'>"
-        "<svg viewBox='0 0 16 16' fill='none' aria-hidden='true'>"
-        "<path d='M2.5 5h7M7.5 2.5 10 5 7.5 7.5M13.5 11h-7M8.5 8.5 6 11l2.5 2.5' "
-        "stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'></path></svg>Compare snapshots</button>"
-        "<span id='history-static-control-note' hidden>This self-contained render keeps the newest A/B pair fixed.</span></aside>"
+        "<button class='static-button' type='button' disabled aria-describedby='history-static-control-note'>Latest pair shown</button>"
+        "<span id='history-static-control-note' hidden>Use the Snapshot A and B selectors above to change the comparison.</span></aside>"
         "<aside class='panel change-panel' aria-labelledby='history-change-title'>"
         "<h2 class='panel-heading' id='history-change-title'>Change markers</h2>"
         f"{render_change_markers(current, analysis, comparison)}</aside></div></div>"
         f"{render_history_context(previous, current, observation_indexes)}"
     )
+
+    return render_desktop_history_picker(history, analysis, observation_indexes, default_markup)
 
 
 def render_overview_comparison(comparison: dict[str, Any] | None) -> str:
@@ -18397,10 +18903,45 @@ def project_editorial_art_key(item: dict[str, Any]) -> str:
     return "network" if category == "network" else "ecosystem"
 
 
+def project_editorial_release_tag(item: dict[str, Any]) -> str | None:
+    """Use an approved version stamp only for the exact recorded release tag."""
+    if item.get("category") != "release":
+        return None
+    title = str(item.get("title") or "")
+    return next((tag for tag in RELEASE_ART_ASSETS
+                 if re.search(r"(?<![\w.-])" + re.escape(tag) + r"(?![\w.-])", title)), None)
+
+
+def used_release_art_tags(snapshot: dict[str, Any]) -> list[str]:
+    """Embed each stamp once, only when the shared four-story briefing uses it."""
+    items, featured_id = project_editorial_items(snapshot)
+    featured = [item for item in items if item.get("id") == featured_id]
+    selected = featured + project_editorial_supporting(items, featured_id)
+    tags = {project_editorial_release_tag(item) for item in selected}
+    return [tag for tag in RELEASE_ART_ASSETS if tag in tags]
+
+
+def editorial_title(value: Any) -> str:
+    """Decode publisher entities and shorten at word boundaries for briefing cards."""
+    title = "".join(
+        character
+        for character in html.unescape(str(value or "Untitled recorded development"))
+        if unicodedata.category(character) not in {"So", "Cs"}
+        and character not in {"\ufe0f", "\u200d", "\u20e3"}
+    ).strip()
+    if re.fullmatch(r"https?://\S+", title):
+        return "Recorded announcement"
+    return textwrap.shorten(title, width=160, placeholder="…")
+
+
 def project_editorial_art_markup(
     item: dict[str, Any], class_name: str, *, release_art_key: str = "release",
 ) -> str:
     """Render one pinned raster selected by recorded story category and placement."""
+    release_tag = project_editorial_release_tag(item)
+    if release_tag:
+        return (f"<div class='{class_name}' "
+                f"data-release-art='{release_tag}' aria-hidden='true'></div>")
     art_key = (
         release_art_key
         if str(item.get("category") or "ecosystem") == "release"
@@ -18464,7 +19005,7 @@ def render_project_editorial(snapshot: dict[str, Any], context: str) -> str:
             f"{html.escape(label)}{arrow}</a>"
         )
 
-    hero_title = str(featured.get("title") or "Untitled recorded development")
+    hero_title = editorial_title(featured.get("title"))
     hero_note = str(featured.get("editorial_note") or "Primary-source development recorded with this snapshot.")
     hero_category = str(featured.get("category") or "ecosystem")
     hero_publisher = str(featured.get("publisher") or "Primary source")
@@ -18503,7 +19044,7 @@ def render_project_editorial(snapshot: dict[str, Any], context: str) -> str:
     for item in supporting:
         category = str(item.get("category") or "ecosystem")
         publisher = str(item.get("publisher") or "Primary source")
-        title = str(item.get("title") or "Untitled recorded development")
+        title = editorial_title(item.get("title"))
         note = str(item.get("editorial_note") or "Primary-source development recorded with this snapshot.")
         cards.append(
             f"<li data-editorial-item data-editorial-category='{html.escape(category, quote=True)}'>"
@@ -18549,7 +19090,7 @@ def render_project_editorial(snapshot: dict[str, Any], context: str) -> str:
         "<header class='project-editorial__heading'><span>Recorded ecosystem briefing</span>"
         f"<h2 id='{title_id}'>Latest across Solana</h2>"
         "<p>A clean, recorded read of what is happening across the network—releases, status, and what comes next.</p>"
-        f"<small>Snapshot · {issue_time} · UTC</small></header>"
+        f"<small>Snapshot · {issue_time}</small></header>"
         f"{hero}<div class='project-editorial__feed-head'>"
         f"<h3 id='{feed_title_id}'>Latest updates</h3>"
         f"<div class='project-editorial__filters' data-editorial-controls hidden "
@@ -18607,7 +19148,7 @@ def render_community_news(snapshot: dict[str, Any], context: str) -> str:
     for index, item in enumerate(stories, start=1):
         category = str(item.get("category") or "ecosystem")
         publisher = str(item.get("publisher") or "Primary source")
-        title = str(item.get("title") or "Untitled recorded development")
+        title = editorial_title(item.get("title"))
         note = str(item.get("editorial_note") or "Primary-source development recorded with this snapshot.")
         href = story_href(item)
         if href:
@@ -18748,13 +19289,34 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         source = sources.get(source_key, {}) if isinstance(sources.get(source_key), dict) else {}
         available = source.get("available") is True
         label = str(source.get("label") or default_label)
+        items = source.get("items", []) if isinstance(source.get("items"), list) else []
         latest_published = source.get("latest_published")
+        archived_at = None
+        archive = source.get("last_known_good")
+        if (source_key == "x_announcements" and not available and isinstance(archive, dict)
+                and development_event_moment(archive.get("observed_at"))
+                and isinstance(archive.get("items"), list)):
+            items = archive["items"]
+            latest_published = archive.get("latest_published")
+            archived_at = archive["observed_at"]
         latest_moment = development_event_moment(latest_published)
+        if latest_moment is None:
+            dated_items = [(development_event_moment(item.get("published") or item.get("created")),
+                            item.get("published") or item.get("created"))
+                           for item in items if isinstance(item, dict)]
+            recorded_dates = [(moment, raw) for moment, raw in dated_items if moment is not None]
+            if recorded_dates:
+                latest_moment, latest_published = max(recorded_dates, key=lambda pair: pair[0])
         state = 'recorded' if available else 'unavailable'
         status_note = (
             f"Fetched with snapshot {html.escape(collected)}"
             if available else "Unavailable in this snapshot"
         )
+        if archived_at:
+            status_note += (
+                " · archived announcements retained · last successful collection "
+                + html.escape(timestamp_label(archived_at))
+            )
         freshness.append(
             f"<li data-source-state='{state}'>"
             f"<i class='development-source-dot development-source-dot--{lane}' aria-hidden='true'></i>"
@@ -18762,12 +19324,11 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
             f"<small>{status_note}</small></span>"
             + (
                 f"<time datetime='{html.escape(str(latest_published), quote=True)}'>"
-                f"Newest entry {html.escape(timestamp_label(latest_published))}</time></li>"
+                f"Newest entry {html.escape(development_time_label(latest_published))}</time></li>"
                 if latest_moment
                 else "<span class='development-event-untime'>No recorded entry time</span></li>"
             )
         )
-        items = source.get("items", []) if isinstance(source.get("items"), list) else []
         for item in items:
             if not isinstance(item, dict):
                 continue
@@ -18782,7 +19343,7 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
                 "lane": lane,
                 "kind": kind,
                 "source": label,
-                "title": str(item.get("title") or "Untitled recorded event"),
+                "title": editorial_title(item.get("title") or "Untitled recorded event"),
                 "published": event_time,
                 "valid_time": event_moment is not None,
                 "date_basis": date_basis,
@@ -18790,8 +19351,11 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
                 "evidence": news_item_evidence(item),
                 "link": safe_external_href(item.get("link")),
                 "age_days": age_days,
+                "archived_at": archived_at,
             })
-    events.sort(key=lambda event: event["published"], reverse=True)
+    events.sort(key=lambda event: (
+        development_event_moment(event["published"]) or datetime.min.replace(tzinfo=timezone.utc)
+    ), reverse=True)
     def render_event_row(event: dict[str, Any]) -> str:
         title = html.escape(event["title"])
         link = event["link"]
@@ -18801,6 +19365,9 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         )
         author = f" · {html.escape(event['author'])}" if event["author"] else ""
         evidence = f" · {html.escape(event['evidence'])}" if event["evidence"] else ""
+        if event["archived_at"]:
+            evidence += (" · Archived · last successful collection "
+                         + html.escape(timestamp_label(event["archived_at"])))
         time_markup = (
             f"<time datetime='{html.escape(event['published'], quote=True)}'>{event['date_basis']} "
             f"{html.escape(development_time_label(event['published']))}</time>"
@@ -18817,7 +19384,7 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
             time_markup = f"<span class='development-event-time'>{html.escape(mobile_time)}</span>"
         return (
             f"<li data-development-event data-development-kind='{event['kind']}' "
-            f"data-development-lane='{event['lane']}' data-development-status='recorded' "
+            f"data-development-lane='{event['lane']}' data-development-status='{'archived' if event['archived_at'] else 'recorded'}' "
             f"data-development-age-days='{event['age_days'] if isinstance(event.get('age_days'), int) else ''}'>"
             f"<div class='development-graph-node development-graph-node--{event['lane']}' aria-hidden='true'>"
             "<i></i><i></i><i></i><i></i><b></b></div>"
@@ -18835,7 +19402,7 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
             if moment:
                 utc_moment = moment.astimezone(timezone.utc)
                 group_key = utc_moment.strftime("%Y-%m-%d")
-                group_label = utc_moment.strftime("%b %d").upper()
+                group_label = utc_moment.strftime("%b %d, %Y").upper()
             else:
                 group_key = "unavailable"
                 group_label = "DATE UNAVAILABLE"
@@ -18872,6 +19439,7 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         "<label class='development-select'><span class='development-control-label'>Source</span>"
         "<select data-development-source aria-label='Source'>"
         "<option value='all'>All sources</option><option value='agave'>Agave</option>"
+        "<option value='firedancer'>Firedancer</option><option value='xnews'>X</option>"
         "<option value='news'>Solana News</option><option value='simd'>SIMD</option>"
         "<option value='status'>Status</option></select></label>"
         "<label class='development-select'><span class='development-control-label'>Date</span>"
@@ -19152,12 +19720,14 @@ def render_mobile_overview(
         f"<small class='mobile-quick-link__meta'>{html.escape((stale_provenance_label(perf).removeprefix(' · ') if not perf_live else 'measured') or 'unavailable')}</small></a>"
         f"<a class='mobile-signal-card' href='#data' aria-label='View median fee data'{summary_observation_attribute(observation_indexes, snapshot_at, ('median_fee_lamports',))}><span class='mobile-quick-link__primary'><span class='mobile-quick-link__label'>Median fee</span><strong class='mobile-quick-link__value'>{html.escape(fmt_lamports(fees.get('median_lamports')))}</strong></span>"
         "<span class='mobile-quick-link__destination'>View data <svg class='mobile-quick-link__cue' viewBox='0 0 12 12' aria-hidden='true'><path d='M4 8 8 4M4 4h4v4'></path></svg></span>"
-        f"<small class='mobile-quick-link__meta'>{html.escape((stale_provenance_label(fees) or stale_provenance_label(snapshot.get('activity', {}))).removeprefix(' · ') or 'sampled')}</small></a></div>"
+        f"<small class='mobile-quick-link__meta'>{html.escape(activity_evidence_label(snapshot))}</small></a></div>"
         f"{inline_change('mean_slot_time_secs')}</section>"
         "<div class='mobile-context-rail' aria-label='Market and address context'>"
         f"<div class='mobile-context-item'{summary_observation_attribute(observation_indexes, snapshot_at, ('price_usd',))}><span>SOL price</span><strong>{html.escape('$' + format(price, ',.2f') + stale_provenance_label(snapshot.get('economics', {}).get('price')) if price is not None else '—')}</strong>"
         "<small>recorded market context</small></div>"
-        f"<div class='mobile-context-item'{summary_observation_attribute(observation_indexes, snapshot_at, ('network_wide_daily_active_addresses',))}><span>Network-wide daily active addresses</span><strong>—</strong>"
+        f"<div class='mobile-context-item'{summary_observation_attribute(observation_indexes, snapshot_at, ('stablecoin_active_address_provider_range_min', 'stablecoin_active_address_provider_range_max', 'stablecoin_active_address_provider_count', 'stablecoin_active_address_provider_date'))}><span>Stablecoin active addresses</span>"
+        f"{_header_daa_value(snapshot)}</div>"
+        f"<div class='mobile-context-item mobile-context-item--network-daa'{summary_observation_attribute(observation_indexes, snapshot_at, ('network_wide_daily_active_addresses',))}><span>Network-wide daily active addresses</span><strong>—</strong>"
         "<small>unavailable — not estimated</small></div></div>"
         "<section class='mobile-overview-panel' aria-labelledby='mobile-status-title'>"
         "<div class='mobile-section-head'><h2 id='mobile-status-title'>Evidence status</h2><span>Recorded snapshot</span></div>"
@@ -19400,6 +19970,8 @@ def render_mobile_data(
         "<a href='#mobile-validator-evidence'>Validators</a>"
         "<a href='#mobile-people-markets'>People &amp; markets</a>"
         "<a href='#mobile-data-sources'>Sources</a></nav>"
+        f"{render_report_coverage(snapshot, analysis, comparison, 'mobile', observation_indexes)}"
+        f"{render_feature_activation(snapshot, 'mobile', observation_indexes)}"
         f"{render_community_news(snapshot, 'mobile')}"
         f"{render_validator_workbench(snapshot, 'mobile', observation_indexes)}"
         f"{render_growth_workbench(snapshot, 'mobile', observation_indexes)}"
@@ -19480,6 +20052,7 @@ def render_mobile_methods() -> str:
         "<h2 id='mobile-method-rules-title'>Plain-language rules</h2>"
         "<ul class='mobile-method-rules'><li>Missing data never becomes zero.</li>"
         "<li>Sampled values stay labelled.</li>"
+        "<li>Proposal status, software releases, and on-chain feature activation are separate evidence.</li>"
         "<li>Chart lines stop across missing observations.</li>"
         "<li>A change is reported only after crossing a declared threshold.</li></ul></section>"
         "<section class='mobile-method-card mobile-source-trail' aria-labelledby='mobile-source-trail-title'>"
@@ -20458,9 +21031,34 @@ MOBILE_CONTROLLER = r"""
     exportDialog.addEventListener('close', () => { if (openExport) openExport.focus(); });
   }
 
+  const desktopHistoryControls = document.querySelector('[data-desktop-history-controls]');
+  if (desktopHistoryControls) {
+    const selectA = desktopHistoryControls.querySelector('[data-desktop-history-a]');
+    const selectB = desktopHistoryControls.querySelector('[data-desktop-history-b]');
+    const panels = Array.from(document.querySelectorAll('[data-desktop-history-panel]'));
+    const updateDesktopHistory = (changed) => {
+      let a = Number(selectA.value), b = Number(selectB.value);
+      if (a >= b) {
+        if (changed === selectA) b = Math.min(selectB.options.length - 1, a + 1);
+        else a = Math.max(0, b - 1);
+      }
+      selectA.value = String(a);
+      selectB.value = String(b);
+      Array.from(selectA.options).forEach((option) => { option.disabled = Number(option.value) >= b; });
+      Array.from(selectB.options).forEach((option) => { option.disabled = Number(option.value) <= a; });
+      panels.forEach((panel) => { panel.hidden = panel.dataset.desktopHistoryPanel !== `${a}:${b}`; });
+      desktopHistoryControls.querySelector('[data-desktop-history-summary]').textContent =
+        `Comparing A ${selectA.options[a].textContent} with B ${selectB.options[b].textContent}.`;
+    };
+    selectA.addEventListener('change', () => updateDesktopHistory(selectA));
+    selectB.addEventListener('change', () => updateDesktopHistory(selectB));
+    desktopHistoryControls.hidden = false;
+    updateDesktopHistory();
+  }
+
   const historySelectA = document.querySelector('[data-history-select-a]');
   const historySelectB = document.querySelector('[data-history-select-b]');
-  const desktopChart = document.querySelector('#history .comparison-chart');
+  document.querySelectorAll('#history .comparison-chart').forEach((desktopChart) => {
   const chartTooltip = desktopChart?.closest('.chart-wrap')?.querySelector('[data-chart-tooltip]');
   const chartPoints = Array.from(desktopChart?.querySelectorAll('[data-chart-point]') || []);
   const chartGuide = desktopChart?.querySelector('[data-chart-hover-guide]');
@@ -20530,6 +21128,8 @@ MOBILE_CONTROLLER = r"""
     point.addEventListener('focus', () => showChartTooltip(point));
     point.addEventListener('blur', hideChartTooltip);
   });
+  });
+
   const historySummary = document.querySelector('[data-history-summary]');
   const historyPanels = Array.from(document.querySelectorAll('[data-history-panel]'));
   const historyTimeline = Array.from(document.querySelectorAll('[data-history-timeline-index]'));
@@ -20920,7 +21520,8 @@ def render_ticker(
         return ""
     # The loop translates the track by half its own width, so both halves carry
     # identical, repeated sets wide enough to exceed any realistic viewport.
-    half = rendered * 3
+    hidden_repeat = rendered.replace("<li ", "<li aria-hidden='true' ")
+    half = rendered + hidden_repeat * 2
     track = (
         f"<ul class='report-ticker__set'>{half}</ul>"
         f"<ul class='report-ticker__set' aria-hidden='true'>{half}</ul>"
@@ -21060,7 +21661,7 @@ def render_html(
         "<script data-theme-bootstrap>(()=>{try{const theme=localStorage.getItem('solana-report-theme');"
         "if(['light','dark','system'].includes(theme))document.documentElement.dataset.theme=theme;}catch{}})();</script>",
         f"<style>{archivo_font_face()}{CSS}{about_snapshot_art_css()}"
-        f"{about_recorded_art_css()}{editorial_art_css()}</style></head><body{contract_attribute}><!--\n"
+        f"{about_recorded_art_css()}{editorial_art_css(snapshot)}</style></head><body{contract_attribute}><!--\n"
         "THESIS: About explains what the report is, when it was recorded, and where its proof lives.\n"
         "OWN-WORLD: White editorial field, black ink, restrained violet actions, fine rules, and native controls.\n"
         "STORY: Understand the report, check the snapshot, follow the proof, then inspect recorded developments.\n"
@@ -21130,9 +21731,9 @@ def render_html(
         f"<li class='metric'{summary_binding('median_fee_lamports')}><span class='metric__label'>Median Fee (non-vote)</span>"
         f"<strong class='metric__value'><span class='metric__number'>{html.escape(fmt(median_fee))}</span>"
         f"{median_fee_unit}</strong>"
-        f"{overview_delta(comparison, 'median_fee_lamports', 'sampled')}</li>",
-        f"<li class='metric'{summary_binding('network_wide_daily_active_addresses')}>"
-        "<span class='metric__label'>Daily Active Addresses</span>"
+        f"<small class='metric__evidence'>{html.escape(activity_evidence_label(snapshot))}</small></li>",
+        f"<li class='metric'{summary_observation_attribute(observation_bindings, snapshot_at, ('stablecoin_active_address_provider_range_min', 'stablecoin_active_address_provider_range_max', 'stablecoin_active_address_provider_count', 'stablecoin_active_address_provider_date'))}>"
+        "<span class='metric__label'>Stablecoin active addresses</span>"
         + _header_daa_value(snapshot)
         + "</li>",
         "</ul></section>",
@@ -21162,6 +21763,8 @@ def render_html(
         "<div class='download-actions' aria-label='Local report exports'>"
         "<a class='download-link' href='report.json' download>Download JSON</a>"
         "<a class='download-link' href='report.md' download>Download Markdown</a></div></section>",
+        render_report_coverage(snapshot, analysis, comparison, "desktop", observation_bindings),
+        render_feature_activation(snapshot, "desktop", observation_bindings),
         render_data_catalog(snapshot, analysis, comparison, history, observation_bindings),
         render_community_news(snapshot, "desktop"),
         render_validator_workbench(snapshot, "desktop", observation_bindings),
@@ -21226,7 +21829,7 @@ def render_html(
         f"<span{history_count_binding}>{len(history)} recorded snapshots</span> · static controls</div></header>",
         render_history_workspace(history, analysis, comparison, observation_bindings),
         "<footer class='page-footnote'><span>Recorded archive · no live network connection</span>"
-        f"<span>Newest snapshot: {collected} · UTC</span></footer>",
+        f"<span>Newest snapshot: {collected}</span></footer>",
         render_mobile_history(history, comparison, observation_bindings),
         "</section>",
 
@@ -22340,7 +22943,7 @@ def public_observation_indexes(
             # per subject in one snapshot.
             key = (metric_id, subject_id, record.get("observed_at"), snapshot_at)
             target = indexes["subject"]
-        elif metric_id in facts_module.PUBLIC_METRICS:
+        elif metric_id in facts_module.PUBLIC_METRICS or metric_id in DUNE_DAILY_METRIC_IDS:
             key = (metric_id, snapshot_at)
             target = indexes["summary"]
         elif isinstance(record.get("observed_slot"), int):
@@ -22819,6 +23422,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Render a Solana snapshot to Markdown and HTML.")
     parser.add_argument("--snapshot", type=Path, default=SNAPSHOT_DIR / "latest.json")
     parser.add_argument("--out-dir", type=Path, default=OUT_DIR)
+    parser.add_argument("--history-dir", type=Path,
+                        help="recorded snapshot directory; defaults to the selected snapshot's directory")
     parser.add_argument(
         "--generated-at", type=aware_iso8601,
         help="offset-aware ISO-8601 artifact timestamp; defaults to the current UTC time",
@@ -22859,7 +23464,7 @@ def main() -> int:
 
     # Align every derived section and the update-status receipt to the same
     # explicit target before constructing any output payload.
-    history = detect.load_history(args.snapshot.parent)
+    history = detect.load_history(args.history_dir or args.snapshot.parent)
     charted = facts_module.publication_history(
         history_for(snapshot, history), selected=snapshot,
     )

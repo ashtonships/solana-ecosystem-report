@@ -384,11 +384,11 @@ class TestEntrySanitising(unittest.TestCase):
 
 
 class TestSourceTable(unittest.TestCase):
-    def test_every_source_is_declared_keyless_and_explained(self):
+    def test_source_credentials_are_declared_and_explained(self):
         section = news.build_news({name: None for name in news.SOURCES})
-        self.assertFalse(section["requires_api_key"])
-        for source in section["sources"].values():
-            self.assertFalse(source["requires_api_key"])
+        self.assertTrue(section["requires_api_key"])
+        for name, source in section["sources"].items():
+            self.assertEqual(source["requires_api_key"], name == "x_announcements")
             self.assertTrue(source["why"].strip())
             self.assertTrue(source["label"].strip())
             self.assertTrue(source["publisher"].strip())
@@ -654,6 +654,43 @@ class TestXAnnouncements(unittest.TestCase):
         self.assertTrue(ok["available"])
         self.assertFalse(ok["partial"])
         self.assertEqual(ok["invalid_item_count"], 0)
+        empty = news.summarize_source("x_announcements", {"posts": []})
+        self.assertTrue(empty["available"])
+        self.assertEqual(empty["items"], [])
+        self.assertIsNone(empty["latest_published"])
+        previous = news.build_news({"x_announcements": {"posts": [{
+            "id": "9", "author": "solana", "text": "Earlier",
+            "created_at": "2026-09-02T18:00:00Z",
+            "url": "https://x.com/solana/status/9",
+        }]}})
+        current = news.build_news({"x_announcements": {"posts": []}})
+        news.apply_last_known_good(current, previous, "2026-09-03T01:00:00Z")
+        self.assertNotIn("last_known_good", current["sources"]["x_announcements"])
+
+    def test_failed_x_reads_archive_original_observation_without_promoting_it(self):
+        post = {"id": "9", "author": "solana", "text": "Recorded announcement",
+                "created_at": "2026-09-02T18:00:00Z", "url": "https://x.com/solana/status/9"}
+        previous = news.build_news({"x_announcements": {"posts": [post]}})
+        failed = news.build_news({"x_announcements": {"available": False, "reason": "budget paused"}})
+        archived = news.apply_last_known_good(failed, previous, "2026-09-03T01:00:00Z")
+        source = archived["sources"]["x_announcements"]
+        self.assertFalse(source["available"])
+        self.assertEqual(source["items"], [])
+        self.assertEqual(source["last_known_good"]["observed_at"], "2026-09-03T01:00:00Z")
+        self.assertFalse(any(item["source_id"] == "x_announcements" for item in archived["items"]))
+        later = news.build_news({})
+        news.apply_last_known_good(later, archived, "2026-09-04T01:00:00Z")
+        self.assertEqual(later["sources"]["x_announcements"]["last_known_good"], source["last_known_good"])
+        self.assertNotIn("last_known_good", previous["sources"]["x_announcements"])
+
+    def test_x_titles_keep_words_entities_and_link_only_citations(self):
+        title = news._x_title("A &amp; B " + "complete " * 30, "solana")
+        self.assertNotIn("&amp", title)
+        self.assertLessEqual(len(title), news.MAX_TITLE)
+        self.assertTrue(title.endswith("complete…"))
+        self.assertEqual(news._x_title("Ship 🤝 now", "solana"), "Ship now")
+        self.assertEqual(news._x_title("https://t.co/abc", "solana"),
+                         "Announcement from @solana")
 
     def test_editorial_items_derive_title_from_post_text(self):
         raw = {

@@ -1025,7 +1025,8 @@ def verify_artifacts(
             and "data-pulse-previous" in html_text
             and "data-pulse-next" in html_text,
             "HTML omits the Overview chart carousel")
-    require(html_text.count("data:image/png;base64,") == 2,
+    expected_pngs = 2 + len(render.used_release_art_tags(data["snapshot"]))
+    require(html_text.count("data:image/png;base64,") == expected_pngs,
             "HTML omits pinned Project raster illustrations")
     require(html_text.count("data:image/webp;base64,") == len(render.EDITORIAL_ART_ASSETS),
             "HTML omits pinned Project editorial imagery")

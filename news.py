@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Ecosystem releases and status, from keyless public sources.
+"""Ecosystem releases and status, from attributed first-party sources.
 
-Standard library only — `urllib` and small metadata parsers. No API key,
-account, token, or third-party feed reader:
+Standard library only — `urllib` and small metadata parsers. Core feeds are
+keyless; optional X announcements require a bearer token and paid-read budget:
 
     Agave releases    api.github.com/repos/anza-xyz/agave/releases
     Network status    status.solana.com/api/v2/summary.json
@@ -33,8 +33,11 @@ The unlicensed proposal corpus remains unfetched.
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import re
+import textwrap
+import unicodedata
 import time
 import urllib.error
 import urllib.request
@@ -485,8 +488,10 @@ def _is_timestamp(value: Any) -> bool:
 
 
 def _title(value: str) -> str:
-    value = " ".join(value.split())
-    return value if len(value) <= MAX_TITLE else value[:MAX_TITLE - 1].rstrip() + "…"
+    value = "".join(character for character in html.unescape(value)
+                    if unicodedata.category(character) not in {"So", "Cs"}
+                    and character not in {"\ufe0f", "\u200d", "\u20e3"})
+    return textwrap.shorten(value, width=MAX_TITLE, placeholder="…")
 
 
 def _identity(explicit: str, link: str | None, title: str, published: str | None) -> str:
@@ -669,12 +674,19 @@ def source_metadata(name: str) -> dict[str, Any]:
         "publisher": source["publisher"],
         "why": source["why"],
         "url": source["url"],
-        "requires_api_key": False,
+        "requires_api_key": name == "x_announcements",
     }
+
+
+def _x_title(text: str, author: str | None) -> str:
+    # Link-only posts need a useful citation label rather than a clipped URL.
+    visible = re.sub(r"(?:https?://)?(?:t\.co|x\.com)/\S+", "", text).strip()
+    return _title(visible) if visible else f"Announcement from @{author or 'source'}"
 
 
 def normalize_editorial_items(
     sources: dict[str, Any], current_status: dict[str, Any] | None = None,
+    *, legacy_x_titles: bool = False,
 ) -> list[dict[str, Any]]:
     """Project source lanes into a small, stable editorial presentation contract."""
     items: list[dict[str, Any]] = []
@@ -699,8 +711,14 @@ def normalize_editorial_items(
                 text = source_item.get("text")
                 if not isinstance(text, str) or not text.strip():
                     continue
-                excerpt = " ".join(text.strip().split())
-                title = excerpt if len(excerpt) <= MAX_TITLE else excerpt[:MAX_TITLE - 1].rstrip() + "…"
+                if legacy_x_titles:
+                    excerpt = " ".join(text.strip().split())
+                    title = (
+                        excerpt if len(excerpt) <= MAX_TITLE
+                        else excerpt[:MAX_TITLE - 1].rstrip() + "…"
+                    )
+                else:
+                    title = _x_title(text, source_item.get("author"))
             else:
                 title = source_item.get("title")
             item_id = source_item.get("id")
@@ -768,6 +786,56 @@ def normalize_editorial_items(
     for item in items:
         item.pop("_sort_at", None)
     return items[:EDITORIAL_ITEM_LIMIT]
+
+
+def apply_last_known_good(section: dict[str, Any], previous: Any,
+                          previous_collected_at: Any) -> dict[str, Any]:
+    """Keep failed X reads unavailable; retain a bounded, dated archive only."""
+    source = section.get("sources", {}).get("x_announcements")
+    old = previous.get("sources", {}).get("x_announcements") if isinstance(previous, dict) else None
+    if (not isinstance(source, dict) or source.get("available") is not False
+            or not isinstance(old, dict)):
+        return section
+    if old.get("available") is True:
+        archive = {"observed_at": previous_collected_at, "items": old.get("items")}
+    else:
+        archive = old.get("last_known_good")
+    if not isinstance(archive, dict) or not _is_timestamp(archive.get("observed_at")):
+        return section
+    observed = datetime.fromisoformat(archive["observed_at"].replace("Z", "+00:00"))
+    rows = archive.get("items")
+    if not isinstance(rows, list) or not 1 <= len(rows) <= xnews.MAX_POSTS:
+        return section
+    items = []
+    for row in rows:
+        if not isinstance(row, dict):
+            return section
+        author, post_id = row.get("author"), row.get("id")
+        if (author not in xnews.X_ACCOUNT_ALLOWLIST or not isinstance(post_id, str)
+                or re.fullmatch(r"[0-9]{1,19}", post_id) is None
+                or row.get("link") != f"https://x.com/{author}/status/{post_id}"
+                or not isinstance(row.get("text"), str) or not row["text"].strip()
+                or len(row["text"]) > xnews.MAX_TEXT_CHARS
+                or not _is_timestamp(row.get("published"))
+                or datetime.fromisoformat(row["published"].replace("Z", "+00:00")) > observed):
+            return section
+        for field in ("like_count", "retweet_count"):
+            value = row.get(field)
+            if value is not None and (type(value) is not int or value < 0):
+                return section
+        item = {key: row[key] for key in (
+            "id", "author", "published", "link", "like_count", "retweet_count",
+        ) if key in row}
+        item["text"] = xnews._plain_text(row["text"])
+        item["title"] = _x_title(item["text"], author)
+        items.append(item)
+    source["last_known_good"] = {
+        "observed_at": archive["observed_at"],
+        "latest_published": max((item["published"] for item in items),
+                                key=lambda stamp: datetime.fromisoformat(stamp.replace("Z", "+00:00"))),
+        "items": items,
+    }
+    return section
 
 
 def featured_editorial_item_id(items: list[dict[str, Any]]) -> str | None:
@@ -859,16 +927,15 @@ def summarize_source(name: str, body: Any) -> dict[str, Any]:
         for item in items:
             text = item.get("text")
             excerpt = " ".join(text.strip().split()) if isinstance(text, str) else ""
-            item["title"] = excerpt[:MAX_TITLE] if excerpt else "Untitled recorded post"
+            item["title"] = _x_title(excerpt, item.get("author"))
         return {
             **base,
-            "available": bool(items),
-            "reason": (
-                None if items
-                else "no allowlisted posts in the lookback window"
-            ),
+            "available": True,
+            "reason": None,
             "items": items,
             "item_count": len(items),
+            "latest_published": max((item["published"] for item in items
+                                     if _is_timestamp(item.get("published"))), default=None),
             "account_allowlist": list(xnews.X_ACCOUNT_ALLOWLIST),
             "max_posts_per_run": xnews.MAX_POSTS,
             "partial": False,
@@ -937,14 +1004,15 @@ def build_news(
     return {
         "available": available,
         "partial": available and not complete,
-        "requires_api_key": False,
+        "requires_api_key": True,
         "featured_item_id": featured_editorial_item_id(editorial_items),
         "items": editorial_items,
         "sources": sources,
         "current_status": current,
         "note": (
-            "Accepted first-party sources are fetched without credentials and recorded "
-            "into this snapshot, so the section re-renders offline unchanged. Licensed "
+            "Core first-party feeds are keyless; optional X announcements require "
+            "credentials and an approved paid-read allowance. Source records are stored "
+            "in this snapshot so it re-renders offline unchanged. Licensed "
             "Solana post and curated-upgrade transforms remain future-gated: held sources "
             "are not requested until a release-safe transport and public-reuse acceptance "
             "exist. Only source metadata and links are retained; source statements are not "

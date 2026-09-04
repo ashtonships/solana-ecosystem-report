@@ -539,6 +539,34 @@ class TestBuildSnapshot(unittest.TestCase):
         self.assertFalse(result["activity"]["stale"])
         self.assertEqual(result["activity"]["source_state"], "fresh")
 
+    def test_successful_collection_keeps_source_event_age(self):
+        current = {"collected_at": "2026-08-05T00:00:00+00:00",
+                   "activity": {"available": True,
+                                "window": {"last_block_time": 1_785_801_600}}}
+        result = collect.apply_activity_last_known_good(current, None)
+        self.assertEqual(result["activity"]["age_seconds"], 86_400)
+        self.assertTrue(result["activity"]["stale"])
+        self.assertEqual(result["activity"]["source_state"], "stale")
+        self.assertEqual(result["activity"]["last_success_at"], current["collected_at"])
+
+    def test_recent_retrieval_does_not_extend_expired_block_evidence(self):
+        previous = {"collected_at": "2026-08-05T07:00:00+00:00",
+                    "activity": {"available": True,
+                                 "window": {"last_block_time": 1_785_888_000}}}
+        current = {"collected_at": "2026-08-05T08:00:00+00:00", "activity": {"available": False}}
+        result = collect.apply_activity_last_known_good(current, previous)
+        self.assertEqual(result["activity"], {"available": False})
+
+    def test_carried_evidence_age_and_retrieval_time_remain_distinct(self):
+        previous = {"collected_at": "2026-08-05T01:00:00+00:00",
+                    "activity": {"available": True,
+                                 "window": {"last_block_time": 1_785_888_000}}}
+        current = {"collected_at": "2026-08-05T05:00:00+00:00", "activity": {"available": False}}
+        result = collect.apply_activity_last_known_good(current, previous)
+        self.assertEqual(result["activity"]["age_seconds"], 18_000)
+        self.assertEqual(result["activity"]["last_success_at"], previous["collected_at"])
+        self.assertEqual(result["activity"]["source_state"], "last_known_good")
+
 
 class TestNewsSection(unittest.TestCase):
     """The feeds are recorded into the snapshot, on the same terms as economics."""
@@ -611,10 +639,13 @@ class TestCompletedEpochProductionCollection(unittest.TestCase):
         fetch_production.return_value = raw_production
         normalize_production.return_value = normalized
 
-        raw = collect.sources(
-            "rpc", with_economics=False, with_activity=False,
-            with_news=False, with_growth=False,
-        )
+        feature_evidence = {"available": False}
+        with patch("collect.feature_accounts.collect_feature_accounts", return_value=feature_evidence):
+            raw = collect.sources(
+                "rpc", with_economics=False, with_activity=False,
+                with_news=False, with_growth=False,
+            )
+        self.assertEqual(raw["feature_activation"], feature_evidence)
 
         completed_range.assert_called_once_with(
             indexed["getEpochInfo"], indexed["getEpochSchedule"],
@@ -627,6 +658,14 @@ class TestCompletedEpochProductionCollection(unittest.TestCase):
 
 
 class TestGrowthSection(unittest.TestCase):
+    def test_feature_activation_is_additive_and_preserved_by_normalization(self):
+        evidence = {"available": True, "coverage_numerator": 10}
+        raw = {"indexed": {}, "collected_at": "2026-09-04T12:00:00+00:00", "endpoint": "rpc",
+               "feature_activation": evidence}
+        self.assertEqual(collect.normalize(raw)["feature_activation"], evidence)
+        del raw["feature_activation"]
+        self.assertNotIn("feature_activation", collect.normalize(raw))
+
     def test_growth_section_is_additive_and_defaults_to_unavailable(self):
         snapshot = collect.build_snapshot({}, "2026-08-05T00:00:00+00:00", "endpoint")
         self.assertEqual(snapshot["growth"], {"available": False})

@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import math
 import statistics
 import time
@@ -128,7 +129,7 @@ DAILY_ACTIVE_NOTE = (
 # ── network boundary ─────────────────────────────────────────────────────────
 
 def call(method: str, params: list[Any], endpoint: str = DEFAULT_ENDPOINT,
-         timeout: int = 30) -> Any | None:
+         timeout: float = 30) -> Any | None:
     """One JSON-RPC call. Returns None on any failure — never raises.
 
     This section is optional enrichment, so unlike `collect.fetch_rpc` a failure
@@ -140,11 +141,46 @@ def call(method: str, params: list[Any], endpoint: str = DEFAULT_ENDPOINT,
         headers={"Content-Type": "application/json", "User-Agent": "solana-ecosystem-report/0.1"},
         method="POST",
     )
+    deadline = time.monotonic() + timeout
+    retry_after = 0.0
+    last_http_status = None
+
+    def open_request():
+        nonlocal retry_after, last_http_status
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("RPC request budget exhausted")
+        retry_after = 0.0
+        try:
+            return urllib.request.urlopen(request, timeout=remaining)
+        except urllib.error.HTTPError as error:
+            last_http_status = error.code
+            value = error.headers.get("Retry-After") if error.headers else None
+            if value is not None:
+                try:
+                    retry_after = float(value)
+                except ValueError:
+                    retry_after = timeout  # Do not retry before an unknown server deadline.
+                if not math.isfinite(retry_after) or retry_after < 0:
+                    retry_after = timeout
+            error.close()
+            raise
+
+    def pause(delay):
+        delay = max(delay, retry_after)
+        if delay >= deadline - time.monotonic():
+            raise TimeoutError("RPC retry exceeds request budget")
+        time.sleep(delay)
+
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with transport.fetch_with_retry(open_request, sleep=pause) as response:
             body = json.loads(transport.read_bounded(response).decode("utf-8"))
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
-            json.JSONDecodeError, ValueError):
+            json.JSONDecodeError, ValueError) as error:
+        failure = f"HTTP {error.code}" if isinstance(error, urllib.error.HTTPError) else type(error).__name__
+        if last_http_status is not None and not isinstance(error, urllib.error.HTTPError):
+            failure += f" after HTTP {last_http_status}"
+        logging.getLogger(__name__).warning("RPC %.64s failed: %s", method, failure)
         return None
     if not isinstance(body, dict) or "error" in body:
         return None
@@ -186,8 +222,12 @@ def fetch_block(slot: int, endpoint: str = DEFAULT_ENDPOINT, timeout: int = 60,
     slot number, and it cannot be recovered from `parentSlot` because the
     preceding slot may itself have been skipped.
     """
+    deadline = time.monotonic() + timeout
     for offset in range(skip_forward + 1):
-        block = call("getBlock", [slot + offset, BLOCK_CONFIG], endpoint, timeout)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        block = call("getBlock", [slot + offset, BLOCK_CONFIG], endpoint, remaining)
         if isinstance(block, dict):
             return slot + offset, block
     return None
@@ -882,7 +922,11 @@ def build_activity(summaries: list[dict[str, Any]], endpoint: str,
 
     times = [s["block_time"] for s in summaries if isinstance(s["block_time"], int)]
     slots = [s["slot"] for s in summaries if isinstance(s["slot"], int)]
-    blocks_in_window = round(window_slots * production_rate) if production_rate else None
+    observed_slots = max(slots) - min(slots) if len(slots) > 1 else None
+    blocks_in_window = (
+        round(observed_slots * production_rate)
+        if observed_slots and production_rate else None
+    )
     first_block_time = min(times) if times else None
     last_block_time = max(times) if times else None
     observed_seconds = (
@@ -931,8 +975,8 @@ def collect_activity(endpoint: str = DEFAULT_ENDPOINT,
     into a fifteen-minute one. Whatever was gathered by then is still a valid
     sample, so a truncated run degrades to fewer blocks rather than to nothing.
     """
-    started = time.monotonic()
-    head = fetch_head(endpoint, timeout=30)
+    deadline = time.monotonic() + budget_seconds
+    head = fetch_head(endpoint, timeout=max(0, min(30, budget_seconds)))
     if head is None:
         return {
             "available": False,
@@ -940,15 +984,22 @@ def collect_activity(endpoint: str = DEFAULT_ENDPOINT,
             "reason": "could not read the current slot from the endpoint",
         }
 
-    production_rate = fetch_production_rate(head, endpoint, timeout=30)
-    targets = sample_slots(head, samples)
+    remaining = deadline - time.monotonic()
+    production_rate = (
+        fetch_production_rate(head, endpoint, timeout=min(30, remaining))
+        if remaining > 0 else None
+    )
+    # Fetch the newest evidence first; a truncated run must not contain only
+    # the oldest end of the requested historical window.
+    targets = list(reversed(sample_slots(head, samples)))
     summaries = []
     truncated = False
     for index, target in enumerate(targets):
-        if time.monotonic() - started > budget_seconds:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
             truncated = index < len(targets)
             break
-        fetched = fetch_block(target, endpoint, timeout)
+        fetched = fetch_block(target, endpoint, min(timeout, remaining))
         if fetched is None:
             continue
         summary = summarize_block(fetched[1], fetched[0])

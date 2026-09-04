@@ -4,8 +4,6 @@ public projection/verifier. PR #44's run failed because
 'last_known_good' was missing from the parent dune contract while
 'dune.last_known_good' had a shape — projection stripped the key and
 verify_release flagged it as a first offender."""
-import json
-import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -13,15 +11,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import render
-import verify_release
+import collect
 
 
 class DuneLastKnownGoodContract(unittest.TestCase):
     def _stale_snapshot_with_lkg(self) -> dict:
-        latest = json.loads(subprocess.run(
-            ["git", "show", "origin/main:snapshots/latest.json"],
-            capture_output=True, text=True, cwd=str(Path(__file__).parent.parent),
-        ).stdout)
+        latest = collect.build_snapshot(
+            {}, "2026-09-04T02:20:00+00:00", "https://api.mainnet-beta.solana.com",
+            provenance={"source_revision": "a" * 40, "source_tree_dirty": False},
+        )
         latest["dune"] = {
             "available": False,
             "requires_api_key": True,
@@ -76,6 +74,7 @@ class DuneLastKnownGoodContract(unittest.TestCase):
                                     payload, 90000)
         contracted = render.PUBLIC_SCHEMA_OVERRIDES[9]["dune.last_known_good"]
         self.assertEqual(frozenset(lkg.keys()), contracted)
+        self.assertIsNone(lkg["aggregates"])
 
 
 if __name__ == "__main__":

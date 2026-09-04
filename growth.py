@@ -19,6 +19,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
+import blocks
 import transport
 
 REGISTRY_URL = "https://xstocks.fi/products"
@@ -1170,21 +1171,8 @@ def fetch_dex_pairs(
             "batches_requested": requested, "batches_succeeded": succeeded}
 
 
-def _rpc_result(endpoint: str, method: str, params: list[Any], timeout: int) -> Any | None:
-    payload = json.dumps({
-        "jsonrpc": "2.0", "id": 1, "method": method, "params": params,
-    }).encode()
-    request = urllib.request.Request(
-        endpoint, data=payload,
-        headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            body = json.loads(transport.read_bounded(response).decode("utf-8"))
-            return body.get("result") if isinstance(body, dict) else None
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
-            json.JSONDecodeError, ValueError):
-        return None
+def _rpc_result(endpoint: str, method: str, params: list[Any], timeout: float) -> Any | None:
+    return blocks.call(method, params, endpoint, timeout)
 
 
 def _mint_account_provenance(
@@ -1230,7 +1218,7 @@ def _mint_account_provenance(
 
 
 def _fetch_validated_token_supply(
-    endpoint: str, mint: str, timeout: int = 20, *, require_scaled: bool,
+    endpoint: str, mint: str, timeout: float = 20, *, require_scaled: bool,
 ) -> Any | None:
     deadline = time.monotonic() + timeout
     account = _rpc_result(endpoint, "getAccountInfo", [
@@ -1242,7 +1230,7 @@ def _fetch_validated_token_supply(
         return None
     supply = _rpc_result(endpoint, "getTokenSupply", [
         mint, {"commitment": "finalized"},
-    ], max(1, math.ceil(remaining)))
+    ], remaining)
     if not isinstance(supply, dict):
         return None
     supply_context = supply.get("context")
@@ -1257,7 +1245,7 @@ def _fetch_validated_token_supply(
     return result
 
 
-def fetch_token_supply(endpoint: str, mint: str, timeout: int = 20) -> Any | None:
+def fetch_token_supply(endpoint: str, mint: str, timeout: float = 20) -> Any | None:
     return _fetch_validated_token_supply(
         endpoint, mint, timeout, require_scaled=True,
     )
@@ -1269,19 +1257,25 @@ def fetch_selected_usd_stablecoin_supplies(
     observations = {}
     attempts = 0
     deadline = time.monotonic() + total_deadline_seconds
-    for asset in SELECTED_USD_STABLECOINS:
+    for index, asset in enumerate(SELECTED_USD_STABLECOINS):
+        attempt_started = time.monotonic()
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             break
         attempts += 1
         raw = _fetch_validated_token_supply(
-            endpoint, asset["mint"], max(1, min(timeout, math.ceil(remaining))),
+            endpoint, asset["mint"], min(timeout, remaining),
             require_scaled=False,
         )
         collected_at = _iso_timestamp(int(time.time()))
         observation = normalize_supply_observation(raw, collected_at)
         if observation is not None:
             observations[asset["mint"]] = observation
+        if index + 1 < len(SELECTED_USD_STABLECOINS):
+            delay = 0.6 - (time.monotonic() - attempt_started)
+            remaining = deadline - time.monotonic()
+            if delay > 0 and remaining > 0:
+                time.sleep(min(delay, remaining))
     summary = summarize_selected_usd_stablecoin_supplies(observations)
     summary.update({
         "queried_asset_count": attempts,
@@ -1340,17 +1334,22 @@ def collect_growth(
             state_reset_reason = "RPC endpoint changed; cached supply observations discarded"
         working_state = empty_supply_state(endpoint)
 
+    # The four required, inexpensive observations precede the larger sweep.
+    stablecoins = fetch_selected_usd_stablecoin_supplies(
+        endpoint, min(timeout, 20), total_deadline_seconds=30,
+    )
     deadline = time.monotonic() + total_deadline_seconds
     supply_attempts = 0
     supply_successes = 0
     query_order = supply_query_order(eligible_mints, working_state)
     if state_error is None:
         for index, mint in enumerate(query_order):
+            attempt_started = time.monotonic()
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break
             supply_attempts += 1
-            result = fetch_token_supply(endpoint, mint, max(1, min(6, int(remaining))))
+            result = fetch_token_supply(endpoint, mint, min(6, remaining))
             collected_at = _iso_timestamp(int(time.time()))
             observation = normalize_supply_observation(result, collected_at)
             if observation is not None:
@@ -1360,7 +1359,12 @@ def collect_growth(
             working_state["cursor_mint"] = mint
             working_state["updated_at"] = collected_at
             if index + 1 < len(query_order):
-                time.sleep(0.26)  # official mainnet ceiling is 40 calls / 10s per method
+                # Each mint opens two HTTP connections; the public limit is
+                # 40 new connections / 10s across methods, not 40 mint pairs.
+                delay = 0.6 - (time.monotonic() - attempt_started)
+                remaining = deadline - time.monotonic()
+                if delay > 0 and remaining > 0:
+                    time.sleep(min(delay, remaining))
     next_supply_state = working_state if state_error is None else None
 
     dex_raw = {
@@ -1379,9 +1383,6 @@ def collect_growth(
             "redistribution rights remain unresolved."
         ),
     }
-    stablecoins = fetch_selected_usd_stablecoin_supplies(
-        endpoint, min(timeout, 20), total_deadline_seconds=30,
-    )
     # Active Addresses rows are provider-scoped estimates of network-wide daily
     # activity, never a canonical complete-network count. Owner accepted public
     # redistribution of this feed on 2026-09-01. Fee Payers stays held pending a
