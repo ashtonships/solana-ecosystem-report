@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any
 
 import blocks
+import cadence
 import economics
 import facts
 import feature_accounts
@@ -508,6 +509,7 @@ def build_snapshot(
     dune: dict[str, Any] | None = None,
     provenance: dict[str, Any] | None = None,
     feature_activation: dict[str, Any] | None = None,
+    collection_schedule: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the machine-readable snapshot. Pure — no network, no clock."""
     health = indexed.get("getHealth")
@@ -631,6 +633,8 @@ def build_snapshot(
         "activity": activity_output,
         "news": news_output,
         "growth": growth if growth is not None else {"available": False},
+        **({"collection_schedule": collection_schedule}
+           if collection_schedule is not None else {}),
         # 'dune' is recorded only when explicitly collected (with_dune=True);
         # default snapshots keep their exact prior shape.
         **({"dune": dune} if dune is not None else {}),
@@ -721,6 +725,20 @@ def apply_activity_last_known_good(
 
     current = result.get("activity")
     if isinstance(current, dict) and current.get("available") is True:
+        schedule = result.get("collection_schedule")
+        activity_schedule = schedule.get("activity") if isinstance(schedule, dict) else None
+        if (isinstance(activity_schedule, dict)
+                and activity_schedule.get("state") in ("reused", "failed")):
+            age_seconds = evidence_age(current, current.get("last_success_at"))
+            if (current.get("source_state") == "last_known_good"
+                    and (age_seconds is None or age_seconds < 0
+                         or age_seconds > PUBLICATION_FRESHNESS_SECONDS)):
+                result["activity"] = {"available": False}
+            else:
+                current["age_seconds"] = (
+                    round(age_seconds) if age_seconds is not None else None
+                )
+                return result
         age_seconds = evidence_age(current, result.get("collected_at"))
         stale = age_seconds is None or age_seconds < 0 or age_seconds > PUBLICATION_FRESHNESS_SECONDS
         current["source_state"] = "stale" if stale else "fresh"
@@ -728,6 +746,12 @@ def apply_activity_last_known_good(
         current["carried_forward_at"] = None
         current["age_seconds"] = round(age_seconds) if age_seconds is not None else None
         current["stale"] = stale
+        return result
+    current_source = result.get("source") if isinstance(result.get("source"), dict) else {}
+    previous_source = previous.get("source") if isinstance(previous, dict) \
+        and isinstance(previous.get("source"), dict) else {}
+    if (current_source.get("endpoint_identity")
+            != previous_source.get("endpoint_identity")):
         return result
     prior = previous.get("activity") if isinstance(previous, dict) else None
     if not isinstance(prior, dict) or prior.get("available") is not True:
@@ -759,6 +783,8 @@ def sources(
     with_growth: bool = True,
     supply_state: dict[str, Any] | None = None,
     with_dune: bool = False,
+    previous_snapshot: dict[str, Any] | None = None,
+    now: datetime | None = None,
 ) -> dict[str, Any]:
     """Stage 1 — collect attributable inputs.
 
@@ -771,6 +797,37 @@ def sources(
     it is keyed (DUNE_API_KEY) and unconfigured (DUNE_QUERY_ID) until Ashton's
     query exists, so the default path never touches it.
     """
+    reference = now or datetime.now(timezone.utc)
+    previous = previous_snapshot if isinstance(previous_snapshot, dict) else {}
+    try:
+        schedule = cadence.collection_schedule(
+            previous.get("collection_schedule"), reference,
+        )
+    except ValueError as error:
+        raise CollectionError("prior collection schedule is invalid") from error
+    previous_source = previous.get("source") \
+        if isinstance(previous.get("source"), dict) else {}
+    endpoint_changed = (
+        previous_source.get("endpoint_identity")
+        != growth_module.rpc_endpoint_identity(endpoint)
+    )
+
+    def refresh_due(source_key: str, *, onchain: bool = False) -> bool:
+        return (
+            onchain and endpoint_changed
+        ) or cadence.source_due(schedule, source_key, reference)
+
+    def previous_section(key: str) -> dict[str, Any] | None:
+        section = previous.get(key)
+        return copy.deepcopy(section) if isinstance(section, dict) else None
+
+    def record(source_key: str, *, attempted: bool, succeeded: bool) -> None:
+        recorded_at = datetime.now(timezone.utc) if attempted else reference
+        cadence.update_source(
+            schedule, source_key, recorded_at,
+            attempted=attempted, succeeded=succeeded,
+        )
+
     batch = fetch_rpc(endpoint)
     indexed = index_results(batch)
     slot = indexed.get("getSlot")
@@ -778,10 +835,37 @@ def sources(
     epoch_range = blocks.completed_epoch_range(
         indexed.get("getEpochInfo"), indexed.get("getEpochSchedule"),
     )
-    raw_production = blocks.fetch_block_production(epoch_range, endpoint)
-    vote_observed_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    block_production = blocks.normalize_block_production(
-        raw_production, indexed.get("getVoteAccounts"), epoch_range, vote_observed_at,
+    old_validators = previous.get("validators") \
+        if isinstance(previous.get("validators"), dict) else {}
+    old_production = old_validators.get("block_production")
+    completed_epoch_changed = (
+        isinstance(epoch_range, dict)
+        and epoch_range.get("available") is True
+        and (
+            not isinstance(old_production, dict)
+            or any(old_production.get(field) != epoch_range.get(field)
+                   for field in ("epoch", "first_slot", "last_slot"))
+        )
+    )
+    block_due = (
+        refresh_due("block_production", onchain=True)
+        or completed_epoch_changed
+    )
+    if block_due:
+        raw_production = blocks.fetch_block_production(epoch_range, endpoint)
+        vote_observed_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        block_production = blocks.normalize_block_production(
+            raw_production, indexed.get("getVoteAccounts"), epoch_range,
+            vote_observed_at,
+        )
+    else:
+        block_production = (
+            copy.deepcopy(old_production)
+            if isinstance(old_production, dict) else {"available": False}
+        )
+    record(
+        "block_production", attempted=block_due,
+        succeeded=block_due and block_production.get("available") is True,
     )
     # Economic sources are third-party and optional: a failure there degrades
     # that section only, and never blocks the on-chain snapshot.
@@ -794,21 +878,92 @@ def sources(
     # Block sampling is the slow part of a run — a dozen multi-megabyte bodies
     # against a rate-limited public endpoint. Same rule as economics: it fails
     # to `available: false` on its own and never takes the snapshot with it.
-    activity = blocks.collect_activity(endpoint, samples) if with_activity else None
+    activity_due = with_activity and refresh_due("activity", onchain=True)
+    activity = (
+        blocks.collect_activity(endpoint, samples) if activity_due
+        else previous_section("activity") if with_activity else None
+    )
+    record(
+        "activity", attempted=activity_due,
+        succeeded=(activity_due and isinstance(activity, dict)
+                   and activity.get("available") is True),
+    )
     # Adopted release and status metadata is recorded into the snapshot so
     # rendering never re-fetches, and a broken source costs this section alone.
-    feeds = news_module.collect_news() if with_news else None
-    feature_activation = feature_accounts.collect_feature_accounts(endpoint)
+    news_due = with_news and refresh_due("news")
+    feeds = (
+        news_module.collect_news() if news_due
+        else previous_section("news") if with_news else None
+    )
+    record(
+        "news", attempted=news_due,
+        succeeded=(news_due and isinstance(feeds, dict)
+                   and feeds.get("available") is True),
+    )
+    feature_due = refresh_due("feature_activation", onchain=True)
+    feature_activation = (
+        feature_accounts.collect_feature_accounts(endpoint) if feature_due
+        else previous_section("feature_activation")
+    )
+    record(
+        "feature_activation", attempted=feature_due,
+        succeeded=(feature_due and isinstance(feature_activation, dict)
+                   and feature_activation.get("available") is True),
+    )
     if with_growth:
-        growth_data, next_supply_state = growth_module.collect_growth(
-            endpoint, supply_state=supply_state,
+        old_growth = previous_section("growth")
+        token_due = refresh_due("growth_tokens", onchain=True)
+        provider_due = refresh_due("growth_providers")
+        if token_due:
+            growth_data, next_supply_state = growth_module.collect_growth(
+                endpoint, supply_state=supply_state,
+                with_providers=provider_due, previous_growth=old_growth,
+            )
+        elif provider_due:
+            growth_data = growth_module.refresh_growth_providers(old_growth)
+            next_supply_state = None
+        else:
+            growth_data = old_growth
+            next_supply_state = None
+        growth_sources = growth_data.get("sources") \
+            if isinstance(growth_data, dict) and isinstance(growth_data.get("sources"), dict) else {}
+        registry_source = growth_sources.get("registry") \
+            if isinstance(growth_sources.get("registry"), dict) else {}
+        equities = growth_data.get("tokenized_equities") \
+            if isinstance(growth_data, dict) and isinstance(growth_data.get("tokenized_equities"), dict) else {}
+        stablecoins = growth_data.get("selected_usd_stablecoins") \
+            if isinstance(growth_data, dict) and isinstance(growth_data.get("selected_usd_stablecoins"), dict) else {}
+        provider_source = growth_sources.get("activity_benchmark") \
+            if isinstance(growth_sources.get("activity_benchmark"), dict) else {}
+        record(
+            "growth_tokens", attempted=token_due,
+            succeeded=token_due and any((
+                registry_source.get("available") is True,
+                equities.get("available") is True,
+                stablecoins.get("coverage_numerator", 0) > 0,
+            )),
+        )
+        record(
+            "growth_providers", attempted=provider_due,
+            succeeded=(provider_due and provider_source.get("available") is True),
         )
     else:
         growth_data = None
         next_supply_state = None
+        record("growth_tokens", attempted=False, succeeded=False)
+        record("growth_providers", attempted=False, succeeded=False)
     # Dune is keyed and paid (credits); like economics it degrades to
     # `available: false` on its own and never blocks the on-chain snapshot.
-    dune_data = dune_module.collect_dune() if with_dune else None
+    dune_due = with_dune and refresh_due("dune")
+    dune_data = (
+        dune_module.collect_dune() if dune_due
+        else previous_section("dune") if with_dune else None
+    )
+    record(
+        "dune", attempted=dune_due,
+        succeeded=(dune_due and isinstance(dune_data, dict)
+                   and dune_data.get("available") is True),
+    )
     collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     return {
         "indexed": indexed,
@@ -822,6 +977,7 @@ def sources(
         "feature_activation": feature_activation,
         "growth": growth_data,
         "dune": dune_data,
+        "collection_schedule": schedule,
         "provenance": source_code_state(),
         "_growth_supply_state": next_supply_state,
     }
@@ -841,6 +997,7 @@ def normalize(raw: dict[str, Any]) -> dict[str, Any]:
         dune=raw.get("dune"),
         provenance=raw.get("provenance"),
         feature_activation=raw.get("feature_activation"),
+        collection_schedule=raw.get("collection_schedule"),
     )
 
 
@@ -853,6 +1010,7 @@ def collect(
     samples: int = blocks.DEFAULT_SAMPLES,
     with_growth: bool = True,
     with_dune: bool = False,
+    previous_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """One-shot Sources → Normalize → Validate without persisting cursor state.
 
@@ -868,6 +1026,7 @@ def collect(
         samples=samples,
         with_growth=with_growth,
         with_dune=with_dune,
+        previous_snapshot=previous_snapshot,
     )
     return snapshot
 
@@ -882,6 +1041,7 @@ def collect_with_state(
     with_growth: bool = True,
     supply_state: dict[str, Any] | None = None,
     with_dune: bool = False,
+    previous_snapshot: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     """Validate a snapshot and return, but do not persist, its next cursor."""
     raw = sources(
@@ -894,6 +1054,7 @@ def collect_with_state(
         with_growth=with_growth,
         supply_state=supply_state,
         with_dune=with_dune,
+        previous_snapshot=previous_snapshot,
     )
     next_supply_state = raw.pop("_growth_supply_state", None)
     snapshot = pipeline.validate(normalize(raw))
@@ -955,6 +1116,15 @@ def main() -> int:
         )
         return 2
 
+    previous = None
+    previous_path = args.out_dir / "latest.json"
+    if previous_path.exists():
+        try:
+            candidate = json.loads(previous_path.read_text(encoding="utf-8"))
+            previous = candidate if isinstance(candidate, dict) else None
+        except (OSError, json.JSONDecodeError, ValueError):
+            previous = None
+
     supply_state = None
     if not args.no_growth:
         supply_state = (
@@ -973,19 +1143,12 @@ def main() -> int:
             with_dune=args.with_dune,
             samples=args.samples,
             supply_state=supply_state,
+            previous_snapshot=previous,
         )
     except CollectionError as error:
         print(f"collection failed: {error}", file=sys.stderr)
         return 1
 
-    previous = None
-    previous_path = args.out_dir / "latest.json"
-    if previous_path.exists():
-        try:
-            candidate = json.loads(previous_path.read_text(encoding="utf-8"))
-            previous = candidate if isinstance(candidate, dict) else None
-        except (OSError, json.JSONDecodeError, ValueError):
-            previous = None
     snapshot = apply_activity_last_known_good(snapshot, previous)
     if isinstance(previous, dict) and isinstance(snapshot.get("news"), dict):
         snapshot["news"] = news_module.apply_last_known_good(

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import bisect
+import copy
 import hashlib
 import json
 import math
@@ -61,6 +62,10 @@ DEXSCREENER_BASE_URL = "https://api.dexscreener.com/tokens/v1/solana/"
 DEXSCREENER_PUBLICATION_HOLD_REASON = (
     "DEX Screener collection is disabled because the current API terms do not "
     "establish permission for automated public redistribution of derived aggregates."
+)
+FEE_PAYERS_PUBLICATION_HOLD_REASON = (
+    "Fee Payers provider-row republication is held pending explicit "
+    "source-rights acceptance; transaction-initiator ranges remain unavailable."
 )
 USER_AGENT = "solana-ecosystem-report/0.1"
 REGISTRY_PAGE_SIZE = 100
@@ -1290,9 +1295,125 @@ def fetch_selected_usd_stablecoin_supplies(
     return summary
 
 
+def _provider_benchmarks(timeout: int) -> dict[str, Any]:
+    """Collect the independently scheduled provider-activity slice."""
+    solana_data_raw = fetch_json(SOLANA_DATA_URL, timeout)
+    daily_addresses = summarize_provider_benchmark(
+        solana_data_raw, "Active Addresses",
+    )
+    fee_payers = summarize_provider_benchmark(None, "Fee Payers")
+    fee_payers["reason"] = FEE_PAYERS_PUBLICATION_HOLD_REASON
+    if daily_addresses.get("available") is not True:
+        daily_addresses["reason"] = (
+            "Solana Data provider activity rows were not collected this run "
+            "(fetch failed or no overlapping provider day)."
+        )
+    return {
+        "daily_active_addresses": daily_addresses,
+        "daily_fee_payers": fee_payers,
+        "source": {
+            "url": SOLANA_DATA_URL,
+            "available": any((
+                daily_addresses.get("history_available") is True,
+                fee_payers.get("history_available") is True,
+            )),
+            "held": fee_payers.get("available") is not True,
+            "reason": FEE_PAYERS_PUBLICATION_HOLD_REASON,
+            "active_addresses_available": daily_addresses.get("available") is True,
+            "fee_payers_available": fee_payers.get("available") is True,
+            "active_addresses_history_available": (
+                daily_addresses.get("history_available") is True
+            ),
+            "fee_payers_history_available": (
+                fee_payers.get("history_available") is True
+            ),
+            "active_addresses_observed_row_count": (
+                daily_addresses.get("observed_row_count", 0)
+            ),
+            "fee_payers_observed_row_count": (
+                fee_payers.get("observed_row_count", 0)
+            ),
+            "partial": (
+                daily_addresses.get("partial") is True
+                or fee_payers.get("partial") is True
+            ),
+            "canonical": False,
+        },
+    }
+
+
+def _previous_provider_benchmarks(previous_growth: Any) -> dict[str, Any]:
+    """Return an exact prior provider slice, or an explicit unavailable slice."""
+    if isinstance(previous_growth, dict):
+        sources = previous_growth.get("sources")
+        source = sources.get("activity_benchmark") if isinstance(sources, dict) else None
+        addresses = previous_growth.get("daily_active_addresses")
+        fee_payers = previous_growth.get("daily_fee_payers")
+        if all(isinstance(value, dict) for value in (source, addresses, fee_payers)):
+            return {
+                "daily_active_addresses": copy.deepcopy(addresses),
+                "daily_fee_payers": copy.deepcopy(fee_payers),
+                "source": copy.deepcopy(source),
+            }
+    addresses = summarize_provider_benchmark(None, "Active Addresses")
+    addresses["reason"] = "Provider activity has no prior recorded observation."
+    fee_payers = summarize_provider_benchmark(None, "Fee Payers")
+    fee_payers["reason"] = FEE_PAYERS_PUBLICATION_HOLD_REASON
+    return {
+        "daily_active_addresses": addresses,
+        "daily_fee_payers": fee_payers,
+        "source": {
+            "url": SOLANA_DATA_URL, "available": False, "held": True,
+            "reason": FEE_PAYERS_PUBLICATION_HOLD_REASON,
+            "active_addresses_available": False,
+            "fee_payers_available": False,
+            "active_addresses_history_available": False,
+            "fee_payers_history_available": False,
+            "active_addresses_observed_row_count": 0,
+            "fee_payers_observed_row_count": 0,
+            "partial": False, "canonical": False,
+        },
+    }
+
+
+def _growth_available(report: dict[str, Any]) -> bool:
+    sources = report.get("sources") if isinstance(report.get("sources"), dict) else {}
+    registry = sources.get("registry") if isinstance(sources.get("registry"), dict) else {}
+    equities = report.get("tokenized_equities") \
+        if isinstance(report.get("tokenized_equities"), dict) else {}
+    stablecoins = report.get("selected_usd_stablecoins") \
+        if isinstance(report.get("selected_usd_stablecoins"), dict) else {}
+    addresses = report.get("daily_active_addresses") \
+        if isinstance(report.get("daily_active_addresses"), dict) else {}
+    fee_payers = report.get("daily_fee_payers") \
+        if isinstance(report.get("daily_fee_payers"), dict) else {}
+    return any((
+        registry.get("available") is True,
+        equities.get("available") is True,
+        stablecoins.get("coverage_numerator", 0) > 0,
+        addresses.get("history_available") is True,
+        fee_payers.get("history_available") is True,
+    ))
+
+
+def refresh_growth_providers(previous_growth: Any, timeout: int = 12) -> dict[str, Any]:
+    """Replace only provider observations; retain token evidence byte-for-byte."""
+    report = copy.deepcopy(previous_growth) if isinstance(previous_growth, dict) else {
+        "available": False, "requires_api_key": False, "sources": {},
+    }
+    provider = _provider_benchmarks(timeout)
+    report["daily_active_addresses"] = provider["daily_active_addresses"]
+    report["daily_fee_payers"] = provider["daily_fee_payers"]
+    sources = report.setdefault("sources", {})
+    sources["activity_benchmark"] = provider["source"]
+    report["available"] = _growth_available(report)
+    return report
+
+
 def collect_growth(
     endpoint: str, timeout: int = 12, total_deadline_seconds: int = 75,
     supply_state: dict[str, Any] | None = None,
+    *, with_providers: bool = True, previous_growth: Any = None,
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     """Collect growth evidence and return the next supply cursor separately.
 
@@ -1383,23 +1504,14 @@ def collect_growth(
             "redistribution rights remain unresolved."
         ),
     }
-    # Active Addresses rows are provider-scoped estimates of network-wide daily
-    # activity, never a canonical complete-network count. Owner accepted public
-    # redistribution of this feed on 2026-09-01. Fee Payers stays held pending a
-    # separate acceptance decision.
-    solana_data_raw = fetch_json(SOLANA_DATA_URL, timeout)
-    daily_addresses = summarize_provider_benchmark(solana_data_raw, "Active Addresses")
-    fee_payers = summarize_provider_benchmark(None, "Fee Payers")
-    fee_payers_hold_reason = (
-        "Fee Payers provider-row republication is held pending explicit "
-        "source-rights acceptance; transaction-initiator ranges remain unavailable."
+    # Provider rows have their own six-hour tier. A daily token refresh can
+    # retain the exact prior provider slice when that tier is not due.
+    provider = (
+        _provider_benchmarks(timeout)
+        if with_providers else _previous_provider_benchmarks(previous_growth)
     )
-    fee_payers["reason"] = fee_payers_hold_reason
-    if daily_addresses.get("available") is not True:
-        daily_addresses["reason"] = (
-            "Solana Data provider activity rows were not collected this run "
-            "(fetch failed or no overlapping provider day)."
-        )
+    daily_addresses = provider["daily_active_addresses"]
+    fee_payers = provider["daily_fee_payers"]
 
     observed_at_unix = int(time.time())
     coverage = summarize_supply_coverage(
@@ -1499,28 +1611,7 @@ def collect_growth(
                 "registry_source": stablecoins.get("registry_source"),
                 "rpc": stablecoins.get("rpc"),
             },
-            "activity_benchmark": {
-                "url": SOLANA_DATA_URL,
-                "available": any((
-                    daily_addresses.get("history_available") is True,
-                    fee_payers.get("history_available") is True,
-                )),
-                "held": fee_payers.get("available") is not True,
-                "reason": fee_payers_hold_reason,
-                "active_addresses_available": daily_addresses.get("available") is True,
-                "fee_payers_available": fee_payers.get("available") is True,
-                "active_addresses_history_available": (
-                    daily_addresses.get("history_available") is True
-                ),
-                "fee_payers_history_available": fee_payers.get("history_available") is True,
-                "active_addresses_observed_row_count": daily_addresses.get("observed_row_count", 0),
-                "fee_payers_observed_row_count": fee_payers.get("observed_row_count", 0),
-                "partial": (
-                    daily_addresses.get("partial") is True
-                    or fee_payers.get("partial") is True
-                ),
-                "canonical": False,
-            },
+            "activity_benchmark": provider["source"],
         },
     }
     if state_error is not None:

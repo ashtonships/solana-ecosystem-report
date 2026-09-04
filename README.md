@@ -314,7 +314,7 @@ source-to-data-to-package chain, and an owner-set
 `REPORT_BOOTSTRAP_MANIFEST_SHA256` secret matching that manifest. Scheduled
 updates intentionally do not rewrite this archival bootstrap package.
 
-Manual `update` and the requested hourly schedule (`17 * * * *`, UTC) are enabled only when the
+Manual `update` and the requested fifteen-minute schedule (`7,22,37,52 * * * *`, UTC) are enabled only when the
 repository variable `REPORT_AUTOMATION_ENABLED=true`. Even then, update fails
 before collection unless the `REPORT_RPC_ENDPOINT` repository secret identifies
 an owner-approved production endpoint; the secret value is not written to
@@ -329,8 +329,8 @@ Pages and OIDC permissions. Every third-party action is pinned to an immutable
 commit.
 
 GitHub may delay scheduled runs. The collection timestamp and source-event
-windows are the evidence of actual freshness; an hourly cron is not an hourly
-delivery guarantee. The detector separately retains its six-hour baseline policy:
+windows are the evidence of actual freshness; a fifteen-minute cron is not a delivery guarantee. Source tiers prevent
+heavy or daily transports from running on every publication. The detector separately retains its six-hour baseline policy:
 observations less than five hours apart cannot masquerade as independent
 six-hour priors. A failed collection, gate, render or push stops deployment and
 leaves the previous hosted release in place.
