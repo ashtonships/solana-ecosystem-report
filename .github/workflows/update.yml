@@ -2,8 +2,10 @@ name: Update report
 
 on:
   schedule:
-    # Every 6 hours, but disabled until REPORT_AUTOMATION_ENABLED is explicitly true.
-    - cron: "17 */6 * * *"
+    # Hourly. X spend is day-bounded (xnews.X_DAILY_POST_BUDGET), so run
+    # frequency no longer multiplies cost: X bills a post read once per
+    # 24h UTC window regardless of how many runs surface it.
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       mode:

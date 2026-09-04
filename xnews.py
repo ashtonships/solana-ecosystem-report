@@ -31,6 +31,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 X_API_BASE = "https://api.x.com/2"
@@ -47,8 +49,10 @@ X_ACCOUNT_ALLOWLIST: tuple[str, ...] = (
 # Cost ceiling: hard cap on post reads recorded per collection run.
 MAX_POSTS = 20
 
-# Per-run cost ceiling: hard cap on post reads recorded per collection run.
-MAX_POSTS = 20
+# Daily cost backstop: distinct post reads charged per UTC day. At
+# $0.005/read this caps worst-case daily X spend at $0.50. Normal days
+# surface far fewer distinct posts; the guard only trips on bursts.
+X_DAILY_POST_BUDGET = 100
 
 # Post text is quoted material, stored at excerpt length with attribution
 # and a canonical link back to the source post.
@@ -86,6 +90,39 @@ def _token() -> str:
             "X_BEARER_TOKEN is not set; official announcements from X are disabled"
         )
     return token
+
+
+def _charged_post_ids_today(snapshots_dir: Path | None = None) -> set[str]:
+    """Distinct X post ids recorded by snapshots collected today (UTC).
+
+    Reads the git-committed snapshot files directly — no network, no API.
+    Any post present in a snapshot recorded today was already charged
+    today (X bills a post once per 24h UTC window), so the returned set
+    is the day's spend so far. Best-effort: any read failure returns an
+    empty set, which only means the guard under-counts, never over-counts.
+    """
+    repo_root = Path(__file__).resolve().parent
+    directory = snapshots_dir if snapshots_dir is not None \
+        else repo_root / "snapshots"
+    today_prefix = datetime.now(timezone.utc).strftime("snapshot-%Y%m%dT")
+    charged: set[str] = set()
+    try:
+        paths = sorted(directory.glob("snapshot-*.json"))
+    except OSError:
+        return charged
+    for path in paths:
+        if not path.name.startswith(today_prefix):
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        source = (payload.get("news") or {}).get("sources", {}).get(
+            "x_announcements", {})
+        for item in source.get("items") or []:
+            if isinstance(item, dict) and isinstance(item.get("id"), str):
+                charged.add(item["id"])
+    return charged
 
 
 def _request(url: str, token: str, timeout: int) -> dict[str, Any]:
@@ -230,7 +267,26 @@ def parse_announcements(
 
 
 def collect_x_announcements(timeout: int = 20) -> dict[str, Any]:
-    """Transport boundary for news.py: fetch + parse, or a named failure."""
+    """Transport boundary for news.py: fetch + parse, or a named failure.
+
+    Cost guard: recent-search post reads are $0.005 each, and X bills the
+    same post once per 24-hour UTC window, so daily spend is bounded by
+    DISTINCT posts surfaced — not by run frequency. The backstop below
+    bounds the burst case: when prior snapshots recorded
+    X_DAILY_POST_BUDGET distinct posts for the current UTC day, the fetch
+    is skipped and the source degrades with an explicit reason instead of
+    spending further.
+    """
+    charged_today = _charged_post_ids_today()
+    if len(charged_today) >= X_DAILY_POST_BUDGET:
+        return {
+            "available": False,
+            "reason": (
+                "daily X post-read budget reached "
+                f"({len(charged_today)}/{X_DAILY_POST_BUDGET} distinct posts charged today); "
+                "fetch resumes at the next UTC day"
+            ),
+        }
     try:
         posts = fetch_announcements(timeout=timeout)
     except XSourceUnavailable as error:

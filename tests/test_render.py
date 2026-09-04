@@ -7212,7 +7212,7 @@ class TestReleaseMetadata(unittest.TestCase):
                     "are recorded in GitHub Actions"
                 ),
                 "age_seconds_at_generation": 14339,
-                "cadence_seconds": 21600,
+                "cadence_seconds": 3600,
                 "freshness_limit_seconds": 25200,
                 "next_scheduled_trigger_at": "2026-08-26T00:17:00+00:00",
                 "schedule_note": (
@@ -7264,8 +7264,9 @@ class TestReleaseMetadata(unittest.TestCase):
         self.assertEqual(boundary["history"]["invalid_timestamp_count"], 1)
         self.assertEqual(boundary["history"]["gap_count"], 0)
         self.assertEqual(boundary["history"]["largest_gap_seconds"], 25200)
+        # Hourly cadence since 2026-09-03: next :17 trigger after 14:00.
         self.assertEqual(boundary["next_scheduled_trigger_at"],
-                         "2026-08-25T18:17:00+00:00")
+                         "2026-08-25T14:17:00+00:00")
 
 
 class TestPythonCompatibility(unittest.TestCase):

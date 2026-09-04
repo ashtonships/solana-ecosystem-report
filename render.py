@@ -1609,7 +1609,7 @@ def build_update_status(snapshot: dict[str, Any], history: list[dict[str, Any]],
         schedule_start = generated.replace(hour=0, minute=17, second=0, microsecond=0)
         next_expected = next(
             candidate for candidate in
-            (schedule_start + timedelta(hours=6 * index) for index in range(5))
+            (schedule_start + timedelta(hours=index) for index in range(26))
             if candidate > generated
         )
     median = statistics.median(intervals) if intervals else None
@@ -1629,7 +1629,7 @@ def build_update_status(snapshot: dict[str, Any], history: list[dict[str, Any]],
             "are recorded in GitHub Actions"
         ),
         "age_seconds_at_generation": age,
-        "cadence_seconds": 21_600,
+        "cadence_seconds": 3_600,
         "freshness_limit_seconds": freshness_limit,
         "next_scheduled_trigger_at": (next_expected.isoformat(timespec="seconds")
                                       if next_expected is not None else None),
