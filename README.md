@@ -29,6 +29,20 @@ Every published byte is generated from committed snapshots — the dashboard, th
 
 ![Execution and epoch clock](docs/readme/instruments.png)
 
+## Reading the dashboard
+
+- **Overview:** network instruments and total/non-vote TPS history with recorded-value inspection.
+- **Data:** validator and market visualizations, provider comparisons, feature activation, sampled activity, and searchable evidence catalogs.
+- **History:** select recorded A/B snapshots and inspect their values, limits, and latest-comparison threshold findings.
+- **Methods:** measurement definitions, validation rules, and evidence limits.
+- **Project:** collection workflow, source chronology, and report context.
+
+Desktop and mobile retain the same evidence destinations. Provider comparisons
+show each source independently over the last 30 calendar days; missing dates
+remain gaps and provider methodologies are not averaged together. The complete
+history remains in JSON. Markdown bounds the leader-production table to the
+100 identities with the most leader slots, with its full population in JSON.
+
 ## Quick start
 
 Collect a fresh local candidate and render all three outputs with one shell

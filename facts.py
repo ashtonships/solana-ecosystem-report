@@ -505,7 +505,7 @@ REPORT_METRICS.update(_report_metric_group(
         ("latest_non_vote_tps", "Latest non-vote TPS",
          ("performance", "latest_non_vote_tps"), "TPS",
          "non-vote transactions in the latest retained sample", "that sample's samplePeriodSecs",
-         "(numTransactions - numNonVoteTransactions excluded votes) / samplePeriodSecs"),
+         "numNonVoteTransactions / samplePeriodSecs"),
         ("mean_non_vote_tps", "Mean non-vote TPS", ("performance", "mean_non_vote_tps"),
          "TPS", "non-vote transactions across retained samples", "sum samplePeriodSecs",
          "sum non-vote transactions / sum samplePeriodSecs"),
@@ -516,6 +516,9 @@ REPORT_METRICS.update(_report_metric_group(
          "100 * summed vote transactions / summed transactions"),
     ),
 ))
+REPORT_METRICS["latest_non_vote_tps"]["event_slot_path"] = (
+    "performance", "samples", 0, "slot",
+)
 REPORT_METRICS.update(_report_metric_group(
     source="solana-rpc-getBlock-sample",
     source_url=GET_BLOCK_URL,
@@ -1626,6 +1629,10 @@ def fact_from_snapshot(snapshot: dict[str, Any], metric_id: str) -> dict[str, An
         if (isinstance(value, bool) or not isinstance(value, (int, float))
                 or not math.isfinite(float(value))):
             value = None
+    if metric_id == "latest_non_vote_tps" and lookup(
+        snapshot, ("performance", "non_vote_available")
+    ) is not True:
+        value = None
     state = _state(
         snapshot, spec["path"],
         retain_recorded_value=spec.get("retain_recorded_value") is True,
@@ -3204,6 +3211,7 @@ def public_observation_records(
     previous_at = timestamps[-2] if len(timestamps) > 1 else None
     historical_metric_ids = {
         *METRICS, "network_healthy", "network_slot", "performance_samples_used",
+        "latest_non_vote_tps",
     }
     for historical_snapshot, historical_at in zip(history, timestamps):
         if historical_at == selected_at:
