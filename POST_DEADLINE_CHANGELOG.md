@@ -37,3 +37,48 @@ The submission itself is unchanged; this file itemizes later work for judges and
   snapshot commit (PR merged between bot commits) is now judged by public-content
   equality instead of a false-positive history-walk check; all previous rejection
   semantics are preserved and regression-tested.
+
+## 2026-09-04
+
+### Reliability and evidence contracts
+
+- **PR #46** (`075069b`, merged as `67b856c6`): added durable, fail-closed
+  pre-transport reservations for optional X and Dune reads. Credentials alone do
+  not authorize a paid request; the owner must also commit a finite allowance.
+- Repaired Dune execution-specific polling, completed-UTC-day aggregation,
+  whole-row validation, bounded timeouts, and last-known-good retention.
+- Corrected current X API field selection and engagement mapping, tightened the
+  allowlist/link/time contract, and kept failed reads as a dated archive rather
+  than relabelling them current.
+- Tightened RPC retry/freshness semantics and source isolation. Optional source
+  failure no longer blocks valid core evidence.
+
+### Coverage and presentation
+
+- Added finalized on-chain state for ten selected Agave feature accounts, with
+  explicit activated versus account-absent states and exact 10/10 coverage.
+- Added completed-day Dune contracts for scoped xStock DEX trade-leg volume,
+  price coverage, and all-transaction fees. The local SQL pins 107 exact xStock
+  mints. The registered query has not been changed or executed by this release.
+- Added a 17-item requirement disclosure, a 19-dataset catalog, bounded desktop
+  History A/B selection, corrected activity/stablecoin scope, and the approved
+  release artwork.
+- Reduced the generated HTML parse surface by rendering each desktop/mobile
+  representation only in its own workbench and limiting each production table
+  to the 100 highest leader-slot identities; all 675 exact rows remain in JSON.
+
+### Verification and production state
+
+- The complete offline suite passed **1,015 tests**. Independent Dune-to-UI and
+  budget/LKG reviews found no remaining P0/P1 issue in their owned surfaces.
+- [Production run 33909339958](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/33909339958)
+  passed collection, semantic validation, anomaly detection, exact changed-path
+  verification, data commit, rendering, package verification, Pages deployment,
+  and the exact live release-ID smoke check.
+- Production data commit `5bd13c8` published release
+  `ee61e7dadcc9c2a0b0a698982ad4a6b3a898ed77f848dc470a8e15efff3e3e7e`.
+  Hosted HTML, Markdown, and JSON were independently byte-matched to the verified
+  Pages artifact.
+- Dune and X paid reads remain disabled because no finite remaining allowance is
+  committed. The live report shows those states and preserves dated evidence;
+  this release did not make a paid request.
