@@ -639,6 +639,7 @@ class TestCompletedEpochProductionCollection(unittest.TestCase):
         fetch_production.return_value = raw_production
         normalize_production.return_value = normalized
 
+        indexed["getClusterNodes"] = [{"pubkey": "1" * 32, "version": "3.0.0"}]
         feature_evidence = {"available": False}
         with patch("collect.feature_accounts.collect_feature_accounts", return_value=feature_evidence):
             raw = collect.sources(
@@ -646,6 +647,9 @@ class TestCompletedEpochProductionCollection(unittest.TestCase):
                 with_news=False, with_growth=False,
             )
         self.assertEqual(raw["feature_activation"], feature_evidence)
+        self.assertEqual(raw["cluster_software"]["observed_node_count"], 1)
+        self.assertEqual(raw["cluster_software"]["versions"][0]["version"], "3.0.0")
+        self.assertEqual(collect.RPC_CALLS[-1], ("getClusterNodes", []))
 
         completed_range.assert_called_once_with(
             indexed["getEpochInfo"], indexed["getEpochSchedule"],

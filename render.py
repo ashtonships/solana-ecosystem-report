@@ -140,6 +140,9 @@ VALIDATOR_COMMISSION_BUCKETS = (
 # Explicit recursive publication schema. Unknown input keys are omitted; known
 # object/list paths with the wrong shape fail before any output directory exists.
 PUBLIC_OBJECT_FIELDS = {
+    "cluster_software": frozenset("available observed_at observed_node_count version_reported_node_count unknown_version_node_count version_coverage_pct distinct_reported_version_count published_version_group_count other_reported_version_node_count versions source reason".split()),
+    "cluster_software.source": frozenset("method endpoint endpoint_identity population weighting".split()),
+    "cluster_software.versions[]": frozenset("version node_count share_of_observed_nodes_pct".split()),
     "collection_schedule": frozenset(cadence.INTERVALS),
     **{f"collection_schedule.{key}": frozenset("last_attempt_at last_success_at interval_seconds state".split()) for key in cadence.INTERVALS},
     "source": frozenset("endpoint endpoint_identity method requires_api_key".split()),
@@ -684,6 +687,7 @@ PUBLIC_OBJECT_FIELDS = {
 }
 
 PUBLIC_LIST_PATHS = frozenset({
+    "cluster_software.versions",
     "feature_activation.features",
     "dune.last_known_good.aggregates.dex_volume_by_project_top",
     "performance.samples", "inflation.source_methods", "validators.ranked_validators",
@@ -918,7 +922,7 @@ PUBLIC_ROOT_FIELDS = {
     ),
     9: frozenset(
         "schema_version collected_at provenance source network epoch performance supply inflation "
-        "validators economics activity news growth dune feature_activation collection_schedule pipeline release anomalies delta history upgrades "
+        "validators economics activity news growth dune feature_activation cluster_software collection_schedule pipeline release anomalies delta history upgrades "
         "observations".split()
     ),
 }
@@ -3381,6 +3385,27 @@ def render_markdown(
         "The default collector uses no third-party Python packages, API keys, or account.",
         "",
     ]
+    software = snapshot.get("cluster_software")
+    if isinstance(software, dict):
+        lines += ["", "## RPC-observed cluster-node software versions", "",
+                  "Unweighted nodes known to the queried RPC endpoint, not validator-client or stake adoption.", ""]
+        if software.get("available") is True:
+            lines += [f"Observed {markdown_text(software.get('observed_at'))}: {fmt(software['observed_node_count'])} nodes; "
+                      f"{fmt(software['unknown_version_node_count'])} unknown versions; "
+                      f"{fmt(software['other_reported_version_node_count'])} nodes in other reported groups."
+                      + summary_binding(*CLUSTER_SOFTWARE_METRICS), "",
+                      "| Exact reported version | Observed nodes |", "| --- | --- |"]
+            for row in software.get("versions", []):
+                binding = ""
+                if observation_bindings is not None:
+                    record = observation_indexes['subject'].get((
+                        'cluster_software_version_nodes', row['version'], software.get('observed_at'), snapshot_at))
+                    if record is None:
+                        raise ValueError("Markdown cluster version has no public observation")
+                    binding = markdown_observation_ids([record['observation_id']])
+                lines.append(f"| {markdown_text(row['version'], table=True)} | {fmt(row['node_count'])}{binding} |")
+        else:
+            lines += ["Cluster-node version evidence unavailable; no adoption share inferred."]
     schedule_rows = collection_schedule_rows(snapshot)
     if schedule_rows:
         lines += ["", "## Refresh schedule and source age", "",
@@ -3749,6 +3774,13 @@ CSS = r"""
 
     .theme-menu__option:hover { background: var(--prototype-subtle); }
     .theme-menu__option:active { transform: scale(.98); }
+    .cluster-version-bars { list-style: none; padding: 0; display: grid; gap: 12px; }
+    .cluster-version-bars li > div { display: flex; justify-content: space-between; gap: 12px; }
+    .cluster-version-bars span { overflow-wrap: anywhere; min-width: 0; }
+    .cluster-version-bars strong { white-space: nowrap; }
+    .cluster-version-bars meter { width: 100%; height: 12px; }
+    .cluster-version-bars meter::-webkit-meter-optimum-value { background: var(--prototype-violet); }
+    .cluster-version-bars meter::-moz-meter-bar { background: var(--prototype-violet); }
     .theme-menu__option[aria-pressed='true'] { background: var(--prototype-subtle-strong); color: var(--prototype-violet); }
     .theme-menu__option:focus-visible { outline: 2px solid color-mix(in srgb, var(--prototype-ink) 58%, transparent); outline-offset: -2px; }
 
@@ -17524,6 +17556,15 @@ def render_validator_workbench(
     rows = [row for row in raw_rows if isinstance(row, dict)]
     active_count = validators.get("active_count") if validators_live and is_number(validators.get("active_count")) else len(rows)
     production = recorded_block_production(snapshot) if validators_live else {}
+    production_refresh_note = ""
+    production_clock = (snapshot.get("collection_schedule") or {}).get("block_production", {})
+    if production and production_clock.get("state") in ("failed", "reused"):
+        refresh_label = "Latest refresh failed" if production_clock["state"] == "failed" else "Reused between scheduled refreshes"
+        production_refresh_note = (
+            f"<p class='validator-component-note'>{refresh_label}. Last complete production evidence: "
+            f"{html.escape(timestamp_label(production_clock.get('last_success_at')))}. "
+            "These retained counts are not a new observation.</p>"
+        )
     production_rows = [row for row in production.get("validators", []) if isinstance(row, dict)]
     production_display_rows = sorted(
         production_rows,
@@ -18060,7 +18101,7 @@ def render_validator_workbench(
         f"<header class='validator-workbench__head'><div><span class='section-kicker'>Consensus participation</span>"
         f"<h2 id='{title_id}'>Validator evidence</h2></div>"
         "<p>Native vote-account state stays authoritative. Rankings retain exact keys, stake, commission, and vote freshness.</p></header>"
-        f"<ul class='validator-ledger' aria-label='Validator summary'>{metrics}</ul>{metric_components}{evidence}{production_evidence}</section>"
+        f"{production_refresh_note}<ul class='validator-ledger' aria-label='Validator summary'>{metrics}</ul>{metric_components}{evidence}{production_evidence}</section>"
     )
 
 
@@ -18167,6 +18208,7 @@ DATA_CATALOG_DATASETS = (
     "Supply",
     "Inflation policy",
     "Validator set",
+    "Cluster-node software versions",
     "Block activity",
     "Economic indicators",
     "Dune registered activity query",
@@ -18283,6 +18325,59 @@ def feature_catalog_source(snapshot: dict[str, Any]) -> tuple[str, str, str, str
         freshness,
         status,
     )
+
+
+CLUSTER_SOFTWARE_METRICS = tuple("cluster_software_" + field for field in (
+    "observed_node_count", "version_reported_node_count", "unknown_version_node_count",
+    "other_reported_version_node_count",
+))
+
+
+def cluster_software_catalog(snapshot):
+    section = snapshot.get("cluster_software") or {}
+    if section.get("available") is not True:
+        return "Source unavailable", "No usable version census", "Unavailable"
+    return (f"{fmt(section['observed_node_count'])} observed {'node' if section['observed_node_count'] == 1 else 'nodes'} · {fmt(section['unknown_version_node_count'])} {'node' if section['unknown_version_node_count'] == 1 else 'nodes'} with unknown version",
+            timestamp_label(section.get("observed_at")), "Recorded")
+
+
+def render_cluster_software(snapshot, context, observation_indexes=None) -> str:
+    section = snapshot.get("cluster_software")
+    if not isinstance(section, dict):
+        return ""
+    stamp = str(snapshot.get("collected_at"))
+    binding = summary_observation_attribute(observation_indexes, stamp, CLUSTER_SOFTWARE_METRICS)
+    if section.get("available") is not True:
+        body = "<p>Cluster-node version evidence is unavailable. No adoption share is inferred.</p>"
+    else:
+        total = section["observed_node_count"]
+        rows = []
+        for row in section.get("versions", []):
+            row_binding = ""
+            if observation_indexes is not None:
+                record = observation_indexes['subject'].get((
+                    'cluster_software_version_nodes', row['version'], section.get('observed_at'), stamp))
+                if record is None:
+                    raise ValueError("cluster version has no public observation")
+                total_record = observation_indexes['summary'][(CLUSTER_SOFTWARE_METRICS[0], stamp)]
+                row_binding = observation_ids_attribute([record['observation_id'], total_record['observation_id']])
+            label = html.escape(row['version'])
+            count = row['node_count']
+            rows.append(f"<li{row_binding}><div><span>{label}</span><strong>{fmt(count)} {'node' if count == 1 else 'nodes'}</strong></div>"
+                        f"<meter min='0' max='{total}' value='{count}' aria-label='Nodes reporting version {html.escape(row['version'], quote=True)}'>{count} of {total}</meter></li>")
+        for field, label in (("unknown_version_node_count", "Unknown version"),
+                             ("other_reported_version_node_count", "Other reported versions")):
+            count = section[field]
+            rows.append(f"<li{binding}><div><span>{label}</span><strong>{fmt(count)} {'node' if count == 1 else 'nodes'}</strong></div>"
+                        f"<meter min='0' max='{total}' value='{count}' aria-label='{label}'>{count} of {total}</meter></li>")
+        body = (f"<p{binding}>{fmt(total)} {'node' if total == 1 else 'nodes'} observed; {fmt(section['version_reported_node_count'])} report a version. "
+                f"Observed {html.escape(timestamp_label(section.get('observed_at')))}.</p>"
+                f"<ul class='cluster-version-bars'>{''.join(rows)}</ul>")
+    return (f"<details class='report-coverage cluster-software' id='{context}-cluster-software'>"
+            "<summary>Cluster-node software versions</summary>"
+            "<p>Exact version strings from nodes known to the queried RPC endpoint. Unweighted node counts; "
+            "this is not validator-client or stake adoption, and does not identify Firedancer. Unknown versions remain visible.</p>"
+            + body + "<p><a href='https://solana.com/docs/rpc/http/getclusternodes' target='_blank' rel='noopener noreferrer'>getClusterNodes methodology</a></p></details>")
 
 
 def render_feature_activation(snapshot, context, observation_indexes=None) -> str:
@@ -18657,12 +18752,14 @@ def render_data_catalog(
         "feature_activated_count",
         "feature_rpc_context_slot",
     )
+    cluster_coverage, cluster_freshness, cluster_status = cluster_software_catalog(snapshot)
     rows = [
         ("Network & epoch", "Public Solana JSON-RPC", "measured", "Point-in-time RPC methods", collected, "Recorded", summary_binding("network_healthy", "network_slot", "network_block_time_unix", "epoch", "epoch_block_height", "epoch_transaction_count")),
         ("Performance samples", "getRecentPerformanceSamples", "measured", f"{fmt(perf.get('samples_used'))} recent samples" if perf_live else "Source unavailable", collected, "Recorded" if perf_live else "Unavailable", summary_binding("performance_samples_used")),
         ("Supply", "getSupply", "measured", "Current supply response" if supply_live else "Source unavailable", collected, "Recorded" if supply_live else "Unavailable", summary_binding("total_supply_sol", "circulating_sol", "non_circulating_supply_sol")),
         ("Inflation policy", "getInflationRate + getInflationGovernor", "measured", f"{fmt(inflation.get('current_total_pct'), '%')} current · {fmt(inflation.get('terminal_pct'), '%')} terminal", collected, available_label(inflation.get("available")), summary_binding("inflation_current_total_pct", "inflation_terminal_pct")),
         ("Validator set", "getVoteAccounts", "measured", f"{fmt(validators.get('active_count'))} active validators" if validators_live else "Source unavailable", collected, "Recorded" if validators_live else "Unavailable", summary_binding("active_count")),
+        ("Cluster-node software versions", "getClusterNodes", "measured", cluster_coverage, cluster_freshness, cluster_status, summary_binding(*CLUSTER_SOFTWARE_METRICS)),
         ("Block activity", "getBlock · public RPC", "sampled", f"{fmt(activity.get('window', {}).get('blocks_sampled'))} evenly spaced blocks", activity_freshness, activity_status, summary_binding("activity_blocks_sampled")),
         ("Economic indicators", "CoinGecko + DeFiLlama", "measured", f"{economic_coverage} · SOL price {economics.get('price', {}).get('freshness', 'unavailable')}", collected, available_label(economics.get("available")), mixed_binding(summary_ids=("price_usd",), derived_ids=("catalog_economic_available_source_count", "catalog_economic_source_count"), derived_subject=snapshot_at)),
         ("Dune registered activity query", dune_source, "recorded" if dune_status != "Unavailable" else "unavailable", dune_coverage, dune_freshness, dune_status, dune_binding),
@@ -20747,6 +20844,7 @@ def render_mobile_data(
     groups = (
         ("network", "Network &amp; epoch", (
             ("Public Solana JSON-RPC", "Point-in-time RPC methods", "measured", rpc_status, ("getEpochInfo", "getBlockTime", "getSupply", "getVoteAccounts")),
+            ("Cluster-node software versions", "getClusterNodes · unweighted nodes, not validator or stake adoption", "measured", "Recorded" if (snapshot.get("cluster_software") or {}).get("available") is True else "Unavailable", ()),
             ("Inflation policy", "Native rate and governor", "measured", "Recorded" if inflation.get("available") is True else "Unavailable", ("getInflationRate", "getInflationGovernor")),
         )),
         ("performance", "Performance samples", (
@@ -20929,6 +21027,7 @@ def render_mobile_data(
         f"{render_feature_activation(snapshot, 'mobile', observation_indexes)}"
         f"{render_community_news(snapshot, 'mobile')}"
         f"{render_validator_workbench(snapshot, 'mobile', observation_indexes)}"
+        f"{render_cluster_software(snapshot, 'mobile', observation_indexes)}"
         f"{render_growth_workbench(snapshot, 'mobile', observation_indexes)}"
         "<details class='chart-disclosure mobile-activity-evidence'><summary>Inspect sampled fees and address activity</summary>"
         f"{render_activity_html(snapshot, observation_indexes)}</details>"
@@ -22890,6 +22989,7 @@ def render_html(
         render_data_catalog(snapshot, analysis, comparison, history, observation_bindings),
         render_community_news(snapshot, "desktop"),
         render_validator_workbench(snapshot, "desktop", observation_bindings),
+        render_cluster_software(snapshot, "desktop", observation_bindings),
         render_growth_workbench(snapshot, "desktop", observation_bindings),
         "<details class='data-appendix'><summary>Full recorded data appendix</summary>"
         "<div class='data-appendix__body'><section class='detail-section'>"

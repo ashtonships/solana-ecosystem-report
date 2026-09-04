@@ -1,6 +1,8 @@
 """Focused collection tests for tiered source reuse."""
 
+import json
 import sys
+import tempfile
 import unittest
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
@@ -58,6 +60,56 @@ def previous(age_by_key: dict[str, timedelta] | None = None) -> dict:
             },
         },
         "dune": {"available": True, "marker": "dune"},
+    }
+
+
+def complete_production(epoch=10, first_slot=100, last_slot=199,
+                        observed_at="2026-09-04T19:00:00+00:00") -> dict:
+    leader_slots = last_slot - first_slot + 1
+    return {
+        "available": True,
+        "basis": "most recent fully completed epoch",
+        "epoch": epoch,
+        "first_slot": first_slot,
+        "last_slot": last_slot,
+        "context_slot": last_slot + 10,
+        "api_version": "4.2.2",
+        "leader_slots": leader_slots,
+        "blocks_produced": leader_slots - 1,
+        "skipped_slots": 1,
+        "skip_rate": round(1 / leader_slots, 8),
+        "skip_rate_definition": "skipped_slots / leader_slots",
+        "vote_enrichment_observed_at": observed_at,
+        "source": {"method": "getBlockProduction", "commitment": "finalized"},
+        "validators": [{
+            "identity": "node-1", "leader_slots": leader_slots,
+            "blocks_produced": leader_slots - 1, "skipped_slots": 1,
+        }],
+        "collection": {
+            "mode": "contiguous_chunks",
+            "request_count": 1,
+            "chunk_slot_limit": 5_000,
+            "first_slot": first_slot,
+            "last_slot": last_slot,
+            "coverage_numerator_slots": leader_slots,
+            "coverage_denominator_slots": leader_slots,
+            "coverage_complete": True,
+            "context_slot_min": last_slot + 10,
+            "context_slot_max": last_slot + 10,
+        },
+    }
+
+
+def production_snapshot(production: dict, collected_at="2026-09-04T19:01:00+00:00",
+                        endpoint=ENDPOINT) -> dict:
+    return {
+        "source": {
+            "endpoint": endpoint,
+            "endpoint_identity": growth.rpc_endpoint_identity(endpoint),
+        },
+        "collected_at": collected_at,
+        "epoch": {"available": True, "epoch": 11},
+        "validators": {"block_production": deepcopy(production)},
     }
 
 
@@ -199,6 +251,181 @@ class CollectCadenceTests(unittest.TestCase):
         self.assertEqual(raw["block_production"]["epoch"], 11)
         self.assertEqual(raw["collection_schedule"]["block_production"]["state"],
                          "fresh")
+
+    def test_two_failed_snapshots_recover_newest_complete_same_epoch_without_retry(self):
+        retained = complete_production()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            snapshots = [
+                production_snapshot(retained),
+                production_snapshot({"available": False, "reason": "chunk 75 failed"},
+                                    "2026-09-04T19:16:00+00:00"),
+                production_snapshot({"available": False, "reason": "chunk 75 failed"},
+                                    "2026-09-04T19:31:00+00:00"),
+            ]
+            for index, snapshot in enumerate(snapshots):
+                (root / f"snapshot-20260904T19{index:02d}00+0000.json").write_text(
+                    json.dumps(snapshot), encoding="utf-8",
+                )
+            fallbacks = collect.load_block_production_fallbacks(root, limit=3)
+
+        prior = previous()
+        prior["epoch"] = {"available": True, "epoch": 11}
+        prior["validators"]["block_production"] = {
+            "available": False, "reason": "chunk 75 failed",
+        }
+        prior["collection_schedule"]["block_production"].update({
+            "last_attempt_at": "2026-09-04T19:45:00+00:00",
+            "last_success_at": None,
+            "state": "failed",
+        })
+        current_range = {
+            "available": True, "epoch": 10, "first_slot": 100,
+            "last_slot": 199, "leader_slots": 100,
+        }
+        indexed = {
+            "getEpochInfo": {"epoch": 11}, "getEpochSchedule": {},
+            "getVoteAccounts": {"current": [], "delinquent": []},
+        }
+        patches = self._base_patches()
+        with patches[0], patch.object(collect, "index_results", return_value=indexed), \
+             patches[2], patches[3], patches[4], \
+             patch.object(collect.blocks, "completed_epoch_range",
+                          return_value=current_range), \
+             patch.object(collect.blocks, "fetch_block_production") as fetch:
+            raw = collect.sources(
+                ENDPOINT, with_activity=False, with_news=False, with_growth=False,
+                previous_snapshot=prior, block_production_fallbacks=fallbacks,
+                now=NOW,
+            )
+
+        fetch.assert_not_called()
+        self.assertEqual(raw["block_production"], retained)
+        clock = raw["collection_schedule"]["block_production"]
+        self.assertEqual(clock["state"], "failed")
+        self.assertEqual(clock["last_success_at"], retained["vote_enrichment_observed_at"])
+
+    def test_failed_due_refresh_retains_complete_prior_without_marking_success(self):
+        retained = complete_production()
+        fallback = production_snapshot(retained)
+        prior = previous()
+        prior["epoch"] = {"available": True, "epoch": 11}
+        prior["validators"]["block_production"] = {
+            "available": False, "reason": "prior failure",
+        }
+        prior["collection_schedule"]["block_production"].update({
+            "last_attempt_at": "2026-09-04T19:00:00+00:00",
+            "last_success_at": None,
+            "state": "failed",
+        })
+        current_range = {
+            "available": True, "epoch": 10, "first_slot": 100,
+            "last_slot": 199, "leader_slots": 100,
+        }
+        indexed = {
+            "getEpochInfo": {"epoch": 11}, "getEpochSchedule": {},
+            "getVoteAccounts": {"current": [], "delinquent": []},
+        }
+        patches = self._base_patches()
+        with patches[0], patch.object(collect, "index_results", return_value=indexed), \
+             patches[2], patches[3], patches[4], \
+             patch.object(collect.blocks, "completed_epoch_range",
+                          return_value=current_range), \
+             patch.object(collect.blocks, "fetch_block_production",
+                          return_value={"available": False}) as fetch, \
+             patch.object(collect.blocks, "normalize_block_production",
+                          return_value={"available": False, "reason": "chunk 75 failed"}):
+            raw = collect.sources(
+                ENDPOINT, with_activity=False, with_news=False, with_growth=False,
+                previous_snapshot=prior, block_production_fallbacks=[fallback],
+                now=NOW,
+            )
+
+        fetch.assert_called_once_with(current_range, ENDPOINT)
+        self.assertEqual(raw["block_production"], retained)
+        clock = raw["collection_schedule"]["block_production"]
+        self.assertEqual(clock["state"], "failed")
+        self.assertEqual(clock["last_success_at"], retained["vote_enrichment_observed_at"])
+
+    def test_production_fallback_rejects_new_epoch_endpoint_and_overage(self):
+        cases = (
+            ("epoch", production_snapshot(complete_production(epoch=9)), ENDPOINT),
+            ("endpoint", production_snapshot(complete_production(), endpoint="https://old.example"), ENDPOINT),
+            ("overage", production_snapshot(complete_production(
+                observed_at="2026-09-04T12:59:59+00:00")), ENDPOINT),
+        )
+        for label, fallback, endpoint in cases:
+            with self.subTest(label=label):
+                prior = previous({"block_production": timedelta(hours=1)})
+                prior["epoch"] = {"available": True, "epoch": 11}
+                prior["validators"]["block_production"] = {
+                    "available": False, "reason": "prior failure",
+                }
+                current_range = {
+                    "available": True, "epoch": 10, "first_slot": 100,
+                    "last_slot": 199, "leader_slots": 100,
+                }
+                indexed = {
+                    "getEpochInfo": {"epoch": 11}, "getEpochSchedule": {},
+                    "getVoteAccounts": {"current": [], "delinquent": []},
+                }
+                patches = self._base_patches()
+                failed = {"available": False, "reason": "chunk 75 failed"}
+                with patches[0], patch.object(collect, "index_results", return_value=indexed), \
+                     patches[2], patches[3], patches[4], \
+                     patch.object(collect.blocks, "completed_epoch_range",
+                                  return_value=current_range), \
+                     patch.object(collect.blocks, "fetch_block_production",
+                                  return_value={"available": False}), \
+                     patch.object(collect.blocks, "normalize_block_production",
+                                  return_value=failed):
+                    raw = collect.sources(
+                        endpoint, with_activity=False, with_news=False, with_growth=False,
+                        previous_snapshot=prior, block_production_fallbacks=[fallback],
+                        now=NOW,
+                    )
+
+                self.assertEqual(raw["block_production"], failed)
+                self.assertEqual(
+                    raw["collection_schedule"]["block_production"]["state"], "failed",
+                )
+
+    def test_failed_missing_range_uses_hourly_backoff_but_epoch_change_forces(self):
+        current_range = {
+            "available": True, "epoch": 10, "first_slot": 100,
+            "last_slot": 199, "leader_slots": 100,
+        }
+        for current_epoch, expected_calls in ((11, 0), (12, 1)):
+            with self.subTest(current_epoch=current_epoch):
+                prior = previous()
+                prior["epoch"] = {"available": True, "epoch": 11}
+                prior["validators"]["block_production"] = {
+                    "available": False, "reason": "chunk 75 failed",
+                }
+                prior["collection_schedule"]["block_production"].update({
+                    "last_attempt_at": "2026-09-04T19:45:00+00:00",
+                    "last_success_at": None,
+                    "state": "failed",
+                })
+                indexed = {
+                    "getEpochInfo": {"epoch": current_epoch}, "getEpochSchedule": {},
+                    "getVoteAccounts": {"current": [], "delinquent": []},
+                }
+                patches = self._base_patches()
+                with patches[0], patch.object(collect, "index_results", return_value=indexed), \
+                     patches[2], patches[3], patches[4], \
+                     patch.object(collect.blocks, "completed_epoch_range",
+                                  return_value=current_range), \
+                     patch.object(collect.blocks, "fetch_block_production",
+                                  return_value={"available": False}) as fetch, \
+                     patch.object(collect.blocks, "normalize_block_production",
+                                  return_value={"available": False}):
+                    collect.sources(
+                        ENDPOINT, with_activity=False, with_news=False,
+                        with_growth=False, previous_snapshot=prior, now=NOW,
+                    )
+
+                self.assertEqual(fetch.call_count, expected_calls)
 
     def test_activity_reuse_does_not_reset_its_original_success_clock(self):
         activity = {

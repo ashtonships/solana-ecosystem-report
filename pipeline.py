@@ -25,6 +25,7 @@ import delta as delta_module
 import detect
 import blocks
 import cadence
+import cluster_software as cluster_software_module
 import dune as dune_module
 import feature_accounts as feature_accounts_module
 import facts as facts_module
@@ -99,7 +100,7 @@ LEGACY_X_CURRENT_SOURCE_REVISIONS = frozenset({
 REQUIRED_SECTIONS = (
     "source", "network", "epoch", "performance", "supply", "inflation", "validators",
 )
-OPTIONAL_SECTIONS = ("economics", "activity", "news", "growth", "dune", "feature_activation")
+OPTIONAL_SECTIONS = ("economics", "activity", "news", "growth", "dune", "feature_activation", "cluster_software")
 CORE_EVIDENCE_SECTIONS = ("epoch", "performance", "supply", "inflation", "validators")
 FUTURE_TOLERANCE_SECONDS = 300
 DEFAULT_SNAPSHOT_PATH = Path(__file__).parent / "snapshots" / "latest.json"
@@ -1541,6 +1542,11 @@ def semantic_failures(snapshot: dict[str, Any]) -> list[dict[str, str]]:
     if "dune" in snapshot:
         for detail in _dune_semantic_failures(snapshot["dune"], collected_at):
             fail("dune", detail)
+    if "cluster_software" in snapshot:
+        for detail in cluster_software_module.validate_cluster_software(
+            snapshot["cluster_software"], snapshot.get("source"), snapshot.get("collected_at"),
+        ):
+            fail("cluster_software", detail)
     if "feature_activation" in snapshot:
         for detail in _feature_activation_semantic_failures(
             snapshot["feature_activation"], collected_at, snapshot.get("source"),
