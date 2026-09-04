@@ -2500,7 +2500,7 @@ class TestHtml(unittest.TestCase):
         self.assertNotIn("rgba(139,92,246", render.CSS)
         self.assertNotIn("1px 0 #3f1aa8", render.CSS)
         self.assertIn("data-copy-value='getSupply'", catalog)
-        self.assertEqual(catalog.count("class='source-copy'"), 19)
+        self.assertEqual(catalog.count("class='source-copy'"), render.DATA_CATALOG_DATASET_COUNT)
         self.assertIn("source-copy__feedback", catalog)
         self.assertIn(".prototype-page--data .catalog-shell td[data-label='Source']", render.CSS)
         self.assertIn("inset:0", render.CSS)
