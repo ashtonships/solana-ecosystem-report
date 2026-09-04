@@ -14991,6 +14991,67 @@ CSS = r"""
         .mobile-history-details::details-content { transition: none; }
       }
     }
+    /* Project proposals and date-grouped activity share one reading order. */
+    .prototype-page--about .development-stream .development-watch h4 a { color:inherit; text-decoration:none; }
+    .prototype-page--about .development-stream .development-watch h4 a:hover { color:var(--violet); }
+    .prototype-page--about .development-stream .development-watch-grid { gap:24px; }
+    .prototype-page--about .development-stream .development-watch { margin:0; padding:24px 0 12px; border:0; border-top:1px solid var(--rule); border-radius:0; background:transparent; min-height:0; }
+    .prototype-page--about .development-stream .development-watch + .development-watch { margin:0; padding-left:0; border-left:0; }
+    .prototype-page--about .development-stream .development-watch h4 { margin:20px 0 4px; font-size:26px; line-height:1.15; }
+    .prototype-page--about .development-stream .development-watch footer { align-items:center; padding-top:12px; }
+    .prototype-page--about .development-stream .development-watch footer a { display:inline-flex; align-items:center; gap:12px; min-height:44px; font-size:13px; text-decoration:none; }
+    .prototype-page--about .development-stream .development-watch footer a:hover { text-decoration:underline; text-underline-offset:4px; }
+    .prototype-page--about .development-stream .development-result-count { display:block; margin-top:8px; color:var(--quiet); font-size:12px; font-weight:500; }
+    .prototype-page--about .development-stream .development-controls { justify-content:flex-start; margin:20px 0; }
+    .prototype-page--about .development-stream .development-view-control { margin-left:auto; }
+    .prototype-page--about .development-stream .development-more-filters { position:relative; }
+    .prototype-page--about .development-stream .development-more-filters > summary { display:flex; align-items:center; min-height:50px; padding:0 16px; border:1px solid var(--rule-strong); border-radius:8px; font-size:12px; cursor:pointer; }
+    .prototype-page--about .development-stream .development-more-filters > div { display:flex; flex-wrap:wrap; gap:12px; padding-top:12px; }
+    .prototype-page--about .development-stream .development-active-filters { font-size:12px; color:var(--violet); margin:0 0 16px; }
+    .prototype-page--about .development-stream .development-date-groups { display:block; overflow:visible; border:0; }
+    .prototype-page--about .development-stream .development-date-group { display:grid; grid-template-columns:160px minmax(0,1fr); gap:28px; padding:24px 0; border-top:1px solid var(--rule); }
+    .prototype-page--about .development-stream .development-date-group > h4 { margin:0; padding-top:5px; font-size:11px; line-height:1.5; font-weight:650; letter-spacing:.04em; color:var(--quiet); }
+    .prototype-page--about .development-stream .development-date-group > ol { margin:0; padding:0; list-style:none; }
+    .prototype-page--about .development-stream .development-date-groups [data-development-event] { display:grid; grid-template-columns:76px minmax(0,1fr); gap:18px; align-items:start; min-height:0; padding:20px 0; border:0; border-top:1px solid var(--rule); border-radius:0; }
+    .prototype-page--about .development-stream .development-date-group > ol > li:first-child { border-top:0; padding-top:0; }
+    .prototype-page--about .development-stream .development-event-time { grid-column:1; padding:4px 0 0; color:var(--quiet); font-size:11px; font-variant-numeric:tabular-nums; }
+    .prototype-page--about .development-stream .development-date-groups .development-event-copy { grid-column:2; padding:0; border:0; }
+    .prototype-page--about .development-stream .development-date-groups .development-event-copy h4 { margin:0 0 8px; font-size:18px; line-height:1.4; overflow:visible; white-space:normal; }
+    .prototype-page--about .development-stream .development-date-groups .development-event-meta { display:block; font-size:12px; line-height:1.6; color:var(--quiet); }
+    .prototype-page--about .development-stream .development-event-state { display:inline-block; padding:1px 7px; margin-left:4px; border:1px solid var(--rule); border-radius:4px; font-size:10px; color:var(--body); font-weight:600; }
+    .prototype-page--about .development-stream .development-evidence summary { display:flex; align-items:center; gap:8px; min-height:44px; width:fit-content; color:var(--quiet); font-size:11px; cursor:pointer; }
+    .prototype-page--about .development-stream .development-evidence summary::before { content:'+'; font-size:16px; }
+    .prototype-page--about .development-stream .development-evidence[open] summary::before { content:'−'; }
+    .prototype-page--about .development-stream .development-evidence p { margin:0 0 12px; padding:12px; background:var(--prototype-subtle); color:var(--quiet); font-size:12px; line-height:1.7; overflow-wrap:anywhere; }
+    .prototype-page--about .development-stream :is(a,summary):focus-visible { outline:2px solid var(--violet); outline-offset:4px; }
+    .prototype-page--about .development-stream .development-graph-note { margin:16px 0; }
+    .prototype-page--about .development-stream .development-date-groups[data-view='grid'] .development-date-group { display:block; }
+    .prototype-page--about .development-stream .development-date-groups[data-view='grid'] .development-date-group > h4 { margin-bottom:20px; }
+    .prototype-page--about .development-stream .development-date-groups[data-view='grid'] .development-date-group > ol { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .prototype-page--about .development-stream .development-date-groups[data-view='grid'] [data-development-event] { display:block; padding:20px; border:1px solid var(--rule); border-radius:8px; }
+    .prototype-page--about .development-stream .development-date-groups[data-view='grid'] .development-event-copy { padding-top:12px; }
+    .prototype-page--about .development-stream .development-date-groups [data-development-event][hidden],
+    .prototype-page--about .development-stream .development-date-groups [data-development-date-group][hidden] { display:none; }
+    @media (max-width:700px) {
+      .prototype-page--about .development-stream .development-priority { display:block; }
+      .prototype-page--about .development-stream .development-priority .development-section-head { display:block; }
+      .prototype-page--about .development-stream .development-priority .development-section-head h3 { white-space:normal; font-size:22px; }
+      .prototype-page--about .development-stream .development-priority .development-section-head small { display:block; margin-top:10px; overflow-wrap:anywhere; }
+      .prototype-page--about .development-stream .development-controls > fieldset:first-of-type { grid-column:1/-1; grid-row:1; }
+      .prototype-page--about .development-stream .development-controls > fieldset:first-of-type button { font-size:clamp(9px,2.8vw,11px); }
+      .prototype-page--about .development-stream .development-controls .development-view-control { grid-column:2; grid-row:2; }
+      .prototype-page--about .development-stream .development-more-filters { grid-column:1; grid-row:2; }
+      .prototype-page--about .development-stream .development-watch-grid { gap:0; }
+      .prototype-page--about .development-stream .development-watch h4 { font-size:24px; }
+      .prototype-page--about .development-stream .development-date-group { display:block; padding:24px 0 0; }
+      .prototype-page--about .development-stream .development-date-group > h4 { margin-bottom:20px; }
+      .prototype-page--about .development-stream .development-date-groups [data-development-event] { display:block; padding:18px 0; }
+      .prototype-page--about .development-stream .development-event-time { display:block; padding:0 0 8px; }
+      .prototype-page--about .development-stream .development-date-groups .development-event-copy h4 { font-size:17px; }
+      .prototype-page--about .development-stream .development-date-groups[data-view='grid'] .development-date-group > ol { grid-template-columns:1fr; }
+      .prototype-page--about .development-stream .development-more-filters > div { display:grid; grid-template-columns:1fr; }
+    }
+
 """
 
 
@@ -20278,12 +20339,16 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         name = str(item.get("name") or "SIMD proposal")
         source_link = (
             f"<a href='{source}' target='_blank' rel='noopener noreferrer' "
-            f"aria-label='Primary source for {html.escape(name, quote=True)}'>Primary source</a>"
+            f"aria-label='Read proposal: {html.escape(name, quote=True)}'>Read proposal <svg aria-hidden='true' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5'><path d='M7 17 17 7M7 7h10v10'/></svg></a>"
             if source else "<span>Source unavailable</span>"
         )
+        title_markup = (
+            f"<a href='{source}' target='_blank' rel='noopener noreferrer'>{html.escape(name)}</a>"
+            if source else html.escape(name)
+        )
         metadata = " · ".join(
-            str(value) for value in (item.get("category"), item.get("type")) if value
-        ) or "Metadata only"
+            str(value) for value in (item.get("category"), item.get("type")) if value and value != "Frontmatter metadata only"
+        )
         created = str(item.get("created") or "").strip()
         created_markup = (
             f"<time datetime='{html.escape(created, quote=True)}'>Created {html.escape(created)}</time>"
@@ -20296,9 +20361,9 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         watch_cards.append(
             f"<div class='development-watch' data-development-kind='proposal'>"
             f"<div><span>{identifier_markup or html.escape(f'SIMD {index:02d}')}"
-            f" · status</span><b>{html.escape(str(item.get('status') or 'Unknown'))}</b></div>"
-            f"<h4>{html.escape(name)}</h4>"
-            f"<p>{html.escape(metadata)}. Lifecycle state comes only from proposal frontmatter.</p>"
+            f"</span><b>{html.escape(str(item.get('status') or 'Unknown'))}</b></div>"
+            f"<h4>{title_markup}</h4>"
+            + (f"<p>{html.escape(metadata)}</p>" if metadata else "")
             + (
                 f"<p class='development-watch__why'><strong>Authors</strong> "
                 f"{html.escape(', '.join(str(author) for author in item.get('authors', []) if author))}</p>"
@@ -20391,6 +20456,7 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
                 "link": safe_external_href(item.get("link")),
                 "age_days": age_days,
                 "archived_at": archived_at,
+                "state_label": str(item.get("release_channel") or item.get("status") or ""),
             })
     events.sort(key=lambda event: (
         development_event_moment(event["published"]) or datetime.min.replace(tzinfo=timezone.utc)
@@ -20407,34 +20473,36 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         if event["archived_at"]:
             evidence += (" · Archived · last successful collection "
                          + html.escape(timestamp_label(event["archived_at"])))
-        time_markup = (
-            f"<time datetime='{html.escape(event['published'], quote=True)}'>{event['date_basis']} "
-            f"{html.escape(development_time_label(event['published']))}</time>"
-            if event["valid_time"] else "<span class='development-event-untime'>Time unavailable</span>"
+        moment = development_event_moment(event["published"])
+        if moment and len(event["published"]) != 10:
+            time_label = moment.astimezone(timezone.utc).strftime("%H:%M UTC")
+        elif moment:
+            time_label = f"{event['date_basis']} date"
+        else:
+            time_label = "Time unavailable"
+        time_markup = f"<span class='development-event-time'>{html.escape(time_label)}</span>"
+        state = "Archived" if event["archived_at"] else event["state_label"]
+        state_markup = f"<b class='development-event-state'>{html.escape(state)}</b>" if state else ""
+        published = (
+            f"{event['date_basis']} {html.escape(development_time_label(event['published']))}"
+            if moment else "Time unavailable"
         )
-        if prefix == "mobile":
-            moment = development_event_moment(event["published"])
-            if moment and len(event["published"]) != 10:
-                mobile_time = moment.astimezone(timezone.utc).strftime("%H:%M UTC")
-            elif moment:
-                mobile_time = f"{event['date_basis']} date"
-            else:
-                mobile_time = "Time unavailable"
-            time_markup = f"<span class='development-event-time'>{html.escape(mobile_time)}</span>"
+        details = (
+            "<details class='development-evidence'><summary>Evidence details</summary>"
+            f"<p>{published}{author}{evidence}</p></details>"
+        )
         return (
             f"<li data-development-event data-development-kind='{event['kind']}' "
             f"data-development-lane='{event['lane']}' data-development-status='{'archived' if event['archived_at'] else 'recorded'}' "
             f"data-development-age-days='{event['age_days'] if isinstance(event.get('age_days'), int) else ''}'>"
-            f"<div class='development-graph-node development-graph-node--{event['lane']}' aria-hidden='true'>"
-            "<i></i><i></i><i></i><i></i><b></b></div>"
             f"{time_markup}"
-            f"<div class='development-event-copy'><span class='development-event-meta'>"
-            f"<i class='development-source-dot development-source-dot--{event['lane']}' aria-hidden='true'></i>"
-            f"{html.escape(event['source'])}{author}{evidence}</span>"
-            f"<h4>{title_markup}</h4></div></li>"
+            f"<div class='development-event-copy'><h4>{title_markup}</h4>"
+            f"<span class='development-event-meta'>{html.escape(event['source'])}"
+            f" · {html.escape(event['kind'].capitalize())} {state_markup}</span>"
+            f"{details}</div></li>"
         )
 
-    if events and prefix == "mobile":
+    if events:
         date_groups: list[tuple[str, str, list[dict[str, Any]]]] = []
         for event in events:
             moment = development_event_moment(event["published"])
@@ -20460,11 +20528,6 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
             f"<div class='development-events development-date-groups' id='{prefix}-development-events' "
             f"data-development-events>{''.join(grouped_rows)}</div>"
         )
-    elif events:
-        stream_body = (
-            f"<ol class='development-events' id='{prefix}-development-events' "
-            f"data-development-events>{''.join(render_event_row(event) for event in events)}</ol>"
-        )
     else:
         stream_body = (
             f"<div class='development-empty' id='{prefix}-development-events'>"
@@ -20489,13 +20552,9 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
     )
     filter_markup = (
         "<details class='development-more-filters'><summary>Filters</summary>"
-        f"<div>{source_filters}</div></details>" if prefix == "mobile" else source_filters
+        f"<div>{source_filters}</div></details>"
     )
-    graph_note = (
-        "Chronology does not imply dependency, merge, or causality."
-        if prefix == "mobile"
-        else "Connectors show chronology within each source lane; they do not imply dependency, merge, or causality."
-    )
+    graph_note = "Chronology does not imply dependency, merge, or causality."
     stream_kicker = "Development stream" if context == "mobile" else "Upgrade watch · protocol and client"
     simd_section = sources.get("simd_proposal_metadata", {}) \
         if isinstance(sources.get("simd_proposal_metadata"), dict) else {}
@@ -20512,15 +20571,14 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         f"<h2 id='{title_id}'>Development stream</h2></div>"
         "<p>Recorded releases, first-party news, proposal lifecycle metadata, and incidents share one chronology without claiming causality.</p></header>"
         f"<section class='development-priority' aria-labelledby='{prefix}-development-priority-title'>"
-        f"<div class='development-section-head'><div><span>Upgrade watch</span><h3 id='{prefix}-development-priority-title'>Recorded SIMD lifecycle</h3></div>"
-        f"<small>{watch_note}</small></div>"
+        f"<div class='development-section-head'><div><span>Upgrade watch</span><h3 id='{prefix}-development-priority-title'>Protocol proposals</h3></div>"
+        f"<small>Statuses reflect recorded proposal metadata.<br>{watch_note}</small></div>"
         f"<div class='development-watch-grid'>{watch_body}</div></section>"
         f"<section class='development-chronology' aria-labelledby='{prefix}-development-chronology-title'>"
         "<div class='development-section-head'><div><span>Recorded chronology</span>"
-        f"<h3 id='{prefix}-development-chronology-title'>Release and protocol graph</h3></div>"
+        f"<h3 id='{prefix}-development-chronology-title'>Recorded activity</h3>"
+        "<span class='development-result-count' data-development-result-count role='status' aria-live='polite'></span></div></div>"
         "<div class='development-controls' data-development-controls hidden role='group' aria-label='Development event controls'>"
-        "<div class='development-result'><span class='development-control-label'>Results</span>"
-        "<span class='development-result-count' data-development-result-count role='status' aria-live='polite'></span></div>"
         "<fieldset class='development-control-group'><legend>Type</legend><div>"
         "<button type='button' data-development-filter='all' aria-pressed='true'>All</button>"
         "<button type='button' data-development-filter='release' aria-pressed='false'>Releases</button>"
@@ -20531,7 +20589,8 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         f"<fieldset class='development-control-group development-view-control'><legend>View</legend><div>"
         f"<button type='button' data-development-view='timeline' aria-pressed='true' aria-controls='{prefix}-development-events'>Timeline</button>"
         f"<button type='button' data-development-view='grid' aria-pressed='false' aria-controls='{prefix}-development-events'>Grid</button>"
-        "</div></fieldset></div></div>"
+        "</div></fieldset></div>"
+        "<p class='development-active-filters' data-development-active-filters hidden></p>"
         "<div class='development-lane-key' aria-label='Source lanes'><span><i class='development-source-dot--agave'></i>Agave</span>"
         "<span><i class='development-source-dot--firedancer'></i>Firedancer</span>"
         "<span><i class='development-source-dot--xnews'></i>X</span>"
@@ -22168,6 +22227,15 @@ MOBILE_CONTROLLER = r"""
           (event) => !event.hidden,
         );
       });
+      const activeFilters = stream.querySelector('[data-development-active-filters]');
+      if (activeFilters) {
+        const labels = [
+          selectedSource !== 'all' ? sourceSelect.selectedOptions[0].textContent : '',
+          selectedWindow !== 'all' ? windowSelect.selectedOptions[0].textContent : '',
+        ].filter(Boolean);
+        activeFilters.textContent = labels.join(' · ');
+        activeFilters.hidden = !labels.length;
+      }
       if (empty) empty.hidden = visibleCount !== 0;
       if (resultCount) {
         const suffix = stream.classList.contains('development-stream--mobile') ? '' : ' shown';
