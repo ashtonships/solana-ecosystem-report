@@ -4553,6 +4553,7 @@ CSS = r"""
     .prototype-page--report .chart-value strong {
       display: inline-flex;
       align-items: baseline;
+      column-gap: 5px;
       font-size: clamp(20px, 1.65vw, 25px);
       font-weight: 650;
       letter-spacing: -0.03em;
