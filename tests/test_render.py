@@ -1996,7 +1996,7 @@ class TestHtml(unittest.TestCase):
         }
         stream = render.render_development_stream(snapshot, "desktop")
         self.assertIn("Upgrade watch", stream)
-        self.assertIn("Recorded SIMD lifecycle", stream)
+        self.assertIn("Protocol proposals", stream)
         self.assertIn("Double disinflation", stream)
         self.assertIn("Release v4.3.0-beta.0", stream)
         self.assertIn("Foundation update", stream)
@@ -2009,14 +2009,36 @@ class TestHtml(unittest.TestCase):
         self.assertIn("<option value='all'>All dates</option>", stream)
         self.assertNotIn("aria-haspopup='listbox'", stream)
         self.assertNotIn("development-picker-popover", stream)
-        self.assertIn("aria-label='Primary source for Double disinflation", stream)
-        self.assertIn("Lifecycle state comes only from proposal frontmatter", stream)
+        self.assertIn("aria-label='Read proposal: Double disinflation", stream)
+        self.assertIn("Statuses reflect recorded proposal metadata", stream)
         self.assertIn("Pinned source commit", stream)
         self.assertIn("data-development-lane='agave'", stream)
         self.assertIn("data-development-lane='news'", stream)
         self.assertIn("data-development-lane='simd'", stream)
         self.assertIn("data-development-lane='status'", stream)
-        self.assertIn("Connectors show chronology within each source lane", stream)
+        self.assertIn("Chronology does not imply dependency, merge, or causality", stream)
+
+    def test_development_activity_groups_dates_and_keeps_evidence_after_headlines(self):
+        snapshot = load_fixture()
+        snapshot["news"] = {"sources": {
+            "agave_releases": {"available": True, "items": [
+                {"title": "Test release", "published": "2026-09-04T10:00:00Z",
+                 "release_channel": "prerelease", "tag_commit_sha": "abc123"}]},
+            "network_status": {"available": True, "items": [{"title": "Undated incident"}]},
+        }}
+        for context in ("desktop", "mobile"):
+            with self.subTest(context=context):
+                stream = render.render_development_stream(snapshot, context)
+                self.assertEqual(stream.count("data-development-date-group"), 2)
+                self.assertIn("SEP 04, 2026", stream)
+                self.assertIn("DATE UNAVAILABLE", stream)
+                self.assertIn("class='development-event-state'>prerelease", stream)
+                headline = stream.index("<h4><span>Test release</span></h4>")
+                disclosure = stream.index("<details class='development-evidence'>")
+                self.assertLess(headline, disclosure)
+                self.assertGreater(stream.index("tag commit abc123"), disclosure)
+                self.assertNotIn("development-graph-node", stream)
+                self.assertIn("<details class='development-more-filters'>", stream)
 
     def test_development_stream_renders_every_recorded_event_without_silent_truncation(self):
         snapshot = load_fixture()
@@ -2540,7 +2562,7 @@ class TestHtml(unittest.TestCase):
                 "link": proposal["source"], "created": proposal["created"], "status": "Review"}],
         }}}
         page = render.render_html(snapshot)
-        for value in ("Alpenglow", "SIMD-0326", "Recorded SIMD lifecycle", "Created 2025-07-25"):
+        for value in ("Alpenglow", "SIMD-0326", "Protocol proposals", "Created 2025-07-25"):
             self.assertIn(value, page)
         self.assertNotIn("Static reference data", page)
         self.assertNotIn("last checked", page)
