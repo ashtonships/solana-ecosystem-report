@@ -949,7 +949,7 @@ class TestHtml(unittest.TestCase):
         history = recorded_history_fixture()
         charts = render.render_overview_charts(history)
         wanted = {
-            "latest_tps", "mean_slot_time_secs", "delinquent_pct", "price_usd",
+            "latest_tps", "latest_non_vote_tps", "mean_slot_time_secs", "delinquent_pct", "price_usd",
             "tvl_usd", "median_fee_lamports", "sample_mean_rev_sol",
         }
         specs = [spec for spec in render.charts_module.SERIES if spec["key"] in wanted]
@@ -959,8 +959,12 @@ class TestHtml(unittest.TestCase):
             for spec in specs
         }
         chartable = [spec for spec in specs if stats[spec["key"]]["chartable"]]
+        chartable_cards = [
+            spec for spec in chartable if spec["key"] != "latest_non_vote_tps"
+        ]
         titles = {
-            "latest_tps": "Transactions / Second",
+            "latest_tps": "Total Transactions / Second",
+            "latest_non_vote_tps": "Non-vote Transactions / Second",
             "mean_slot_time_secs": "Avg. Slot Time",
             "delinquent_pct": "Validator Delinquency",
             "price_usd": "SOL Price",
@@ -973,22 +977,22 @@ class TestHtml(unittest.TestCase):
         for key in ("price_usd", "tvl_usd"):
             if not stats[key]["chartable"]:
                 self.assertNotIn(f"data-pulse-key='{key}'", charts)
-        self.assertEqual(charts.count("viewBox='0 0 300 86' preserveAspectRatio='none'"), len(chartable))
-        self.assertEqual(charts.count("class='grid-line'"), len(chartable) * 3)
-        self.assertEqual(charts.count("class='axis-label'"), len(chartable) * 3)
-        self.assertEqual(charts.count("class='chart-time-range'"), len(chartable))
+        self.assertEqual(charts.count("viewBox='0 0 300 86' preserveAspectRatio='none'"), len(chartable_cards))
+        self.assertEqual(charts.count("class='grid-line'"), len(chartable_cards) * 3)
+        self.assertEqual(charts.count("class='axis-label'"), len(chartable_cards) * 3)
+        self.assertEqual(charts.count("class='chart-time-range'"), len(chartable_cards))
         # A card can contain more than one honest segment when history has a gap.
-        self.assertGreaterEqual(charts.count("<polyline points="), len(chartable))
+        self.assertGreaterEqual(charts.count("<polyline points="), len(chartable_cards))
         self.assertEqual(charts.count("data-window='Recorded'"),
-                         sum(spec["basis"] != "sampled" for spec in chartable))
+                         sum(spec["basis"] != "sampled" for spec in chartable_cards))
         self.assertEqual(charts.count("data-window='Sampled'"),
-                         sum(spec["basis"] == "sampled" for spec in chartable))
-        self.assertEqual(charts.count("aria-roledescription='slide'"), len(chartable))
+                         sum(spec["basis"] == "sampled" for spec in chartable_cards))
+        self.assertEqual(charts.count("aria-roledescription='slide'"), len(chartable_cards))
         self.assertIn("class='chart-carousel'", charts)
         self.assertIn("data-pulse-track", charts)
         self.assertIn("data-pulse-previous", charts)
         self.assertIn("data-pulse-next", charts)
-        self.assertEqual(charts.count("data-pulse-dot="), len(chartable))
+        self.assertEqual(charts.count("data-pulse-dot="), len(chartable_cards))
         rev_stats = stats["sample_mean_rev_sol"]
         if rev_stats["chartable"]:
             self.assertIn("data-pulse-key='sample_mean_rev_sol'", charts)
@@ -1001,7 +1005,8 @@ class TestHtml(unittest.TestCase):
         self.assertNotIn("snapshots'>", charts)
         self.assertNotIn("measured · gaps preserved", charts)
         self.assertNotIn("Coverage and source", charts)
-        unavailable_count = len(specs) - len(chartable)
+        overview_specs = [spec for spec in specs if spec["key"] != "latest_non_vote_tps"]
+        unavailable_count = len(overview_specs) - len(chartable_cards)
         if unavailable_count:
             self.assertIn("chart-disclosure--availability", charts)
             self.assertIn(
@@ -1009,6 +1014,28 @@ class TestHtml(unittest.TestCase):
             )
         else:
             self.assertNotIn("chart-disclosure--availability", charts)
+
+    def test_overview_history_overlays_total_and_non_vote_tps_distinctly(self):
+        history = recorded_history_fixture()
+        for index, snapshot in enumerate(history):
+            snapshot["performance"].update({
+                "non_vote_available": True,
+                "latest_non_vote_tps": 1_500.0 + index * 5,
+            })
+
+        markup = render.render_overview_charts(history)
+
+        self.assertIn("data-pulse-key='latest_tps'", markup)
+        self.assertNotIn("data-pulse-key='latest_non_vote_tps'", markup)
+        self.assertIn("data-overview-tps-overlay", markup)
+        self.assertIn("Total Transactions / Second", markup)
+        self.assertIn("Non-vote Transactions / Second", markup)
+        self.assertIn("chart-series--total", markup)
+        self.assertIn("chart-series--non-vote", markup)
+        self.assertIn(
+            ".prototype-page--report .chart-series--non-vote polyline",
+            render.CSS,
+        )
 
     def test_schema9_single_snapshot_keeps_overview_carousel_from_real_samples(self):
         snapshot = single_snapshot_schema9_fixture()
@@ -1162,11 +1189,9 @@ class TestHtml(unittest.TestCase):
         self.assertIn("aria-label='Epoch 700 progress: 50%'", instruments)
         self.assertIn("1d remaining", instruments)
         self.assertIn("class='throughput-point' tabindex='0'", instruments)
-        self.assertIn(
-            "<div class='visually-hidden'><table><caption>Exact recent throughput samples</caption>",
-            instruments,
-        )
-        self.assertNotIn("<table class='visually-hidden'>", instruments)
+        self.assertIn("<details class='throughput-data'>", instruments)
+        self.assertIn("<caption>Exact recent throughput samples</caption>", instruments)
+        self.assertNotIn("<div class='visually-hidden'><table>", instruments)
 
     def test_network_instruments_never_invent_non_vote_tps_when_rpc_field_is_missing(self):
         snapshot = load_fixture()
@@ -1477,7 +1502,7 @@ class TestHtml(unittest.TestCase):
         self.assertNotIn(".mobile-source-group, .mobile-project-section, .validator-mobile-row {", render.CSS)
         self.assertNotIn("validator-table-note", render.CSS)
 
-    def test_mobile_growth_metrics_use_a_carousel_and_cover_every_summary_fact(self):
+    def test_growth_metrics_use_a_carousel_in_both_layouts_and_cover_every_summary_fact(self):
         snapshot = load_fixture()
         snapshot["schema_version"] = 8
         snapshot["growth"] = {
@@ -1517,39 +1542,67 @@ class TestHtml(unittest.TestCase):
                 "assets": [],
             },
         }
-        mobile = render.render_growth_workbench(snapshot, "mobile")
-        carousel = mobile[
-            mobile.index("class='growth-metric-carousel"):
-            mobile.index("class='growth-unavailable'")
-        ]
+        workbenches = {
+            context: render.render_growth_workbench(snapshot, context)
+            for context in ("desktop", "mobile")
+        }
+        carousels = {
+            context: workbench[
+                workbench.index("class='growth-metric-carousel"):
+                workbench.index("class='growth-unavailable'")
+            ]
+            for context, workbench in workbenches.items()
+        }
 
-        self.assertIn("class='growth-metric-carousel validator-metric-carousel chart-carousel'", carousel)
-        self.assertEqual(carousel.count("data-growth-metric-card data-pulse-card"), 4)
-        self.assertEqual(carousel.count("data-growth-metric-dot="), 4)
-        self.assertLess(
-            mobile.index("class='growth-metric-carousel"),
-            mobile.index("class='growth-unavailable'"),
+        for context, carousel in carousels.items():
+            with self.subTest(context=context):
+                self.assertIn(
+                    "class='growth-metric-carousel validator-metric-carousel chart-carousel'",
+                    carousel,
+                )
+                self.assertEqual(carousel.count("data-growth-metric-card data-pulse-card"), 4)
+                self.assertEqual(carousel.count("data-growth-metric-dot="), 4)
+                self.assertLess(
+                    workbenches[context].index("class='growth-metric-carousel"),
+                    workbenches[context].index("class='growth-unavailable'"),
+                )
+                self.assertEqual(
+                    {
+                        metric
+                        for group in re.findall(r"data-growth-metric-ids='([^']+)'", carousel)
+                        for metric in group.split(",")
+                    },
+                    {
+                        "registry_assets", "finalized_supply_coverage",
+                        "fresh_finalized_supply", "current_supply_run",
+                        "usd_valuation", "indexed_dex_pool_volume",
+                        "selected_usd_stablecoin_supply",
+                    },
+                )
+                for expected in (
+                    "107 registry assets", "106 / 107", "72 / 107", "72 / 72",
+                    "0 failed", "$10.0M", "43 / 43", "USD valuation", "Unavailable", "4 / 4",
+                    "10.00 nominal units",
+                ):
+                    self.assertIn(expected, carousel)
+                self.assertIn("Market evidence</h3></div><small>Partial</small>", carousel)
+        self.assertIn("id='desktop-growth-title'", workbenches["desktop"])
+        self.assertNotIn("id='mobile-growth-title'", workbenches["desktop"])
+        self.assertIn(
+            "class='validator-workbench validator-workbench--desktop "
+            "growth-workbench growth-workbench--desktop'",
+            workbenches["desktop"],
         )
-        self.assertEqual(
-            {
-                metric
-                for group in re.findall(r"data-growth-metric-ids='([^']+)'", carousel)
-                for metric in group.split(",")
-            },
-            {
-                "registry_assets", "finalized_supply_coverage",
-                "fresh_finalized_supply", "current_supply_run",
-                "usd_valuation", "indexed_dex_pool_volume",
-                "selected_usd_stablecoin_supply",
-            },
+        self.assertIn(
+            "document.querySelectorAll('.chart-carousel').forEach((pulseCarousel)",
+            render.MOBILE_CONTROLLER,
         )
-        for expected in (
-            "107 registry assets", "106 / 107", "72 / 107", "72 / 72",
-            "0 failed", "$10.0M", "43 / 43", "USD valuation", "Unavailable", "4 / 4",
-            "10.00 nominal units",
-        ):
-            self.assertIn(expected, carousel)
-        self.assertIn("Market evidence</h3></div><small>Partial</small>", carousel)
+        self.assertIn(
+            "pulseCarousel.querySelector('[data-pulse-track]')",
+            render.MOBILE_CONTROLLER,
+        )
+        mobile = workbenches["mobile"]
+        carousel = carousels["mobile"]
 
         snapshot["growth"]["tokenized_equities"]["supply_coverage"].update({
             "queried_this_run_asset_count": 0,
@@ -1613,6 +1666,12 @@ class TestHtml(unittest.TestCase):
         self.assertIn("| Finalized slot range | 10–19 (10 leader slots) |", markdown)
         self.assertIn("| Aggregate skip rate | 20% |", markdown)
         self.assertIn("| Unmatched production identities | 1 of 2 |", markdown)
+        self.assertIn(
+            "Showing 2 of 2 identities, highest leader-slot counts first. "
+            "Complete exact identity rows and subject observations remain in "
+            "[report.json](report.json).",
+            markdown,
+        )
         self.assertIn("production-node-B", markdown)
         for workbench in workbenches:
             self.assertIn("Completed epoch", workbench)
@@ -1625,6 +1684,58 @@ class TestHtml(unittest.TestCase):
             self.assertIn("production-node-B", workbench)
             self.assertNotIn("skip-rate enrichment are intentionally omitted", workbench)
             self.assertNotIn("validator-table-note", workbench)
+
+    def test_completed_epoch_markdown_bounds_human_table_without_mutating_rows(self):
+        snapshot = load_fixture()
+        snapshot["schema_version"] = 8
+        production_rows = [
+            {
+                "identity": f"production-node-{index:03d}",
+                "leader_slots": index + 1,
+                "blocks_produced": index + 1,
+                "skipped_slots": 0,
+                "skip_rate": 0.0,
+                "vote_identity_matched": True,
+                "vote_account_count": 1,
+            }
+            for index in range(105)
+        ]
+        snapshot["validators"]["block_production"] = {
+            "available": True,
+            "basis": "most recent fully completed epoch",
+            "epoch": 799,
+            "first_slot": 10,
+            "last_slot": 5_574,
+            "leader_slots": sum(row["leader_slots"] for row in production_rows),
+            "blocks_produced": sum(row["blocks_produced"] for row in production_rows),
+            "skipped_slots": 0,
+            "skip_rate": 0.0,
+            "vote_enrichment_observed_at": "2026-08-05T09:00:00+00:00",
+            "validators": production_rows,
+        }
+
+        markdown = render.render_markdown(snapshot)
+        section = markdown[
+            markdown.index("### Completed-epoch block production"):
+            markdown.index("## Releases and announcements")
+        ]
+
+        self.assertEqual(
+            len(re.findall(r"^\| production-node-\d{3} \|", section, re.MULTILINE)),
+            100,
+        )
+        self.assertLess(
+            section.index("production-node-104"),
+            section.index("production-node-103"),
+        )
+        self.assertNotIn("production-node-004", section)
+        self.assertIn(
+            "Showing 100 of 105 identities, highest leader-slot counts first. "
+            "Complete exact identity rows and subject observations remain in "
+            "[report.json](report.json).",
+            section,
+        )
+        self.assertEqual(len(snapshot["validators"]["block_production"]["validators"]), 105)
 
     def test_data_collections_ship_progressive_independent_pagination(self):
         snapshot = load_fixture()
@@ -1662,10 +1773,19 @@ class TestHtml(unittest.TestCase):
         self.assertNotIn("data-page-row='desktop' hidden", workbench)
         self.assertNotIn("data-page-row='mobile' hidden", workbench)
 
-        self.assertIn("catalog-shell' data-pagination data-page-size='10' data-mobile-page-size='10'", catalog)
+        self.assertIn("catalog-shell' id='desktop-data-sources' data-pagination data-page-size='10' data-mobile-page-size='10'", catalog)
         self.assertEqual(catalog.count("<tr data-page-row='desktop'>"), 19)
         self.assertIn("aria-label='Dataset catalog pages'", catalog)
         self.assertIn("data-pagination-controls hidden", catalog)
+        self.assertIn("data-pagination-filter-controls hidden", catalog)
+        self.assertIn("id='desktop-data-catalog-search'", catalog)
+        self.assertIn("data-pagination-filter disabled", catalog)
+        self.assertIn("aria-controls='desktop-data-catalog-table'", catalog)
+        self.assertIn("id='desktop-data-catalog-filter-status' aria-live='polite'", catalog)
+        self.assertIn("19 of 19 datasets", catalog)
+        self.assertIn("data-pagination-filter-empty hidden", catalog)
+        self.assertIn("data-pagination-filter-reset", catalog)
+        self.assertNotIn("<tr data-page-row='desktop' hidden", catalog)
         self.assertNotIn("data-page-status", catalog)
         self.assertNotIn("data-page-status", workbench)
 
@@ -1674,6 +1794,12 @@ class TestHtml(unittest.TestCase):
         self.assertIn("Math.ceil(matchingRows.length / size)", controller)
         self.assertIn("paginationByRoot.forEach((pagination) => pagination.reset())", controller)
         self.assertIn("row.toggleAttribute('data-page-filtered', !match)", controller)
+        self.assertIn("const searchable = (row.dataset.search || row.textContent || '').toLowerCase();", controller)
+        self.assertIn("paginationFilter.addEventListener('input', applyPaginationFilter);", controller)
+        self.assertIn("paginationFilterStatus.textContent = `${matchingCount} of ${rows.length} datasets`;", controller)
+        self.assertIn("if (paginationFilterEmpty) paginationFilterEmpty.hidden = matchingCount !== 0;", controller)
+        self.assertIn("paginationFilter.value = '';", controller)
+        self.assertIn("paginationFilterControls.hidden = false", controller)
         self.assertIn("event?.detail === 0", controller)
 
     def test_methods_flow_uses_only_selected_snapshot_simd_metadata(self):
@@ -2105,8 +2231,8 @@ class TestHtml(unittest.TestCase):
             "<figure class='source-flow panel'",
             "<div class='flow-frame'>",
             "<div class='methods-grid'>",
-            "<fieldset class='snapshot-list' disabled",
-            "<button class='static-button'",
+            "<ol class='snapshot-list' aria-label='Recorded snapshot timeline'>",
+            "<a class='change-link' href='report.json'>",
             "<div class='select-pair'",
             "<div class='range-controls'",
             "<div class='archive-support'",
@@ -2139,8 +2265,10 @@ class TestHtml(unittest.TestCase):
         self.assertEqual(workspace.count("<output class='select-like select-like--static'"), 2)
         self.assertNotIn("<button class='select-like'", workspace)
         self.assertNotIn("class='chevron'", workspace)
-        self.assertIn("<fieldset class='snapshot-list' disabled", workspace)
-        self.assertIn("<button class='static-button' type='button' disabled", workspace)
+        self.assertIn("<ol class='snapshot-list' aria-label='Recorded snapshot timeline'>", workspace)
+        self.assertIn("<li class='snapshot is-selected' aria-current='true'>", workspace)
+        self.assertNotIn("name='history-snapshot'", workspace)
+        self.assertNotIn("class='static-button'", workspace)
 
     def test_about_route_keeps_the_machine_readable_contract(self):
         page = render.render_html(load_fixture())
@@ -2542,8 +2670,9 @@ class TestHtml(unittest.TestCase):
     def test_history_snapshot_timeline_hugs_content_and_centers_markers(self):
         self.assertIn("flex-direction: column;\n      align-self: stretch;\n      padding: 17px 15px 14px;", render.CSS)
         self.assertIn(".prototype-page--archive .snapshot-panel {\n        display: block;\n        align-self: start;", render.CSS)
-        self.assertIn("gap: 7px;\n      margin-top: auto;", render.CSS)
         self.assertIn("display: grid;\n      flex: 1;\n      align-content: space-between;", render.CSS)
+        self.assertIn("list-style: none;", render.CSS)
+        self.assertNotIn(".prototype-page--archive .static-button", render.CSS)
         self.assertIn("left: var(--timeline-center);", render.CSS)
         self.assertIn("justify-self: center;", render.CSS)
         self.assertIn("transform: translateX(-50%);", render.CSS)
@@ -2625,9 +2754,9 @@ class TestHtml(unittest.TestCase):
             "activity": {"available": False},
         })
         # Each degraded section says so; none of them renders a zero.
-        # The Ecosystem Pulse block adds two more legitimate unavailability
-        # statements (SOL price and sampled REV) in fully degraded snapshots.
-        self.assertEqual(page.count("unavailable in this snapshot"), 7)
+        # Ecosystem Pulse adds SOL-price and sampled-REV states, while the
+        # mobile audit detail repeats the same honest block-sampling state.
+        self.assertEqual(page.count("unavailable in this snapshot"), 8)
         self.assertNotIn(">$0<", page)
 
 
@@ -2958,6 +3087,29 @@ class TestMobileFirstContracts(unittest.TestCase):
             self.assertIn(f"body:has(#{route} :target) .mobile-topbar__route", page)
         self.assertIn("target.closest('.prototype-page')", page)
 
+    def test_mobile_parity_exposes_activity_and_comparison_details(self):
+        snapshot = load_fixture()
+        mobile = render.render_mobile_data(snapshot)
+        self.assertIn("Inspect sampled fees and address activity", mobile)
+        self.assertIn(render.render_activity_html(snapshot), mobile)
+        methods = render.render_mobile_methods()
+        self.assertIn("Technical comparison rules", methods)
+        self.assertIn("three prior snapshots", methods)
+        self.assertIn("No aggregate confidence score", methods)
+        previous = deepcopy(snapshot)
+        previous["collected_at"] = "2026-08-01T00:00:00Z"
+        current = deepcopy(snapshot)
+        current["collected_at"] = "2026-08-02T00:00:00Z"
+        history = render.render_mobile_history([previous, current], None)
+        self.assertIn("Key metric deltas and threshold findings", history)
+        self.assertIn("Threshold findings", history)
+        self.assertNotIn("class='visually-hidden' data-history-comparison-limits", history)
+        snapshots, observations, indexes = TestPublicObservationBindings.observation_fixture(count=3)
+        bound_history = render.render_mobile_history(snapshots, None, indexes)
+        self.assertIn("Threshold totals are published for the latest comparison", bound_history)
+        self.assertIn("Threshold findings", bound_history)
+
+
     def test_mobile_data_has_evidence_section_index_and_explicit_caps(self):
         snapshot = load_fixture()
         snapshot["schema_version"] = 8
@@ -2973,7 +3125,7 @@ class TestMobileFirstContracts(unittest.TestCase):
                         "supply_freshness": "fresh", "supply_source_method": "getTokenSupply(finalized)"}],
         }, "sources": {}}
         mobile = render.render_mobile_data(snapshot)
-        self.assertIn("class='mobile-data-section-index'", mobile)
+        self.assertIn("class='data-domain-rail data-domain-rail--mobile'", mobile)
         self.assertIn("href='#mobile-validator-evidence'", mobile)
         self.assertIn("href='#mobile-people-markets'", mobile)
         self.assertIn("href='#mobile-data-sources'", mobile)
@@ -2994,7 +3146,7 @@ class TestMobileFirstContracts(unittest.TestCase):
         self.assertNotIn("class='mobile-snapshot-strip'", page)
         snapshot = page.index("class='mobile-data-snapshot'")
         title = page.index("id='mobile-data-title'")
-        links = page.index("class='mobile-data-section-index'")
+        links = page.index("class='data-domain-rail data-domain-rail--mobile'")
         evidence = page.index("id='mobile-validator-evidence'")
         people = page.index("id='mobile-people-markets'")
         sources = page.index("id='mobile-data-sources'")
@@ -4953,7 +5105,9 @@ class TestCarriedForwardValueLabels(unittest.TestCase):
         self.assertIn("<strong class='mobile-quick-link__value'>5,527 lamports</strong>", mobile)
         self.assertIn("<small class='mobile-quick-link__meta'>last-known-good · sample collected Aug 05, 2026 · 09:00 UTC</small>", mobile)
         self.assertEqual(mobile.count("class='mobile-quick-link__destination'>View data"), 2)
-        self.assertNotIn("min-height: 94px", render.CSS)
+        quick_link_rules = re.findall(r"[^{}]*\.mobile-quick-link[^{}]*\{([^}]*)\}", render.CSS)
+        self.assertTrue(quick_link_rules)
+        self.assertFalse(any(re.search(r"min-height:\s*94px", rule) for rule in quick_link_rules))
 
     def test_desktop_median_fee_label_is_scoped_to_the_card_sub(self):
         page = render.render_html(self.snapshot_with_stale_sources())
@@ -5933,9 +6087,10 @@ class TestPublicObservationBindings(unittest.TestCase):
 
         history, _, indexes = self.catalog_observation_fixture()
         snapshot_at = history[-1]["collected_at"]
-        mobile_growth = render.render_growth_workbench(
-            history[-1], "mobile", indexes,
-        )
+        growth_workbenches = [
+            render.render_growth_workbench(history[-1], context, indexes)
+            for context in ("desktop", "mobile")
+        ]
         growth_metrics = (
             "xstock_usd_valuation", "xstock_indexed_dex_volume_24h_usd",
             "xstock_indexed_dex_pair_count", "xstock_indexed_dex_asset_count",
@@ -5946,12 +6101,14 @@ class TestPublicObservationBindings(unittest.TestCase):
             indexes["summary"][(metric_id, snapshot_at)]["observation_id"]
             for metric_id in growth_metrics
         ]
-        self.assertEqual(
-            article_ids(
-                mobile_growth, "class='validator-metric-component growth-market-component'",
-            ),
-            expected_growth_ids,
-        )
+        for growth_workbench in growth_workbenches:
+            self.assertEqual(
+                article_ids(
+                    growth_workbench,
+                    "class='validator-metric-component growth-market-component'",
+                ),
+                expected_growth_ids,
+            )
         self.assertEqual(
             expected_growth_ids[-1],
             indexes["summary"][(
@@ -7298,6 +7455,84 @@ class TestPythonCompatibility(unittest.TestCase):
 
 
 class TestSeptemberRendererRecovery(unittest.TestCase):
+    def test_provider_detail_uses_the_same_complete_date_as_its_headline(self):
+        source = {
+            'available': True,
+            'date': '2026-09-02',
+            'provider_count': 2,
+            'minimum': 100,
+            'maximum': 200,
+            'provider_observations': [
+                {'date': '2026-09-02', 'provider': 'Allium', 'value': 100},
+                {'date': '2026-09-02', 'provider': 'Dune', 'value': 200},
+                {'date': '2026-09-03', 'provider': 'Allium', 'value': 900},
+            ],
+        }
+
+        markup = render._pulse_provider_range_card(
+            'Daily active addresses (provider range)', source, (), lambda *ids: '',
+        )
+
+        self.assertIn('Per-provider values · 2026-09-02', markup)
+        self.assertIn('<span>Allium</span><b>100</b>', markup)
+        self.assertIn('<span>Dune</span><b>200</b>', markup)
+        self.assertNotIn('2026-09-03', markup)
+        self.assertNotIn('<b>900</b>', markup)
+
+    def test_provider_comparison_shows_source_native_overlap_and_missing_dates(self):
+        snapshot = load_fixture()
+        snapshot['schema_version'] = 9
+        snapshot['growth'] = {'available': True, 'daily_active_addresses': {
+            'available': True,
+            'history_available': True,
+            'date': '2026-09-03',
+            'provider_count': 2,
+            'minimum': 300,
+            'maximum': 330,
+            'oldest_date': '2026-09-01',
+            'newest_date': '2026-09-03',
+            'provider_observations': [
+                {'date': '2026-09-01', 'provider': 'Allium', 'value': 100},
+                {'date': '2026-09-02', 'provider': 'Allium', 'value': 200},
+                {'date': '2026-09-03', 'provider': 'Allium', 'value': 300},
+                {'date': '2026-09-01', 'provider': 'Dune', 'value': 110},
+                {'date': '2026-09-03', 'provider': 'Dune', 'value': 330},
+            ],
+            **render._PROVIDER_BENCHMARK_CONTRACTS['daily_active_addresses'],
+        }}
+
+        markup = render.render_provider_comparison_chart(snapshot, 'desktop')
+
+        self.assertIn("id='desktop-provider-comparison'", markup)
+        self.assertIn('Stablecoin activity across providers', markup)
+        self.assertIn('2 providers · 3 calendar days', markup)
+        self.assertEqual(markup.count('data-provider-toggle'), 2)
+        self.assertEqual(markup.count('data-provider-series='), 2)
+        self.assertEqual(markup.count("data-provider-date-index='1'"), 1)
+        dune_series = re.search(
+            r"<g class='provider-series' data-provider-series='provider-1'.*?</g>",
+            markup,
+        ).group(0)
+        self.assertNotIn('<path', dune_series)
+        self.assertEqual(dune_series.count('data-provider-singleton'), 2)
+        self.assertIn('.provider-point[data-provider-singleton] { opacity: .72; }', render.CSS)
+        self.assertLess(
+            render.CSS.index('.provider-point[data-provider-singleton]'),
+            render.CSS.index('.provider-point[data-provider-active]'),
+        )
+        self.assertIn('Missing dates break lines', markup)
+        self.assertIn('No average or network-wide total is asserted', markup)
+        self.assertIn('Arrow keys move by date', markup)
+        self.assertIn("data-provider-chart-help hidden", markup)
+        self.assertIn("help?.removeAttribute('hidden');", render.MOBILE_CONTROLLER)
+        self.assertIn('.provider-chart-help[hidden] { display: none; }', render.CSS)
+        self.assertNotIn('consensus', markup.lower())
+
+        desktop = render.render_growth_workbench(snapshot, 'desktop')
+        mobile = render.render_growth_workbench(snapshot, 'mobile')
+        self.assertIn("id='desktop-provider-comparison'", desktop)
+        self.assertIn("id='mobile-provider-comparison'", mobile)
+
     def test_scoped_address_range_matches_both_layouts_and_observations(self):
         def configure(snapshot):
             snapshot['growth'] = {'available': True, 'daily_active_addresses': {
@@ -7551,6 +7786,26 @@ class TestSeptemberRendererRecovery(unittest.TestCase):
             self.assertIn(expected, row('R16'))
             self.assertIn(f"href='#{context}-people-markets'", row('R16'))
             self.assertIn('not a completion score', guide)
+
+    def test_data_domain_rail_exposes_the_five_judge_destinations(self):
+        history, observations, indexes = TestPublicObservationBindings.observation_fixture()
+        for context in ("desktop", "mobile"):
+            rail = render.render_data_domain_rail(history[-1], context, indexes)
+            self.assertEqual(rail.count("<a href="), 5)
+            self.assertNotIn("data-domain-state", rail)
+            for label in ("Network", "Validators", "Economy", "Ecosystem", "Sources"):
+                self.assertIn(f"<span>{label}</span>", rail)
+            self.assertIn("Source catalog, coverage and downloads", rail)
+            self.assertNotIn("sources available", rail)
+            self.assertIn(f"href='#{context}-validator-evidence'", rail)
+            self.assertIn(f"href='#{context}-people-markets'", rail)
+            self.assertIn(f"href='#{context}-community-news'", rail)
+        self.assertIn("href='#desktop-data-sources'", render.render_data_domain_rail(
+            history[-1], "desktop", indexes,
+        ))
+        self.assertIn("href='#mobile-data-sources'", render.render_data_domain_rail(
+            history[-1], "mobile", indexes,
+        ))
 
     def test_feature_activation_projection_and_display_preserve_absent_vs_pending(self):
         snapshot = load_fixture()

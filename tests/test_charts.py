@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import charts  # noqa: E402
 
 TPS = next(s for s in charts.SERIES if s["key"] == "latest_tps")
+NON_VOTE_TPS = next(s for s in charts.SERIES if s["key"] == "latest_non_vote_tps")
 SLOT_TIME = next(s for s in charts.SERIES if s["key"] == "mean_slot_time_secs")
 REV = next(s for s in charts.SERIES if s["key"] == "sample_mean_rev_sol")
 
@@ -54,6 +55,20 @@ def evenly(values, start=0, step=1):
 
 
 class TestExtraction(unittest.TestCase):
+    def test_non_vote_history_requires_the_source_availability_flag(self):
+        history = evenly([3000.0, 3100.0])
+        for item, value in zip(history, (1200.0, 1300.0)):
+            item["performance"].update({
+                "latest_non_vote_tps": value,
+                "non_vote_available": True,
+            })
+        history[1]["performance"]["non_vote_available"] = False
+
+        self.assertEqual(
+            [point["value"] for point in charts.extract(history, NON_VOTE_TPS)],
+            [1200.0, None],
+        )
+
     def test_slot_time_note_names_report_policy_not_a_protocol_target(self):
         self.assertEqual(
             SLOT_TIME["note"],

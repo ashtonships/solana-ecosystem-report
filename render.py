@@ -3285,6 +3285,13 @@ def render_markdown(
         if production:
             production_rows = [row for row in production.get("validators", [])
                                if isinstance(row, dict)]
+            production_display_rows = sorted(
+                production_rows,
+                key=lambda row: (
+                    -int(row.get("leader_slots") or 0),
+                    str(row.get("identity") or ""),
+                ),
+            )[:100]
             unmatched = sum(row.get("vote_identity_matched") is False for row in production_rows)
             lines += [
                 "### Completed-epoch block production", "",
@@ -3305,7 +3312,7 @@ def render_markdown(
                 "", "| Node identity | Leader slots | Produced | Skipped | Skip rate | Vote-account join | Vote accounts |",
                 "| --- | --- | --- | --- | --- | --- | --- |",
             ]
-            for row in production_rows:
+            for row in production_display_rows:
                 identity = str(row.get("identity") or "")
                 row_binding = subject_binding(
                     ("validator_leader_slots", identity),
@@ -3322,6 +3329,11 @@ def render_markdown(
                     f"| {fmt(row.get('vote_account_count'))}{row_binding} |"
                 )
             lines += [
+                "",
+                f"_Showing {fmt(len(production_display_rows))} of {fmt(len(production_rows))} "
+                "identities, highest leader-slot counts first. Complete exact identity rows and "
+                "subject observations remain in [report.json](report.json)._"
+                f"{summary_binding('block_production_identity_count')}",
                 "",
                 f"Finalized `getBlockProduction` over the exact completed-epoch range; "
                 f"vote-account enrichment observed {markdown_text(production.get('vote_enrichment_observed_at') or '—')}.",
@@ -4652,10 +4664,26 @@ CSS = r"""
       stroke-dasharray: 6 4;
     }
 
+    .prototype-page--report .chart-series--non-vote polyline {
+      stroke: var(--ink);
+      stroke-dasharray: 5 3;
+    }
+
     .prototype-page--report .sparkline circle {
       fill: var(--prototype-paper);
       stroke: var(--violet);
       stroke-width: 2;
+    }
+    .prototype-page--report .chart-series--non-vote .chart-observation,
+    .prototype-page--report .chart-endpoint--non-vote { stroke: var(--ink); }
+    .prototype-page--report .chart-card--tps-overlay .chart-observation {
+      pointer-events: none;
+    }
+    .prototype-page--report .sparkline .chart-date-target {
+      fill: transparent;
+      stroke: none;
+      opacity: 0;
+      pointer-events: all;
     }
     .prototype-page--report .sparkline .chart-observation {
       opacity: 0;
@@ -4682,6 +4710,36 @@ CSS = r"""
     .prototype-page--report .sparkline:has([data-chart-active]) .chart-hover-guide { opacity: 1; }
     .prototype-page--report .chart-title-note,
     .prototype-page--report .chart-evidence { margin: 0; color: var(--prototype-muted); font-size: 10px; line-height: 1.4; }
+    .prototype-page--report .chart-overlay-legend {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px 10px;
+      margin: 3px 0 0;
+      color: var(--prototype-body);
+      font-size: 9px;
+      line-height: 1.35;
+    }
+    .prototype-page--report .chart-overlay-legend > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .prototype-page--report .chart-overlay-legend > .delta { font-size: 9px; }
+    .prototype-page--report .chart-overlay-legend > small {
+      flex-basis: 100%;
+      color: var(--prototype-muted);
+      font-size: 9px;
+    }
+    .prototype-page--report .chart-overlay-swatch {
+      display: inline-block;
+      width: 16px;
+      border-top: 2px solid var(--violet);
+    }
+    .prototype-page--report .chart-overlay-swatch--non-vote {
+      border-color: var(--ink);
+      border-top-style: dashed;
+    }
     .prototype-page--report [data-overview-chart] { cursor: crosshair; }
     .prototype-page--report .chart-card,
     .prototype-page--report .plot,
@@ -4861,6 +4919,13 @@ CSS = r"""
       box-shadow: 0 18px 46px rgba(20, 20, 25, 0.045);
     }
     .prototype-page--report .throughput-instrument { overflow: visible; }
+    .throughput-data { margin:8px 16px; font-size:12px; }
+    .throughput-data summary { min-height:44px; padding:12px 0; cursor:pointer; }
+    .throughput-data summary:focus-visible { outline:2px solid var(--violet); outline-offset:3px; }
+    .throughput-data .table-wrap { overflow-x:auto; }
+    .throughput-data table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+    .throughput-data th,.throughput-data td { padding:8px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--rule); }
+    .throughput-data th:first-child,.throughput-data td:first-child { text-align:left; }
     .prototype-page--report .instrument-card__head {
       display: flex;
       min-height: 76px;
@@ -5204,6 +5269,8 @@ CSS = r"""
     .prototype-page--data .validator-workbench--desktop .validator-epoch-basis,
     .prototype-page--data .validator-workbench--desktop .validator-join-coverage small { color:var(--muted); font-size:9px; }
     .prototype-page--data .validator-workbench--desktop .validator-epoch-component > progress,
+    .prototype-page--data .growth-workbench--desktop .growth-coverage-component > progress,
+    .prototype-page--data .growth-workbench--desktop .growth-run-component > progress,
     .prototype-page--data .validator-workbench--desktop .validator-join-coverage progress { width:100%; height:8px; margin-top:20px; overflow:hidden; border:0; border-radius:99px; appearance:none; background:var(--prototype-rule); accent-color:var(--violet); }
     .prototype-page--data .validator-workbench--desktop progress::-webkit-progress-bar { border-radius:inherit; background:var(--prototype-rule); }
     .prototype-page--data .validator-workbench--desktop progress::-webkit-progress-value { border-radius:inherit; background:var(--super-purple-fill); }
@@ -5215,6 +5282,29 @@ CSS = r"""
     .prototype-page--data .validator-workbench--desktop .pulse-dots button { position:relative; width:36px; height:36px; padding:0; border:0; background:transparent; cursor:pointer; }
     .prototype-page--data .validator-workbench--desktop .pulse-dots button::before { position:absolute; top:50%; left:50%; width:7px; height:7px; border-radius:50%; background:var(--prototype-rule-strong); content:''; transform:translate(-50%,-50%); }
     .prototype-page--data .validator-workbench--desktop .pulse-dots button[aria-pressed='true']::before { width:22px; border-radius:99px; background:var(--violet); }
+    .prototype-page--data .growth-workbench--desktop .growth-metric-carousel .validator-component-headline span { display:block; margin:10px 0 0; line-height:1.25; }
+    .prototype-page--data .growth-workbench--desktop .growth-market-status { display:flex; min-height:46px; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; padding-top:14px; border-top:1px solid var(--rule); }
+    .prototype-page--data .growth-workbench--desktop .growth-market-status span { color:var(--muted); font-size:9px; text-transform:uppercase; }
+    .prototype-page--data .growth-workbench--desktop .growth-market-status strong { font-size:14px; }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-track { display:flex; height:16px; margin-top:28px; overflow:hidden; border-radius:99px; background:var(--rule); }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-track > i { flex:var(--stable-share) 1 0; min-width:2px; background:var(--super-purple-fill); }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-track > i:nth-child(2) { opacity:.72; }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-track > i:nth-child(3) { opacity:.48; }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-track > i:nth-child(4) { opacity:.28; }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-legend { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 14px; margin:16px 0 0; padding:0; list-style:none; }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-legend li { display:grid; grid-template-columns:8px 1fr auto; align-items:center; gap:6px; min-width:0; font-size:9px; }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-legend li > i { width:7px; height:7px; border-radius:50%; background:var(--super-purple-fill); }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-legend li:nth-child(2) > i { opacity:.72; }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-legend li:nth-child(3) > i { opacity:.48; }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-legend li:nth-child(4) > i { opacity:.28; }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-legend span { overflow:hidden; color:var(--muted); text-overflow:ellipsis; white-space:nowrap; }
+    .prototype-page--data .growth-workbench--desktop .growth-composition-legend strong { font-variant-numeric:tabular-nums; }
+    .prototype-page--data .growth-workbench--desktop .growth-provider-facts { display:grid; gap:16px; margin-top:26px; }
+    .prototype-page--data .growth-workbench--desktop .growth-provider-facts p { display:grid; gap:5px; margin:0; padding-top:14px; border-top:1px solid var(--rule); }
+    .prototype-page--data .growth-workbench--desktop .growth-provider-facts strong { font-size:20px; font-variant-numeric:tabular-nums; }
+    .prototype-page--data .growth-workbench--desktop .growth-provider-facts span { color:var(--muted); font-size:9px; line-height:1.35; }
+    .prototype-page--data .growth-workbench--desktop .validator-component-unavailable { margin:18px 0 0; padding:16px; border:1px solid var(--rule); border-radius:10px; background:var(--prototype-paper); color:var(--muted); font-size:10px; line-height:1.45; }
+    .prototype-page--data .growth-workbench--desktop .growth-metric-carousel .validator-component-note { overflow-wrap:anywhere; }
     .prototype-page--data .validator-visual {
       padding:20px 22px 22px;
       border:1px solid var(--prototype-rule-strong);
@@ -5708,6 +5798,184 @@ CSS = r"""
       .prototype-page--report .metric:nth-child(4) {
         border-left: 0;
       }
+    }
+
+    .provider-comparison {
+      overflow: hidden;
+      margin: 20px 0 26px;
+      border: 1px solid var(--prototype-rule-strong);
+      border-radius: 12px;
+      background: var(--prototype-paper);
+    }
+    .provider-comparison__head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--prototype-rule);
+    }
+    .provider-comparison__head h3 {
+      margin: 0;
+      color: var(--ink);
+      font-size: clamp(18px, 1.7vw, 24px);
+      font-weight: 650;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+    }
+    .provider-comparison__head p {
+      margin: 5px 0 0;
+      color: var(--prototype-muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .provider-comparison__head > p {
+      flex: 0 0 auto;
+      margin: 0;
+      text-align: right;
+    }
+    .provider-comparison__head > p strong,
+    .provider-comparison__head > p span { display: block; }
+    .provider-comparison__head > p strong { color: var(--ink); font-size: 12px; font-weight: 650; }
+    .provider-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 12px 20px 4px;
+    }
+    .provider-toggle,
+    .provider-show-all {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border: 1px solid var(--prototype-rule-strong);
+      border-radius: 9px;
+      background: var(--prototype-paper);
+      color: var(--prototype-body);
+      font: inherit;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .provider-show-all { color: var(--prototype-violet); font-weight: 650; }
+    .provider-toggle i {
+      width: 16px;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--provider-color);
+    }
+    .provider-toggle small { color: var(--prototype-muted); font-size: 9px; }
+    .provider-toggle[aria-pressed='false'] { color: var(--prototype-muted); opacity: .62; }
+    .provider-toggle[aria-pressed='false'] i { background: var(--prototype-rule-strong); }
+    .provider-toggle:hover,
+    .provider-show-all:hover { border-color: var(--prototype-violet-tint); background: var(--prototype-subtle); }
+    .provider-toggle:focus-visible,
+    .provider-show-all:focus-visible,
+    .provider-chart:focus-visible { outline: 2px solid var(--prototype-violet); outline-offset: 3px; }
+    .provider-series[data-provider-style='0'], .provider-toggle[data-provider-style='0'] { --provider-color: var(--prototype-violet); --provider-dash: 0; }
+    .provider-series[data-provider-style='1'], .provider-toggle[data-provider-style='1'] { --provider-color: light-dark(#147a4a, #5bd68c); --provider-dash: 8 4; }
+    .provider-series[data-provider-style='2'], .provider-toggle[data-provider-style='2'] { --provider-color: light-dark(#8a6200, #f2bd4e); --provider-dash: 3 3; }
+    .provider-series[data-provider-style='3'], .provider-toggle[data-provider-style='3'] { --provider-color: light-dark(#3970b7, #71aaff); --provider-dash: 11 4 2 4; }
+    .provider-series[data-provider-style='4'], .provider-toggle[data-provider-style='4'] { --provider-color: light-dark(#7f45bd, #bf8dff); --provider-dash: 5 4; }
+    .provider-series[data-provider-style='5'], .provider-toggle[data-provider-style='5'] { --provider-color: light-dark(#b74232, #ff846e); --provider-dash: 13 5; }
+    .provider-series[data-provider-style='6'], .provider-toggle[data-provider-style='6'] { --provider-color: light-dark(#1f7774, #58c9c3); --provider-dash: 2 4; }
+    .provider-chart-frame { position: relative; padding: 4px 12px 0 4px; }
+    .provider-chart { display: block; width: 100%; height: auto; min-height: 260px; touch-action: pan-y; }
+    .provider-grid line { stroke: var(--prototype-rule); stroke-width: 1; }
+    .provider-grid text { fill: var(--prototype-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+    .provider-series path {
+      fill: none;
+      stroke: var(--provider-color);
+      stroke-width: 2.1;
+      stroke-dasharray: var(--provider-dash);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
+    }
+    .provider-point {
+      fill: var(--prototype-paper);
+      stroke: var(--provider-color);
+      stroke-width: 2;
+      opacity: 0;
+      pointer-events: none;
+      vector-effect: non-scaling-stroke;
+    }
+    .provider-point[data-provider-singleton] { opacity: .72; }
+    .provider-point[data-provider-active] { opacity: 1; }
+    .provider-series[data-provider-hidden] { display: none; }
+    .provider-guide {
+      stroke: color-mix(in srgb, var(--prototype-violet) 42%, transparent);
+      stroke-width: 1;
+      stroke-dasharray: 3 3;
+      pointer-events: none;
+      vector-effect: non-scaling-stroke;
+    }
+    .provider-inspector {
+      position: absolute;
+      z-index: 5;
+      top: 14px;
+      width: min(250px, calc(100% - 24px));
+      padding: 10px 12px;
+      border: 1px solid var(--prototype-rule-strong);
+      border-radius: 8px;
+      background: var(--prototype-dock-bg);
+      box-shadow: 0 12px 34px rgba(27,20,38,.16);
+      color: var(--ink);
+      pointer-events: none;
+      transform: translateX(-50%);
+    }
+    .provider-inspector strong,
+    .provider-inspector span,
+    .provider-inspector small { display: block; }
+    .provider-inspector strong { color: var(--prototype-violet); font-size: 11px; }
+    .provider-inspector span { margin-top: 4px; font-size: 10px; line-height: 1.45; white-space: pre-line; }
+    .provider-inspector small { margin-top: 5px; color: var(--prototype-muted); font-size: 9px; }
+    .provider-chart-help {
+      margin: 0;
+      padding: 0 20px 14px;
+      color: var(--prototype-muted);
+      font-size: 10px;
+      line-height: 1.45;
+    }
+    .provider-chart-help[hidden] { display: none; }
+    .provider-comparison__details { border-top: 1px solid var(--prototype-rule); }
+    .provider-comparison__details > summary {
+      min-height: 44px;
+      padding: 14px 20px;
+      color: var(--prototype-violet);
+      font-size: 11px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .provider-comparison__details > div,
+    .provider-comparison__details > p { margin: 0 20px 16px; }
+    .provider-comparison__details table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .provider-comparison__details th,
+    .provider-comparison__details td { padding: 8px 9px; border-bottom: 1px solid var(--prototype-rule); text-align: left; }
+    .provider-comparison__details td { text-align: right; font-variant-numeric: tabular-nums; }
+    .provider-comparison__details > p { color: var(--prototype-muted); font-size: 10px; line-height: 1.5; }
+
+    @media (max-width:700px) {
+      .provider-comparison { margin: 14px 0 20px; }
+      .provider-comparison__head { display: grid; gap: 10px; padding: 16px 14px 12px; }
+      .provider-comparison__head > p { text-align: left; }
+      .provider-controls {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding: 10px 14px 5px;
+        scroll-padding-inline: 14px;
+        scrollbar-width: none;
+      }
+      .provider-controls::-webkit-scrollbar { display: none; }
+      .provider-toggle,
+      .provider-show-all { flex: 0 0 auto; }
+      .provider-chart-frame { padding-inline: 0 4px; }
+      .provider-chart { min-height: 230px; }
+      .provider-chart-help { padding-inline: 14px; }
+      .provider-comparison__details > summary { padding-inline: 14px; }
+      .provider-comparison__details > div,
+      .provider-comparison__details > p { margin-inline: 14px; }
     }
 
     @media (max-width: 700px) {
@@ -6213,6 +6481,63 @@ CSS = r"""
       transform: translateY(1px);
     }
 
+    .mobile-activity-evidence .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .mobile-activity-evidence .card { min-width:0; padding:12px; }
+    .mobile-activity-evidence .value { font-size:20px; overflow-wrap:anywhere; }
+    .mobile-activity-evidence h2 { font-size:16px; margin-top:20px; }
+    .mobile-activity-evidence p { font-size:12px; line-height:1.6; }
+    .mobile-history-detail .delta-grid { grid-template-columns:1fr; }
+    .mobile-view .chart-disclosure > summary { min-height:44px; padding-block:12px; cursor:pointer; }
+    .mobile-view .chart-disclosure > summary:focus-visible { outline:2px solid var(--prototype-violet); outline-offset:2px; }
+
+    .prototype-page--data .data-domain-rail {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 18px;
+    }
+
+    .prototype-page--data .data-domain-rail a {
+      display: grid;
+      min-width: 0;
+      min-height: 94px;
+      align-content: space-between;
+      gap: 4px;
+      padding: 13px 14px;
+      border: 1px solid var(--rule-strong);
+      border-radius: 8px;
+      background: var(--prototype-paper);
+      color: var(--prototype-body);
+      text-decoration: none;
+    }
+
+    .prototype-page--data .data-domain-rail a:hover {
+      border-color: var(--violet);
+      background: var(--violet-soft);
+    }
+
+    .prototype-page--data .data-domain-rail span {
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 720;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+
+    .prototype-page--data .data-domain-rail strong {
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    .prototype-page--data .data-domain-rail small {
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 9px;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+    }
+
     .prototype-page--data .source-copy {
       position:absolute;
       display:flex;
@@ -6308,6 +6633,70 @@ CSS = r"""
       border: 1px solid var(--rule-strong);
       border-radius: var(--radius);
       background: transparent;
+    }
+
+    .prototype-page--data .catalog-filter-controls {
+      display:flex;
+      min-height:68px;
+      align-items:end;
+      justify-content:space-between;
+      gap:20px;
+      padding:12px 16px;
+      border-bottom:1px solid var(--rule);
+      background:var(--prototype-paper);
+    }
+    .prototype-page--data .catalog-filter-controls[hidden] { display:none; }
+    .prototype-page--data .catalog-filter-controls label {
+      display:grid;
+      width:min(430px,60%);
+      gap:5px;
+      color:var(--prototype-muted);
+      font-size:9px;
+      font-weight:700;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+    }
+    .prototype-page--data .catalog-filter-controls input {
+      min-height:40px;
+      padding:0 12px;
+      border:1px solid var(--prototype-rule-strong);
+      border-radius:8px;
+      background:var(--prototype-paper);
+      color:var(--prototype-ink);
+      font:inherit;
+      font-size:12px;
+      font-weight:500;
+      letter-spacing:0;
+      text-transform:none;
+    }
+    .prototype-page--data .catalog-filter-controls input:focus-visible {
+      outline:2px solid var(--prototype-violet);
+      outline-offset:2px;
+    }
+    .prototype-page--data .catalog-filter-controls > span {
+      color:var(--prototype-muted);
+      font-size:10px;
+    }
+    .prototype-page--data .catalog-filter-empty {
+      padding:24px 16px;
+      border-bottom:1px solid var(--rule);
+      color:var(--prototype-muted);
+      text-align:center;
+    }
+    .prototype-page--data .catalog-filter-empty[hidden] { display:none; }
+    .prototype-page--data .catalog-filter-empty strong { display:block; color:var(--prototype-ink); }
+    .prototype-page--data .catalog-filter-empty button {
+      min-height:40px;
+      margin-top:10px;
+      padding:0 14px;
+      border:1px solid var(--prototype-rule-strong);
+      border-radius:8px;
+      background:var(--prototype-paper);
+      color:var(--prototype-violet);
+      font:inherit;
+      font-size:11px;
+      font-weight:650;
+      cursor:pointer;
     }
 
     .prototype-page--data .table-wrap {
@@ -7898,6 +8287,7 @@ CSS = r"""
       margin: 12px 0 14px;
       padding: 0;
       border: 0;
+      list-style: none;
     }
 
     .prototype-page--archive .snapshot-list::before {
@@ -7926,15 +8316,6 @@ CSS = r"""
       line-height: var(--type-data-leading);
       letter-spacing: var(--type-data-tracking);
       white-space: nowrap;
-    }
-
-    .prototype-page--archive .snapshot input {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      opacity: 0;
-      pointer-events: none;
     }
 
     .prototype-page--archive .snapshot-date {
@@ -7975,32 +8356,6 @@ CSS = r"""
 
     .prototype-page--archive .is-selected .age {
       color: var(--violet);
-    }
-
-    .prototype-page--archive .static-button {
-      width: 100%;
-      min-height: 34px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      margin-top: auto;
-      border: 1px solid var(--violet-mid);
-      border-radius: 5px;
-      background: transparent;
-      color: var(--violet);
-      font-size: var(--type-data-size);
-      line-height: var(--type-data-leading);
-      letter-spacing: var(--type-data-tracking);
-      font-weight: 620;
-      cursor: not-allowed;
-      opacity: 1;
-    }
-
-    .prototype-page--archive .static-button svg {
-      width: 12px;
-      height: 12px;
-      stroke: currentColor;
     }
 
     .prototype-page--archive .comparison-panel {
@@ -8347,7 +8702,7 @@ CSS = r"""
       line-height: var(--type-data-leading);
       letter-spacing: var(--type-data-tracking);
       text-decoration: none;
-      cursor: not-allowed;
+      cursor: pointer;
       opacity: 1;
     }
 
@@ -8578,10 +8933,6 @@ CSS = r"""
         gap: 6px;
         padding: 7px 8px 7px 0;
         white-space: nowrap;
-      }
-
-      .prototype-page--archive .static-button {
-        margin-top: 2px;
       }
 
       .prototype-page--archive .comparison-head {
@@ -12863,6 +13214,15 @@ CSS = r"""
       }
       /* Mobile Data: touch-first evidence catalog and native export sheet. */
       .mobile-data-workbench { padding-top:24px; padding-bottom:34px; }
+      .mobile-data-workbench .data-domain-rail {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:8px;
+        margin:16px 0 20px;
+      }
+      .mobile-data-workbench .data-domain-rail a { min-height:92px; padding:12px; }
+      .mobile-data-workbench .data-domain-rail a:last-child { grid-column:1 / -1; min-height:76px; }
+      .mobile-data-workbench .data-domain-rail strong { font-size:15px; }
+      .mobile-data-workbench .data-domain-rail small { white-space:normal; }
       .mobile-data-section-index { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:16px 0 14px; border-top:1px solid var(--prototype-rule-strong); border-bottom:1px solid var(--prototype-rule-strong); }
       .mobile-data-section-index a { display:flex; min-height:46px; align-items:center; justify-content:center; padding:7px 5px; border-left:1px solid var(--prototype-rule-strong); color:var(--prototype-violet); font-size:11px; font-weight:650; text-align:center; text-decoration:none; }
       .mobile-data-section-index a:first-child { border-left:0; }
@@ -12918,7 +13278,8 @@ CSS = r"""
       .mobile-source-methods time { color:var(--prototype-muted); }
       .mobile-source-methods b { color:var(--prototype-violet); font-weight:650; }
       .mobile-data-workbench .mobile-empty { margin-top:12px; padding:22px 16px; border:1px solid var(--prototype-rule); border-radius:14px; background:var(--prototype-paper); }
-      .mobile-data-workbench .validator-workbench--mobile {
+      .mobile-data-workbench .validator-workbench--mobile,
+      .mobile-data-workbench .growth-workbench--mobile {
         width:auto;
         margin:34px -16px 0;
         padding:30px 16px 0;
@@ -13886,8 +14247,6 @@ CSS = r"""
       .prototype-page--archive .age { white-space: normal; }
       .prototype-page--archive .snapshot-date { font-size: 10px; }
       .prototype-page--archive .age { font-size: 9px; }
-      .prototype-page--archive .static-button { display: none; }
-
       .prototype-page--archive .change-panel {
         padding: 22px 0 8px 28px;
         border: 0;
@@ -14197,7 +14556,7 @@ CSS = r"""
       .mobile-history-picker-row .mobile-history-picker-trigger { display:grid; grid-template-columns:22px minmax(0,1fr) 16px; width:100%; min-height:44px; align-items:center; gap:8px; margin:0; padding:6px 10px; border:1px solid var(--zinc-300); border-radius:9px; background:var(--prototype-paper); color:var(--zinc-900); box-shadow:0 1px 2px rgba(24,24,27,.04); font-size:12px; font-weight:500; }
       .mobile-history-picker-row .mobile-history-picker-trigger b { display:grid; width:22px; height:22px; place-items:center; border:1px solid var(--super-purple); border-radius:5px; color:var(--super-purple); font-size:11px; font-weight:650; }
       .mobile-history-picker-row .mobile-history-picker-trigger[data-history-picker-trigger='b'] b { background:var(--super-purple-fill); color:#fff; }
-      .mobile-history-picker-row .mobile-history-picker-trigger span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .mobile-history-picker-row .mobile-history-picker-trigger span { min-width:0; white-space:normal; overflow-wrap:normal; line-height:1.4; }
       .mobile-history-picker-row .mobile-history-picker-trigger svg { justify-self:end; }
       .mobile-history-picker-row .mobile-history-picker-trigger[aria-expanded='true'] { border-color:var(--super-purple); background:var(--prototype-violet-soft); box-shadow:0 0 0 1px color-mix(in srgb,var(--super-purple) 20%,transparent); }
       .mobile-history-picker-row .mobile-history-picker-trigger:focus-visible { outline-offset:2px; }
@@ -15173,10 +15532,11 @@ def render_network_instruments(
     eta_basis = epoch.get("eta_basis") if epoch_available else None
 
     exact_table = (
-        "<div class='visually-hidden'><table><caption>Exact recent throughput samples</caption>"
+        "<details class='throughput-data'><summary>Inspect recent sample values</summary>"
+        "<div class='table-wrap'><table><caption>Exact recent throughput samples</caption>"
         "<thead><tr><th>Slot</th><th>Total TPS</th><th>Non-vote TPS</th><th>Vote TPS</th></tr></thead>"
-        f"<tbody>{''.join(table_rows)}</tbody></table></div>"
-    )
+        f"<tbody>{''.join(table_rows)}</tbody></table></div></details>"
+    ) if table_rows else ""
     throughput_binding = summary_observation_attribute(
         observation_indexes, snapshot_at,
         ("latest_tps", "latest_non_vote_tps", "mean_vote_share_pct", "performance_samples_used"),
@@ -15381,6 +15741,216 @@ def _render_single_snapshot_sample_carousel(
     )
 
 
+def render_provider_comparison_chart(
+    snapshot: dict[str, Any], context: str,
+    observation_indexes: dict[str, dict[tuple[Any, ...], dict[str, Any]]] | None = None,
+) -> str:
+    """Compare source-native stablecoin activity without blending providers."""
+    source = corrected_provider_benchmark(snapshot, "daily_active_addresses")
+    rows = source.get("provider_observations") if isinstance(source, dict) else None
+    comparison_date = source.get("date") if isinstance(source, dict) else None
+    if (not isinstance(rows, list) or source.get("history_available") is not True
+            or not isinstance(comparison_date, str)):
+        return ""
+    try:
+        comparison_day = datetime.strptime(comparison_date, "%Y-%m-%d").date()
+    except ValueError:
+        return ""
+
+    observations: dict[tuple[str, Any], float] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        provider, value, date_value = row.get("provider"), row.get("value"), row.get("date")
+        if (not isinstance(provider, str) or not provider or not is_number(value)
+                or not isinstance(date_value, str)):
+            continue
+        try:
+            day = datetime.strptime(date_value, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if day > comparison_day:
+            continue
+        key = (provider, day)
+        numeric_value = float(value)
+        if key in observations and observations[key] != numeric_value:
+            return ""
+        observations[key] = numeric_value
+
+    complete_rows = {
+        provider: value for (provider, day), value in observations.items()
+        if day == comparison_day
+    }
+    expected_count = source.get("provider_count")
+    if (not isinstance(expected_count, int) or isinstance(expected_count, bool)
+            or len(complete_rows) != expected_count or expected_count < 2
+            or not is_number(source.get("minimum")) or not is_number(source.get("maximum"))
+            or min(complete_rows.values()) != float(source["minimum"])
+            or max(complete_rows.values()) != float(source["maximum"])):
+        return ""
+
+    providers = sorted(complete_rows, key=str.casefold)
+    eligible_days = [day for provider, day in observations if provider in complete_rows]
+    oldest_day = min(eligible_days)
+    start_day = max(oldest_day, comparison_day - timedelta(days=29))
+    calendar_days = [
+        start_day + timedelta(days=offset)
+        for offset in range((comparison_day - start_day).days + 1)
+    ]
+    visible_values = [
+        value for (provider, day), value in observations.items()
+        if provider in complete_rows and start_day <= day <= comparison_day
+    ]
+    if len(calendar_days) < 2 or len(visible_values) < 2:
+        return ""
+
+    width, height = 720.0, 326.0
+    left, right, top, bottom = 62.0, 704.0, 24.0, 270.0
+    axis_low, axis_high, ticks, _ = charts_module.nice_axis(
+        min(visible_values), max(visible_values), 4,
+    )
+    axis_span = axis_high - axis_low or 1.0
+
+    def x_of(index: int) -> float:
+        return left + (right - left) * index / max(1, len(calendar_days) - 1)
+
+    def y_of(value: float) -> float:
+        return top + (bottom - top) * (1 - (value - axis_low) / axis_span)
+
+    def day_label(day) -> str:
+        return day.strftime("%b %d").replace(" 0", " ")
+
+    snapshot_at = str(snapshot.get("collected_at"))
+    series_markup = []
+    control_markup = []
+    latest_rows = []
+    for provider_index, provider in enumerate(providers):
+        provider_key = f"provider-{provider_index}"
+        segments: list[list[tuple[int, float]]] = []
+        segment: list[tuple[int, float]] = []
+        point_markup = []
+        provider_count = 0
+        for day_index, day in enumerate(calendar_days):
+            value = observations.get((provider, day))
+            if value is None:
+                if segment:
+                    segments.append(segment)
+                    segment = []
+                continue
+            provider_count += 1
+            segment.append((day_index, value))
+            record = (
+                observation_indexes["subject"].get((
+                    "stablecoin_active_address_provider_range", provider,
+                    day.isoformat(), snapshot_at,
+                )) if observation_indexes is not None else None
+            )
+            if observation_indexes is not None and record is None:
+                raise ValueError(
+                    f"provider comparison point has no public observation: {provider} {day}"
+                )
+            binding = (
+                f" data-observation-id='{html.escape(record['observation_id'], quote=True)}'"
+                if record is not None else ""
+            )
+            adjacent_value = any(
+                observations.get((provider, adjacent_day)) is not None
+                for adjacent_day in (day - timedelta(days=1), day + timedelta(days=1))
+                if start_day <= adjacent_day <= comparison_day
+            )
+            singleton = " data-provider-singleton" if not adjacent_value else ""
+            point_markup.append(
+                f"<circle class='provider-point' data-provider-point data-provider-key='{provider_key}' "
+                f"data-provider-date-index='{day_index}' data-provider-date='{day.isoformat()}' "
+                f"data-provider-label='{html.escape(provider, quote=True)}' "
+                f"data-provider-value='{html.escape(fmt(value), quote=True)}' "
+                f"data-provider-x='{x_of(day_index):.2f}' cx='{x_of(day_index):.2f}' "
+                f"cy='{y_of(value):.2f}' r='4'{singleton}{binding} aria-hidden='true'></circle>"
+            )
+        if segment:
+            segments.append(segment)
+        paths = "".join(
+            f"<path d='M{' L'.join(f'{x_of(index):.2f} {y_of(value):.2f}' for index, value in run)}'></path>"
+            for run in segments if len(run) >= 2
+        )
+        series_markup.append(
+            f"<g class='provider-series' data-provider-series='{provider_key}' "
+            f"data-provider-style='{provider_index % 7}' aria-hidden='true'>{paths}{''.join(point_markup)}</g>"
+        )
+        control_markup.append(
+            f"<button type='button' class='provider-toggle' data-provider-toggle "
+            f"data-provider-key='{provider_key}' data-provider-style='{provider_index % 7}' "
+            f"aria-pressed='true' disabled><i aria-hidden='true'></i><span>{html.escape(provider)}</span>"
+            f"<small>{provider_count}d</small></button>"
+        )
+        record = (
+            observation_indexes["subject"].get((
+                "stablecoin_active_address_provider_range", provider,
+                comparison_date, snapshot_at,
+            )) if observation_indexes is not None else None
+        )
+        latest_binding = (
+            f" data-observation-id='{html.escape(record['observation_id'], quote=True)}'"
+            if record is not None else ""
+        )
+        latest_rows.append(
+            f"<tr{latest_binding}><th scope='row'>{html.escape(provider)}</th>"
+            f"<td>{html.escape(fmt(complete_rows[provider]))}</td></tr>"
+        )
+
+    grid = "".join(
+        f"<line x1='{left:g}' y1='{y_of(tick):.2f}' x2='{right:g}' y2='{y_of(tick):.2f}'></line>"
+        f"<text x='{left - 9:g}' y='{y_of(tick) + 4:.2f}' text-anchor='end'>{html.escape(compact_number(tick))}</text>"
+        for tick in ticks
+    )
+    label_indexes = sorted({0, (len(calendar_days) - 1) // 2, len(calendar_days) - 1})
+    x_labels = "".join(
+        f"<text x='{x_of(index):.2f}' y='{bottom + 24:g}' "
+        f"text-anchor='{'start' if index == 0 else ('end' if index == len(calendar_days) - 1 else 'middle')}'>{html.escape(day_label(calendar_days[index]))}</text>"
+        for index in label_indexes
+    )
+    prefix = "".join(
+        char for char in context.lower() if char.isalnum() or char == "-"
+    ) or "report"
+    chart_id = f"{prefix}-provider-comparison"
+    description = (
+        f"Stablecoin activity observations from {len(providers)} providers across "
+        f"{len(calendar_days)} calendar days ending {comparison_date}. Each source remains separate; "
+        "missing dates break its line."
+    )
+    return (
+        f"<section class='provider-comparison provider-comparison--{prefix}' id='{chart_id}' "
+        f"data-provider-comparison aria-labelledby='{chart_id}-title'>"
+        "<header class='provider-comparison__head'><div>"
+        f"<h3 id='{chart_id}-title'>Stablecoin activity across providers</h3>"
+        "<p>Compare the source-native series directly. No average or network-wide total is asserted.</p></div>"
+        f"<p><strong>{len(providers)} providers · {len(calendar_days)} calendar days</strong>"
+        f"<span>Latest complete comparison {html.escape(comparison_date)}</span></p></header>"
+        "<div class='provider-controls' role='group' aria-label='Choose provider lines'>"
+        "<button type='button' class='provider-show-all' data-provider-show-all disabled>Show all</button>"
+        f"{''.join(control_markup)}</div>"
+        "<div class='provider-chart-frame'>"
+        f"<svg class='provider-chart' data-provider-chart tabindex='0' viewBox='0 0 {width:g} {height:g}' "
+        f"data-provider-date-count='{len(calendar_days)}' data-provider-chart-left='{left:g}' "
+        f"data-provider-dates='{html.escape(json.dumps([day.isoformat() for day in calendar_days]), quote=True)}' "
+        f"data-provider-chart-right='{right:g}' role='img' aria-label='{html.escape(description, quote=True)}'>"
+        f"<title>{html.escape(description)}</title><g class='provider-grid'>{grid}{x_labels}</g>"
+        f"<line class='provider-guide' data-provider-guide x1='{right:g}' y1='{top:g}' "
+        f"x2='{right:g}' y2='{bottom:g}'></line>{''.join(series_markup)}</svg>"
+        "<div class='provider-inspector' data-provider-inspector hidden role='status'>"
+        "<strong data-provider-inspector-date></strong><span data-provider-inspector-values></span>"
+        "<small>Source-native observations</small></div></div>"
+        "<p class='provider-chart-help' data-provider-chart-help hidden>Hover or tap to inspect. Arrow keys move by date. "
+        "Missing dates break lines; they are not interpolated.</p>"
+        "<details class='provider-comparison__details'><summary>Latest complete provider values and limits</summary>"
+        "<div class='table-wrap'><table><caption>Stablecoin activity provider observations on the latest complete date</caption>"
+        f"<thead><tr><th scope='col'>Provider</th><th scope='col'>Addresses</th></tr></thead><tbody>{''.join(latest_rows)}</tbody></table></div>"
+        f"<p>{html.escape(str(source.get('scope')))}. Provider methodologies differ. "
+        "The lines are compared, never blended; all retained rows remain available in report.json.</p></details>"
+        "</section>"
+    )
+
+
 def render_overview_charts(
     history: list[dict[str, Any]],
     observation_indexes: dict[str, dict[tuple[Any, ...], dict[str, Any]]] | None = None,
@@ -15403,7 +15973,8 @@ def render_overview_charts(
         "tvl_usd", "median_fee_lamports", "sample_mean_rev_sol",
     )
     display_labels = {
-        "latest_tps": "Transactions / Second",
+        "latest_tps": "Total Transactions / Second",
+        "latest_non_vote_tps": "Non-vote Transactions / Second",
         "mean_slot_time_secs": "Avg. Slot Time",
         "delinquent_pct": "Validator Delinquency",
         "price_usd": "SOL Price",
@@ -15424,17 +15995,35 @@ def render_overview_charts(
 
     def prototype_chart_svg(
         spec: dict[str, Any], points: list[dict[str, Any]], stats: dict[str, Any],
+        secondary_spec: dict[str, Any] | None = None,
+        secondary_points: list[dict[str, Any]] | None = None,
     ) -> tuple[str, list[str]]:
         """Real observations in the approved quiet three-line chart grammar."""
-        axis_low, axis_high, _, _ = charts_module.nice_axis(stats["min"], stats["max"], ticks=3)
+        secondary_points = secondary_points or []
+        overlay = secondary_spec is not None
+        point_positions = {
+            id(point): index for series in (points, secondary_points)
+            for index, point in enumerate(series)
+        }
+        combined_values = [
+            point["value"] for series in (points, secondary_points)
+            for point in series if point["value"] is not None
+        ]
+        axis_low, axis_high, _, _ = charts_module.nice_axis(
+            min(combined_values), max(combined_values), ticks=3,
+        )
         axis_mid = (axis_low + axis_high) / 2
         tick_step = (axis_high - axis_low) / 2 or 1
         labels = charts_module.tick_labels([axis_high, axis_mid, axis_low], tick_step)
         span = axis_high - axis_low or 1
-        point_positions = {id(point): index for index, point in enumerate(points)}
-        present = [point for point in points if point["value"] is not None]
-        first_present = point_positions[id(present[0])]
-        last_present = point_positions[id(present[-1])]
+        combined_present_indexes = [
+            index for index, point in enumerate(points)
+            if point["value"] is not None
+            or (index < len(secondary_points)
+                and secondary_points[index]["value"] is not None)
+        ]
+        first_present = combined_present_indexes[0]
+        last_present = combined_present_indexes[-1]
         point_span = max(1, last_present - first_present)
 
         def x_of(point: dict[str, Any]) -> float:
@@ -15444,55 +16033,150 @@ def render_overview_charts(
         def y_of(value: float) -> float:
             return round(4 + 78 * (1 - (value - axis_low) / span), 2)
 
-        paths: list[str] = []
-        # This repository history is collected ad hoc, not on a declared cadence.
-        # Use ordinal sample spacing so a long collection interval cannot stretch
-        # the compact sparkline. Explicit None values still break the line.
-        for run in charts_module.segments(points, gap_factor=math.inf):
-            if len(run) < 2:
-                continue
-            coordinates = " ".join(f"{x_of(point)},{y_of(point['value'])}" for point in run)
-            paths.append(f"<polyline points='{coordinates}'></polyline>")
-
-        last = present[-1]
-        first_date, last_date = date_labels(points)
-        description = (
-            f"{display_labels[spec['key']]} across {stats['points']} recorded observations, "
-            f"from {first_date} to {last_date}, spaced by sample order rather than elapsed time; "
-            "missing observations remain gaps."
-        )
-        inspection_points = []
-        for index, point in enumerate(present):
-            record = indexes["summary"].get((spec["key"], point["at"]))
-            if observation_indexes is not None and record is None:
+        def observation_record(
+            chart_spec: dict[str, Any], point: dict[str, Any], require_missing: bool = False,
+        ) -> dict[str, Any] | None:
+            record = indexes["summary"].get((chart_spec["key"], point["at"]))
+            if observation_indexes is not None \
+                    and (point["value"] is not None or require_missing) and record is None:
                 raise ValueError(
-                    f"Overview chart point has no public observation: {spec['key']} {point['at']}"
+                    f"Overview chart point has no public observation: "
+                    f"{chart_spec['key']} {point['at']}"
                 )
-            binding = (
-                f" data-observation-id='{html.escape(record['observation_id'], quote=True)}'"
-                if record is not None else ""
+            return record
+
+        def series_markup(
+            chart_spec: dict[str, Any], series_points: list[dict[str, Any]], css_name: str,
+        ) -> str:
+            paths = []
+            for run in charts_module.segments(series_points, gap_factor=math.inf):
+                if len(run) < 2:
+                    continue
+                coordinates = " ".join(
+                    f"{x_of(point)},{y_of(point['value'])}" for point in run
+                )
+                paths.append(f"<polyline points='{coordinates}'></polyline>")
+            circles = []
+            for point in series_points:
+                if point["value"] is None:
+                    continue
+                record = observation_record(chart_spec, point)
+                binding = (
+                    f" data-observation-id='{html.escape(record['observation_id'], quote=True)}'"
+                    if record is not None else ""
+                )
+                series_index = (
+                    f" data-overview-series-index='{point_positions[id(point)]}'"
+                    if overlay else " data-overview-chart-point"
+                )
+                value_text = charts_module.fmt_value(
+                    point["value"], chart_spec["decimals"],
+                )
+                circles.append(
+                    f"<circle class='chart-observation chart-observation--{css_name}'"
+                    f"{series_index}{binding} data-index='{point_positions[id(point)]}' "
+                    f"data-x='{x_of(point)}' data-y='{y_of(point['value'])}' "
+                    f"data-value='{html.escape(value_text, quote=True)}' "
+                    f"data-at='{html.escape(timestamp_label(point.get('at')), quote=True)}' "
+                    f"data-unit='{html.escape(str(chart_spec['unit']), quote=True)}' "
+                    f"data-inspector-basis='{html.escape(str(chart_spec['basis']), quote=True)}' "
+                    f"cx='{x_of(point)}' cy='{y_of(point['value'])}' r='4'></circle>"
+                )
+            present = [point for point in series_points if point["value"] is not None]
+            endpoint = ""
+            if present:
+                last = present[-1]
+                endpoint = (
+                    f"<circle class='chart-endpoint chart-endpoint--{css_name}' "
+                    f"cx='{x_of(last)}' cy='{y_of(last['value'])}' r='3.1'></circle>"
+                )
+            return (
+                f"<g class='chart-series chart-series--{css_name}'>"
+                f"{''.join(paths)}{''.join(circles)}{endpoint}</g>"
             )
-            value_text = charts_module.fmt_value(point["value"], spec["decimals"])
-            inspection_points.append(
-                f"<circle class='chart-observation' data-overview-chart-point data-index='{index}' "
-                f"{binding} "
-                f"data-x='{x_of(point)}' data-y='{y_of(point['value'])}' "
-                f"data-value='{html.escape(value_text, quote=True)}' "
-                f"data-at='{html.escape(timestamp_label(point.get('at')), quote=True)}' "
-                f"data-unit='{html.escape(str(spec['unit']), quote=True)}' "
-                f"data-inspector-basis='{html.escape(str(spec['basis']), quote=True)}' "
-                f"cx='{x_of(point)}' cy='{y_of(point['value'])}' r='4'></circle>"
+
+        last_total = next(point for point in reversed(points) if point["value"] is not None)
+        display_points = [
+            {**point, "value": 1 if (
+                point["value"] is not None
+                or (index < len(secondary_points)
+                    and secondary_points[index]["value"] is not None)
+            ) else None}
+            for index, point in enumerate(points)
+        ]
+        first_date, last_date = date_labels(display_points)
+        if overlay:
+            description = (
+                f"Total Transactions / Second with Non-vote Transactions / Second overlaid "
+                f"across {len(combined_present_indexes)} recorded observations, from "
+                f"{first_date} to {last_date}, spaced by sample order rather than elapsed "
+                "time on one shared TPS axis; each series keeps its own missing-observation gaps."
             )
+            targets = []
+            for index, point in enumerate(points):
+                secondary = secondary_points[index] if index < len(secondary_points) else {
+                    "at": point["at"], "t": point["t"], "value": None,
+                }
+                if point["value"] is None and secondary["value"] is None:
+                    continue
+                total_record = observation_record(spec, point, require_missing=True)
+                secondary_record = observation_record(
+                    secondary_spec, secondary, require_missing=True,
+                )
+                bindings = ""
+                if total_record is not None:
+                    bindings += (
+                        " data-total-observation-id='"
+                        + html.escape(total_record["observation_id"], quote=True) + "'"
+                    )
+                if secondary_record is not None:
+                    bindings += (
+                        " data-non-vote-observation-id='"
+                        + html.escape(secondary_record["observation_id"], quote=True) + "'"
+                    )
+                anchor_value = point["value"] \
+                    if point["value"] is not None else secondary["value"]
+                total_text = (
+                    charts_module.fmt_value(point["value"], spec["decimals"])
+                    if point["value"] is not None else "Unavailable"
+                )
+                secondary_text = (
+                    charts_module.fmt_value(
+                        secondary["value"], secondary_spec["decimals"],
+                    ) if secondary["value"] is not None else "Unavailable"
+                )
+                targets.append(
+                    f"<circle class='chart-date-target' data-overview-chart-point "
+                    f"data-index='{index}'{bindings} "
+                    f"data-x='{x_of(point)}' data-y='{y_of(anchor_value)}' "
+                    f"data-total-value='{html.escape(total_text, quote=True)}' "
+                    f"data-non-vote-value='{html.escape(secondary_text, quote=True)}' "
+                    f"data-at='{html.escape(timestamp_label(point.get('at')), quote=True)}' "
+                    f"data-inspector-basis='measured · shared TPS axis' "
+                    f"cx='{x_of(point)}' cy='{y_of(anchor_value)}' r='9'></circle>"
+                )
+            chart_body = (
+                series_markup(spec, points, "total")
+                + series_markup(secondary_spec, secondary_points, "non-vote")
+                + "".join(targets)
+            )
+        else:
+            description = (
+                f"{display_labels[spec['key']]} across {stats['points']} recorded observations, "
+                f"from {first_date} to {last_date}, spaced by sample order rather than elapsed time; "
+                "missing observations remain gaps."
+            )
+            chart_body = series_markup(spec, points, "primary")
+
         svg = (
-            f"<svg data-overview-chart tabindex='0' viewBox='0 0 300 86' preserveAspectRatio='none' role='img' "
-            f"aria-label='{html.escape(description)}'><title>{html.escape(description)}</title>"
+            f"<svg data-overview-chart{' data-overview-tps-overlay' if overlay else ''} "
+            f"tabindex='0' viewBox='0 0 300 86' preserveAspectRatio='none' role='img' "
+            f"aria-label='{html.escape(description, quote=True)}'><title>{html.escape(description)}</title>"
             "<line class='grid-line' x1='0' y1='4' x2='300' y2='4'></line>"
             "<line class='grid-line' x1='0' y1='43' x2='300' y2='43'></line>"
             "<line class='grid-line' x1='0' y1='82' x2='300' y2='82'></line>"
-            f"<line class='chart-hover-guide' data-overview-chart-guide x1='{x_of(last)}' y1='4' x2='{x_of(last)}' y2='82'></line>"
-            f"{''.join(paths)}{''.join(inspection_points)}"
-            f"<circle class='chart-endpoint' cx='{x_of(last)}' cy='{y_of(last['value'])}' r='3.1'></circle>"
-            "</svg>"
+            f"<line class='chart-hover-guide' data-overview-chart-guide x1='{x_of(last_total)}' "
+            f"y1='4' x2='{x_of(last_total)}' y2='82'></line>{chart_body}</svg>"
         )
         return svg, labels
 
@@ -15517,7 +16201,9 @@ def render_overview_charts(
         favorable = change < 0 if key == "mean_slot_time_secs" else change > 0
         css_class = "" if favorable else " delta--negative"
         return f"<span class='delta{css_class}'{binding}>{arrow} {abs(change):.1f}%{qualifier}</span>"
+
     by_key = {spec["key"]: spec for spec in charts_module.SERIES}
+    non_vote_spec = by_key["latest_non_vote_tps"]
     figures: list[str] = []
     unavailable: list[tuple[str, str]] = []
     for key in wanted:
@@ -15555,11 +16241,27 @@ def render_overview_charts(
             evidence = activity_evidence_label(sampled_snapshot, history[-1].get("collected_at"))
             if latest_at != history[-1].get("collected_at"):
                 evidence = "Historical sample · " + evidence
-        svg, axis_labels = prototype_chart_svg(spec, points, stats)
+
+        secondary_points = None
+        secondary_stats = None
+        if key == "latest_tps":
+            secondary_points = charts_module.extract(history, non_vote_spec)
+            secondary_stats = charts_module.series_stats(
+                secondary_points, gap_factor=math.inf,
+            )
+        svg, axis_labels = prototype_chart_svg(
+            spec, points, stats, non_vote_spec if secondary_points is not None else None,
+            secondary_points,
+        )
         point_records = [
             indexes["summary"].get((key, point["at"]))
             for point in points if point["value"] is not None
         ]
+        if secondary_points is not None:
+            point_records += [
+                indexes["summary"].get(("latest_non_vote_tps", point["at"]))
+                for point in secondary_points if point["value"] is not None
+            ]
         point_ids = [record["observation_id"] for record in point_records if record is not None]
         point_binding = (
             f" data-observation-ids='{html.escape(' '.join(point_ids), quote=True)}'"
@@ -15570,24 +16272,61 @@ def render_overview_charts(
             f" data-count-observation-id='{html.escape(count_record['observation_id'], quote=True)}'"
             if count_record is not None else ""
         )
+        secondary_count_binding = ""
+        overlay_legend = ""
+        if secondary_stats is not None:
+            secondary_count = indexes["derived"].get((
+                "history_latest_non_vote_tps_points_count", window_subject,
+            ))
+            secondary_count_binding = (
+                " data-secondary-count-observation-id='"
+                + html.escape(secondary_count["observation_id"], quote=True) + "'"
+                if secondary_count is not None else ""
+            )
+            if secondary_stats["points"]:
+                secondary_latest = charts_module.fmt_endlabel(
+                    secondary_stats["last"], non_vote_spec["decimals"],
+                )
+                coverage = (
+                    f"{secondary_stats['points']} of {secondary_stats['snapshots']} "
+                    "recorded snapshots"
+                )
+                secondary_change = change_markup(
+                    "latest_non_vote_tps", secondary_stats,
+                    " first → last across gaps"
+                    if any(point["value"] is None for point in secondary_points) else "",
+                ) if secondary_stats["points"] >= 2 else ""
+                non_vote_text = f"Non-vote TPS {secondary_latest} · {coverage}"
+            else:
+                secondary_change = ""
+                non_vote_text = "Non-vote TPS unavailable in recorded history"
+            overlay_legend = (
+                "<div class='chart-overlay-legend' aria-label='Total and non-vote TPS legend'>"
+                "<span><i class='chart-overlay-swatch chart-overlay-swatch--total' "
+                "aria-hidden='true'></i>Total TPS</span>"
+                "<span><i class='chart-overlay-swatch chart-overlay-swatch--non-vote' "
+                f"aria-hidden='true'></i>{html.escape(non_vote_text)}</span>"
+                f"{secondary_change}<small>One shared TPS axis · missing observations remain gaps</small>"
+                "</div>"
+            )
         axis = "".join(
             f"<span class='axis-label'>{html.escape(label)}</span>" for label in axis_labels
         )
         slide_index = len(figures) + 1
         figures.append(
-            "<figure class='chart-card' role='group' aria-roledescription='slide' "
+            f"<figure class='chart-card{' chart-card--tps-overlay' if secondary_stats is not None else ''}' "
+            "role='group' aria-roledescription='slide' "
             f"aria-label='{slide_index} of __PULSE_TOTAL__: {html.escape(display_labels[key])}' "
             f"data-pulse-card data-pulse-key='{html.escape(key)}' data-basis='{html.escape(str(spec['basis']))}'"
-            f"{point_binding}{count_binding}>"
+            f"{point_binding}{count_binding}{secondary_count_binding}>"
             f"<figcaption data-window='{'Sampled' if spec['basis'] == 'sampled' else 'Recorded'}'>"
             f"<span class='chart-title'>{html.escape(display_labels[key])}</span></figcaption>"
             + ("<p class='chart-title-note'>sparse recorded history</p>" if sparse else "")
             + (f"<p class='chart-evidence'>{html.escape(evidence)}</p>" if evidence else "")
-            +
-            f"<div class='chart-value'><strong>{html.escape(latest_text)}"
+            + f"<div class='chart-value'><strong>{html.escape(latest_text)}"
             f"{'' if spec['unit'] == '%' else ' '}"
             f"<span class='chart-unit'>{html.escape(spec['unit'])}</span></strong>"
-            f"{change_markup(key, stats, qualifier)}</div>"
+            f"{change_markup(key, stats, qualifier)}</div>{overlay_legend}"
             f"<div class='plot'><div class='plot__field'><div class='sparkline'>{svg}</div>"
             "<div class='chart-inspector' data-overview-chart-inspector hidden role='status'>"
             f"<span data-inspector-label>{html.escape(display_labels[key])}</span>"
@@ -15651,7 +16390,6 @@ def render_overview_charts(
             f"<ul>{items}</ul>{explanation}</details>"
         )
     return "".join(parts)
-
 
 def render_economics_html(
     snapshot: dict[str, Any],
@@ -15771,10 +16509,9 @@ def _pulse_provider_range_card(
     a different measurement under the new name.
 
     When the source carries per-provider observations, the card's extra
-    block lists each provider's newest-day value, the median across them,
-    and the spread — the useful product answer to methodological
-    disagreement is the measured disagreement itself, not one number and
-    not an empty card.
+    block lists the providers from the same complete date as the headline,
+    plus their median and spread. Partial rows from a newer date must not
+    silently change the population under the displayed range.
     """
     source = source if isinstance(source, dict) else {}
     if source.get("available") is True and is_number(source.get("minimum")) \
@@ -15782,7 +16519,8 @@ def _pulse_provider_range_card(
         extra = ""
         observations = source.get("provider_observations")
         if isinstance(observations, list) and observations:
-            newest: dict[str, float] = {}
+            comparison_date = source.get("date")
+            comparison_rows: dict[str, float] = {}
             for row in observations:
                 if not isinstance(row, dict):
                     continue
@@ -15790,43 +16528,43 @@ def _pulse_provider_range_card(
                 if (not isinstance(provider, str) or not provider
                         or not is_number(value) or not isinstance(date, str)):
                     continue
-                # Latest observed date wins; ties resolve to the later value.
-                current = newest.get(provider)
-                if current is None or date >= current[0]:
-                    newest[provider] = (date, float(value))
-            if newest:
-                latest_date = max(date for date, _ in newest.values())
+                if date == comparison_date:
+                    comparison_rows[provider] = float(value)
+            expected_count = source.get("provider_count")
+            if (isinstance(comparison_date, str)
+                    and isinstance(expected_count, int)
+                    and not isinstance(expected_count, bool)
+                    and len(comparison_rows) == expected_count):
                 latest_rows = sorted(
-                    ((provider, value) for provider, (date, value) in newest.items()
-                     if date == latest_date),
+                    comparison_rows.items(),
                     key=lambda row: row[1],
                 )
                 values = [value for _, value in latest_rows]
-                midpoint = values[len(values) // 2] if len(values) % 2 \
-                    else (values[len(values) // 2 - 1] + values[len(values) // 2]) / 2
+                midpoint = statistics.median(values)
                 low, high = values[0], values[-1]
-                spread = f"{(high - low) / midpoint * 100:.1f}%" if midpoint else "unavailable"
-                provider_lines = "".join(
-                    f"<div class='pulse-provider-row'>"
-                    f"<span>{html.escape(provider)}</span>"
-                    f"<b>{fmt(value)}</b></div>"
-                    for provider, value in latest_rows
-                )
-                extra = (
-                    "<details class='pulse-provider-detail'>"
-                    f"<summary>Per-provider values · {latest_date}</summary>"
-                    f"{provider_lines}"
-                    f"<div class='pulse-provider-row pulse-provider-summary'>"
-                    f"<span>Median</span><b>{fmt(midpoint)}</b></div>"
-                    f"<div class='pulse-provider-row pulse-provider-summary'>"
-                    f"<span>Range</span><b>{fmt(low)}–{fmt(high)}</b></div>"
-                    f"<div class='pulse-provider-row pulse-provider-summary'>"
-                    f"<span>Spread</span><b>{spread}</b></div>"
-                    "<p class='pulse-provider-note'>No single network-wide value is "
-                    "asserted: providers use different definitions and methodologies. "
-                    "The sampled RPC measurement stays separate.</p>"
-                    "</details>"
-                )
+                if low == float(source["minimum"]) and high == float(source["maximum"]):
+                    spread = f"{(high - low) / midpoint * 100:.1f}%" if midpoint else "unavailable"
+                    provider_lines = "".join(
+                        f"<div class='pulse-provider-row'>"
+                        f"<span>{html.escape(provider)}</span>"
+                        f"<b>{fmt(value)}</b></div>"
+                        for provider, value in latest_rows
+                    )
+                    extra = (
+                        "<details class='pulse-provider-detail'>"
+                        f"<summary>Per-provider values · {comparison_date}</summary>"
+                        f"{provider_lines}"
+                        f"<div class='pulse-provider-row pulse-provider-summary'>"
+                        f"<span>Median</span><b>{fmt(midpoint)}</b></div>"
+                        f"<div class='pulse-provider-row pulse-provider-summary'>"
+                        f"<span>Range</span><b>{fmt(low)}–{fmt(high)}</b></div>"
+                        f"<div class='pulse-provider-row pulse-provider-summary'>"
+                        f"<span>Spread</span><b>{spread}</b></div>"
+                        "<p class='pulse-provider-note'>No single network-wide value is "
+                        "asserted: providers use different definitions and methodologies. "
+                        "The sampled RPC measurement stays separate.</p>"
+                        "</details>"
+                    )
         return card(
             label,
             f"{fmt(source.get('minimum'))}–{fmt(source.get('maximum'))}",
@@ -16320,7 +17058,7 @@ def render_growth_workbench(
         f"<small>{html.escape(note)}</small></li>" for label, value, note, metric_ids in metrics
     )
     growth_metric_components = ""
-    if prefix == "mobile":
+    if prefix in {"desktop", "mobile"}:
         registry_count = equities.get("registry_asset_count")
         fresh_count = coverage.get("fresh_asset_count")
         queried_count = coverage.get("queried_this_run_asset_count")
@@ -16742,13 +17480,14 @@ def render_growth_workbench(
         f"{html.escape(volume_note)} {html.escape(provider_note)}</p>"
     )
     return (
-        f"<section id='{prefix}-people-markets' class='validator-workbench growth-workbench growth-workbench--{prefix}' data-growth-workbench "
+        f"<section id='{prefix}-people-markets' class='validator-workbench validator-workbench--{prefix} growth-workbench growth-workbench--{prefix}' data-growth-workbench "
         f"aria-labelledby='{title_id}'>"
         f"<header class='validator-workbench__head'><div><span class='section-kicker'>People and markets</span>"
         f"<h2 id='{title_id}'>Tokenized equities</h2></div>"
         "<p>A pinned Solana Foundation xStock-labelled registry is joined only to finalized Solana supply. Valuation is unavailable; DEX transport, market coverage, and provider activity ranges stay separately scoped.</p></header>"
         f"<ul class='validator-ledger growth-ledger' aria-label='Tokenized-equity summary'>{ledger}</ul>"
         f"{growth_metric_components}"
+        f"{render_provider_comparison_chart(snapshot, prefix, observation_indexes)}"
         f"{coverage_note}"
         f"{evidence}{stable_evidence}</section>"
     )
@@ -17613,6 +18352,27 @@ def render_report_coverage(snapshot, analysis, comparison, context, observation_
     )
 
 
+def render_data_domain_rail(snapshot, context, observation_indexes=None) -> str:
+    """Put the report's five evidence domains at the top of Data."""
+    prefix = "mobile" if context == "mobile" else "desktop"
+    cards = (
+        ("Network", "Throughput", "RPC activity and epoch progress", "#overview"),
+        ("Validators", "Stake and production", "Commission, concentration and leader slots", f"#{prefix}-validator-evidence"),
+        ("Economy", "People and markets", "Price, stablecoins and trading activity", f"#{prefix}-people-markets"),
+        ("Ecosystem", "News and upgrades", "Recorded stories and development evidence", f"#{prefix}-community-news"),
+        ("Sources", "Inspect evidence", "Source catalog, coverage and downloads", f"#{prefix}-data-sources"),
+    )
+    links = "".join(
+        f"<a href='{href}'><span>{html.escape(label)}</span>"
+        f"<strong>{html.escape(title)}</strong><small>{html.escape(detail)}</small></a>"
+        for label, title, detail, href in cards
+    )
+    return (
+        f"<nav class='data-domain-rail data-domain-rail--{prefix}' "
+        f"aria-label='Explore data domains'>{links}</nav>"
+    )
+
+
 def render_data_catalog(
     snapshot: dict[str, Any],
     analysis: dict[str, Any] | None,
@@ -17840,9 +18600,17 @@ def render_data_catalog(
         if release_rows else ""
     )
     return (
-        "<section class='catalog-shell' data-pagination data-page-size='10' data-mobile-page-size='10' "
+        "<section class='catalog-shell' id='desktop-data-sources' data-pagination data-page-size='10' data-mobile-page-size='10' "
         "aria-label='Recorded dataset catalog'>"
-        "<div class='table-wrap'><table>"
+        "<div class='catalog-filter-controls' data-pagination-filter-controls hidden>"
+        "<label for='desktop-data-catalog-search'>Search datasets and sources"
+        "<input id='desktop-data-catalog-search' type='search' placeholder='Search datasets or sources' "
+        "autocomplete='off' aria-controls='desktop-data-catalog-table' "
+        "aria-describedby='desktop-data-catalog-filter-status' data-pagination-filter disabled></label>"
+        f"<span id='desktop-data-catalog-filter-status' aria-live='polite' data-pagination-filter-status>{len(rows)} of {len(rows)} datasets</span></div>"
+        "<div class='catalog-filter-empty' data-pagination-filter-empty hidden><strong>No datasets match this search.</strong>"
+        "<button type='button' data-pagination-filter-reset>Clear search</button></div>"
+        "<div class='table-wrap'><table id='desktop-data-catalog-table'>"
         f"<caption{catalog_count_binding}>{len(rows)} repository-backed datasets and derived report surfaces</caption>"
         "<thead><tr><th scope='col'>Dataset</th><th scope='col'>Source</th>"
         "<th scope='col'>Coverage</th><th scope='col'>Freshness</th>"
@@ -18568,10 +19336,10 @@ def render_change_markers(
     )
     return (
         f"<ol class='change-list'>{''.join(groups)}</ol>"
-        "<button class='change-link' type='button' disabled aria-label='The full change log is available in the local JSON export'>"
-        "View change log<svg viewBox='0 0 12 12' fill='none' aria-hidden='true'>"
+        "<a class='change-link' href='report.json'>"
+        "View full report data<svg viewBox='0 0 12 12' fill='none' aria-hidden='true'>"
         "<path d='M2 6h7.5M6.75 3.25 9.5 6 6.75 8.75' stroke-width='1.25' "
-        "stroke-linecap='round' stroke-linejoin='round'></path></svg></button>"
+        "stroke-linecap='round' stroke-linejoin='round'></path></svg></a>"
     )
 
 
@@ -18701,13 +19469,12 @@ def render_history_workspace(
     visible_history = list(reversed(history[-7:]))
     for index, item in enumerate(visible_history):
         current_class = " is-selected" if index == 0 else ""
-        selected = " checked" if index == 0 else ""
+        current_attribute = " aria-current='true'" if index == 0 else ""
         rail.append(
-            f"<label class='snapshot{current_class}'>"
-            f"<input type='radio' name='history-snapshot'{selected}>"
+            f"<li class='snapshot{current_class}'{current_attribute}>"
             "<span class='radio-mark' aria-hidden='true'></span>"
             f"<span class='snapshot-date'>{html.escape(timestamp_label(item.get('collected_at')))}</span>"
-            f"<span class='age'>{html.escape(snapshot_age_label(item, current))}</span></label>"
+            f"<span class='age'>{html.escape(snapshot_age_label(item, current))}</span></li>"
         )
     a_label = timestamp_label(previous.get("collected_at"))
     b_label = timestamp_label(current.get("collected_at"))
@@ -18745,11 +19512,8 @@ def render_history_workspace(
         "<aside class='panel snapshot-panel' aria-labelledby='history-snapshot-title'>"
         "<div class='snapshot-heading'><h2 class='panel-heading' id='history-snapshot-title'>Snapshot timeline</h2>"
         f"{older_note}</div>"
-        "<fieldset class='snapshot-list' disabled aria-describedby='history-static-control-note'>"
-        "<legend class='visually-hidden'>Available report snapshots</legend>"
-        f"{''.join(rail)}</fieldset>"
-        "<button class='static-button' type='button' disabled aria-describedby='history-static-control-note'>Latest pair shown</button>"
-        "<span id='history-static-control-note' hidden>Use the Snapshot A and B selectors above to change the comparison.</span></aside>"
+        "<ol class='snapshot-list' aria-label='Recorded snapshot timeline'>"
+        f"{''.join(rail)}</ol></aside>"
         "<aside class='panel change-panel' aria-labelledby='history-change-title'>"
         "<h2 class='panel-heading' id='history-change-title'>Change markers</h2>"
         f"{render_change_markers(current, analysis, comparison)}</aside></div></div>"
@@ -19965,16 +20729,14 @@ def render_mobile_data(
         f"<span>schema {html.escape(str(snapshot.get('schema_version', '—')))}</span></div>"
         "<h1 id='mobile-data-title' tabindex='-1'>Data</h1>"
         "<p class='mobile-observation'>Sources, coverage, and recorded freshness.</p></div></div>"
-        "<nav class='mobile-data-section-index' aria-label='Data sections'>"
-        "<a href='#mobile-community-news'>Community news</a>"
-        "<a href='#mobile-validator-evidence'>Validators</a>"
-        "<a href='#mobile-people-markets'>People &amp; markets</a>"
-        "<a href='#mobile-data-sources'>Sources</a></nav>"
+        f"{render_data_domain_rail(snapshot, 'mobile', observation_indexes)}"
         f"{render_report_coverage(snapshot, analysis, comparison, 'mobile', observation_indexes)}"
         f"{render_feature_activation(snapshot, 'mobile', observation_indexes)}"
         f"{render_community_news(snapshot, 'mobile')}"
         f"{render_validator_workbench(snapshot, 'mobile', observation_indexes)}"
         f"{render_growth_workbench(snapshot, 'mobile', observation_indexes)}"
+        "<details class='chart-disclosure mobile-activity-evidence'><summary>Inspect sampled fees and address activity</summary>"
+        f"{render_activity_html(snapshot, observation_indexes)}</details>"
         "<section id='mobile-data-sources' class='mobile-source-section' aria-labelledby='mobile-source-section-title'>"
         "<h2 id='mobile-source-section-title' class='mobile-source-section-title'>Source catalog</h2>"
         "<div class='mobile-controls'><div class='mobile-search-wrap'>"
@@ -20055,6 +20817,11 @@ def render_mobile_methods() -> str:
         "<li>Proposal status, software releases, and on-chain feature activation are separate evidence.</li>"
         "<li>Chart lines stop across missing observations.</li>"
         "<li>A change is reported only after crossing a declared threshold.</li></ul></section>"
+        "<details class='mobile-method-card chart-disclosure'><summary>Technical comparison rules</summary>"
+        "<p>Anomaly assessment uses a median baseline and requires three prior snapshots.</p>"
+        "<p>Detailed chart lines break across missing observations and cadence gaps. The ad-hoc Overview uses recorded-sample spacing and breaks explicit missing values.</p>"
+        "<p>Every delta retains its metric key, basis, declared threshold and recorded A/B values. Feed markers record provenance; they do not establish causality.</p>"
+        "<p>No aggregate confidence score is recorded. Evidence labels, missingness, coverage and observation times remain separate.</p></details>"
         "<section class='mobile-method-card mobile-source-trail' aria-labelledby='mobile-source-trail-title'>"
         "<h2 id='mobile-source-trail-title'>Use the source trail</h2><nav aria-label='Method destinations'>"
         "<a class='is-primary' href='#data'><span>Browse data sources</span><b aria-hidden='true'>›</b></a>"
@@ -20181,7 +20948,7 @@ def render_mobile_history(
                 for entry in pair.get("not_comparable", [])
             )
             limits_note = (
-                f"<p class='visually-hidden' data-history-comparison-limits>{html.escape(comparison_limits)}</p>"
+                f"<details class='chart-disclosure' data-history-comparison-limits><summary>Comparison limits</summary><p>{html.escape(comparison_limits)}</p></details>"
                 if comparison_limits else ""
             )
             chart = render_ab_chart(
@@ -20189,6 +20956,14 @@ def render_mobile_history(
                 f"history-chart-mobile-{previous_index}-{current_index}", include_meta=False, mobile=True,
                 observation_indexes=observation_indexes,
             )
+            detail = render_key_deltas(pair)
+            if observation_indexes is None or all(
+                pair.get("observation_ids", {}).get(key)
+                for key in ("changed_count", "steady_count")
+            ):
+                detail += render_history_summary(pair)
+            else:
+                detail += "<p>Threshold totals are published for the latest comparison. These readings belong to the selected snapshot pair.</p>"
             panels.append(
                 f"<section class='mobile-history-panel' data-history-panel data-history-pair='{pair_key}'{hidden}>"
                 "<div class='mobile-history-chart-card' data-history-comparison>"
@@ -20201,7 +20976,9 @@ def render_mobile_history(
                 f"<h2 id='mobile-history-ledger-title-{previous_index}-{current_index}'>Snapshot comparison</h2>"
                 "<div class='mobile-history-table-wrap'><table><thead><tr><th scope='col'>Metric</th>"
                 "<th scope='col'><b>A</b></th><th scope='col'><b>B</b></th><th scope='col'>Delta</th></tr></thead>"
-                f"<tbody>{''.join(rows)}</tbody></table></div>{refusal_note}{limits_note}</section>"
+                f"<tbody>{''.join(rows)}</tbody></table></div>{refusal_note}{limits_note}"
+                "<details class='chart-disclosure mobile-history-detail'><summary>Key metric deltas and threshold findings</summary>"
+                f"{detail}</details></section>"
                 f"<section class='mobile-history-chronology' aria-labelledby='mobile-history-chronology-title-{previous_index}-{current_index}'>"
                 f"<h2 id='mobile-history-chronology-title-{previous_index}-{current_index}'>Snapshot chronology</h2><ol>"
                 "<li class='is-a'><b>A</b><span><strong>Previous snapshot</strong>"
@@ -20554,6 +21331,8 @@ MOBILE_CONTROLLER = r"""
   const overviewCharts = Array.from(document.querySelectorAll('[data-overview-chart]'));
   overviewCharts.forEach((chart) => {
     const points = Array.from(chart.querySelectorAll('[data-overview-chart-point]'));
+    const seriesPoints = Array.from(chart.querySelectorAll('[data-overview-series-index]'));
+    const tpsOverlay = chart.hasAttribute('data-overview-tps-overlay');
     const guide = chart.querySelector('[data-overview-chart-guide]');
     const plot = chart.closest('.plot');
     const inspector = plot?.querySelector('[data-overview-chart-inspector]');
@@ -20564,6 +21343,7 @@ MOBILE_CONTROLLER = r"""
       activeIndex = lastIndex;
       const point = points[lastIndex];
       points.forEach((candidate) => candidate.removeAttribute('data-chart-active'));
+      seriesPoints.forEach((candidate) => candidate.removeAttribute('data-chart-active'));
       inspector.hidden = true;
       if (guide && point) {
         guide.setAttribute('x1', point.dataset.x || '0');
@@ -20575,13 +21355,19 @@ MOBILE_CONTROLLER = r"""
       activeIndex = Math.max(0, Math.min(lastIndex, index));
       const point = points[activeIndex];
       points.forEach((candidate) => candidate.removeAttribute('data-chart-active'));
-      point.setAttribute('data-chart-active', '');
+      seriesPoints.forEach((candidate) => {
+        candidate.toggleAttribute('data-chart-active',
+          candidate.dataset.overviewSeriesIndex === point.dataset.index);
+      });
+      if (!tpsOverlay) point.setAttribute('data-chart-active', '');
       if (guide) {
         guide.setAttribute('x1', point.dataset.x || '0');
         guide.setAttribute('x2', point.dataset.x || '0');
         guide.removeAttribute('hidden');
       }
-      inspector.querySelector('[data-inspector-value]').textContent = `${point.dataset.value} ${point.dataset.unit}`;
+      inspector.querySelector('[data-inspector-value]').textContent = tpsOverlay
+        ? `Total ${point.dataset.totalValue} TPS · Non-vote ${point.dataset.nonVoteValue} TPS`
+        : `${point.dataset.value} ${point.dataset.unit}`;
       inspector.querySelector('[data-inspector-meta]').textContent = `${point.dataset.at} · ${point.dataset.inspectorBasis}`;
       positionInspector(inspector, point, plot);
     };
@@ -20656,6 +21442,108 @@ MOBILE_CONTROLLER = r"""
     rest();
   });
 
+  const providerCharts = Array.from(document.querySelectorAll('[data-provider-chart]'));
+  providerCharts.forEach((chart) => {
+    const root = chart.closest('[data-provider-comparison]');
+    const frame = chart.closest('.provider-chart-frame');
+    const inspector = frame?.querySelector('[data-provider-inspector]');
+    const guide = chart.querySelector('[data-provider-guide]');
+    const points = Array.from(chart.querySelectorAll('[data-provider-point]'));
+    const toggles = Array.from(root?.querySelectorAll('[data-provider-toggle]') || []);
+    const showAll = root?.querySelector('[data-provider-show-all]');
+    const help = root?.querySelector('[data-provider-chart-help]');
+    const dateCount = Number(chart.dataset.providerDateCount || 0);
+    if (!root || !frame || !inspector || !guide || !points.length || dateCount < 2) return;
+    const dates = JSON.parse(chart.dataset.providerDates || '[]');
+    toggles.forEach((toggle) => { toggle.disabled = false; });
+    if (showAll) showAll.disabled = false;
+    help?.removeAttribute('hidden');
+    let activeIndex = dateCount - 1;
+
+    const visibleKeys = () => new Set(
+      toggles.filter((toggle) => toggle.getAttribute('aria-pressed') === 'true')
+        .map((toggle) => toggle.dataset.providerKey)
+    );
+    const pointsAt = (index) => {
+      const visible = visibleKeys();
+      return points.filter((point) => (
+        Number(point.dataset.providerDateIndex) === index
+        && visible.has(point.dataset.providerKey)
+      ));
+    };
+    const hideInspector = () => {
+      points.forEach((point) => point.removeAttribute('data-provider-active'));
+      inspector.hidden = true;
+    };
+    const show = (requested) => {
+      activeIndex = Math.max(0, Math.min(dateCount - 1, requested));
+      const activePoints = pointsAt(activeIndex);
+      const active = new Set(activePoints);
+      points.forEach((point) => {
+        if (active.has(point)) point.setAttribute('data-provider-active', '');
+        else point.removeAttribute('data-provider-active');
+      });
+      const left = Number(chart.dataset.providerChartLeft);
+      const right = Number(chart.dataset.providerChartRight);
+      const x = String(left + (right - left) * activeIndex / (dateCount - 1));
+      guide.setAttribute('x1', x);
+      guide.setAttribute('x2', x);
+      inspector.querySelector('[data-provider-inspector-date]').textContent = dates[activeIndex] || '';
+      inspector.querySelector('[data-provider-inspector-values]').textContent = activePoints
+        .sort((a, b) => Number(b.dataset.providerValue.replaceAll(',', '')) - Number(a.dataset.providerValue.replaceAll(',', '')))
+        .map((point) => `${point.dataset.providerLabel}: ${point.dataset.providerValue}`)
+        .join('\n') || 'No observations for the selected providers on this date.';
+      inspector.hidden = false;
+      const chartRect = chart.getBoundingClientRect();
+      const frameRect = frame.getBoundingClientRect();
+      const viewWidth = chart.viewBox.baseVal.width || 720;
+      const pointX = chartRect.left - frameRect.left + Number(x) / viewWidth * chartRect.width;
+      const halfWidth = inspector.offsetWidth / 2;
+      inspector.style.left = `${Math.min(frameRect.width - halfWidth - 8, Math.max(halfWidth + 8, pointX))}px`;
+    };
+    const rest = () => {
+      hideInspector();
+      guide.setAttribute('x1', chart.dataset.providerChartRight || '704');
+      guide.setAttribute('x2', chart.dataset.providerChartRight || '704');
+    };
+    const indexFromPointer = (clientX) => {
+      const rect = chart.getBoundingClientRect();
+      const left = Number(chart.dataset.providerChartLeft || 62);
+      const right = Number(chart.dataset.providerChartRight || 704);
+      const viewWidth = chart.viewBox.baseVal.width || 720;
+      const viewX = (clientX - rect.left) / Math.max(1, rect.width) * viewWidth;
+      return Math.round((viewX - left) / Math.max(1, right - left) * (dateCount - 1));
+    };
+    chart.addEventListener('pointermove', (event) => show(indexFromPointer(event.clientX)));
+    chart.addEventListener('pointerdown', (event) => show(indexFromPointer(event.clientX)));
+    chart.addEventListener('pointerleave', () => {
+      if (document.activeElement !== chart) rest();
+    });
+    chart.addEventListener('focus', () => show(activeIndex));
+    chart.addEventListener('blur', rest);
+    chart.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') { event.preventDefault(); show(activeIndex - 1); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); show(activeIndex + 1); }
+      if (event.key === 'Home') { event.preventDefault(); show(0); }
+      if (event.key === 'End') { event.preventDefault(); show(dateCount - 1); }
+    });
+    toggles.forEach((toggle) => toggle.addEventListener('click', () => {
+      const pressed = toggle.getAttribute('aria-pressed') !== 'true';
+      toggle.setAttribute('aria-pressed', String(pressed));
+      const series = chart.querySelector(`[data-provider-series="${toggle.dataset.providerKey}"]`);
+      if (series) series.toggleAttribute('data-provider-hidden', !pressed);
+      if (document.activeElement === chart) show(activeIndex);
+      else rest();
+    }));
+    showAll?.addEventListener('click', () => {
+      toggles.forEach((toggle) => toggle.setAttribute('aria-pressed', 'true'));
+      chart.querySelectorAll('[data-provider-series]').forEach((series) => series.removeAttribute('data-provider-hidden'));
+      if (document.activeElement === chart) show(activeIndex);
+      else rest();
+    });
+    rest();
+  });
+
   const paginationByRoot = new Map();
   const paginationRoots = Array.from(document.querySelectorAll('[data-pagination]'));
   const paginationWindow = (current, total) => {
@@ -20671,6 +21559,11 @@ MOBILE_CONTROLLER = r"""
     const next = controls?.querySelector('[data-page-next]');
     const numbers = controls?.querySelector('[data-page-numbers]');
     const mobileStatus = controls?.querySelector('[data-page-mobile-status]');
+    const paginationFilterControls = root.querySelector('[data-pagination-filter-controls]');
+    const paginationFilter = root.querySelector('[data-pagination-filter]');
+    const paginationFilterStatus = root.querySelector('[data-pagination-filter-status]');
+    const paginationFilterEmpty = root.querySelector('[data-pagination-filter-empty]');
+    const paginationFilterReset = root.querySelector('[data-pagination-filter-reset]');
     if (!controls || !previous || !next || !numbers || !mobileStatus) return;
     let currentPage = 1;
 
@@ -20731,6 +21624,23 @@ MOBILE_CONTROLLER = r"""
       });
       return {firstRow: matchingRows[start], totalPages};
     };
+    const applyPaginationFilter = () => {
+      const rows = activeRows();
+      const term = paginationFilter ? paginationFilter.value.trim().toLowerCase() : '';
+      let matchingCount = 0;
+      rows.forEach((row) => {
+        const searchable = (row.dataset.search || row.textContent || '').toLowerCase();
+        const match = !term || searchable.includes(term);
+        row.toggleAttribute('data-page-filtered', !match);
+        if (match) matchingCount += 1;
+      });
+      if (paginationFilterStatus) {
+        paginationFilterStatus.textContent = `${matchingCount} of ${rows.length} datasets`;
+      }
+      if (paginationFilterEmpty) paginationFilterEmpty.hidden = matchingCount !== 0;
+      currentPage = 1;
+      renderPagination();
+    };
     const goToPage = (page, event) => {
       const total = renderPagination().totalPages;
       const targetPage = Math.max(1, Math.min(page, total));
@@ -20752,7 +21662,19 @@ MOBILE_CONTROLLER = r"""
       render: renderPagination,
     };
     paginationByRoot.set(root, api);
-    renderPagination();
+    if (paginationFilter) {
+      paginationFilter.disabled = false;
+      if (paginationFilterControls) paginationFilterControls.hidden = false;
+      paginationFilter.addEventListener('input', applyPaginationFilter);
+      paginationFilterReset?.addEventListener('click', () => {
+        paginationFilter.value = '';
+        applyPaginationFilter();
+        paginationFilter.focus();
+      });
+      applyPaginationFilter();
+    } else {
+      renderPagination();
+    }
   });
   mobileViewport.addEventListener('change', () => {
     paginationByRoot.forEach((pagination) => pagination.reset());
@@ -21763,6 +22685,7 @@ def render_html(
         "<div class='download-actions' aria-label='Local report exports'>"
         "<a class='download-link' href='report.json' download>Download JSON</a>"
         "<a class='download-link' href='report.md' download>Download Markdown</a></div></section>",
+        render_data_domain_rail(snapshot, "desktop", observation_bindings),
         render_report_coverage(snapshot, analysis, comparison, "desktop", observation_bindings),
         render_feature_activation(snapshot, "desktop", observation_bindings),
         render_data_catalog(snapshot, analysis, comparison, history, observation_bindings),
@@ -22350,6 +23273,9 @@ def build_derived_observation_records(
     chart_count_records = []
     chartable_series_count = 0
     unavailable_chart_count = 0
+    overview_card_count = sum(
+        spec.get("key") != "latest_non_vote_tps" for spec in charts_module.SERIES
+    )
     for spec in charts_module.SERIES:
         points = charts_module.extract(history, spec)
         stats = charts_module.series_stats(points)
@@ -22386,7 +23312,8 @@ def build_derived_observation_records(
             ))
         hold = charts_module.publication_hold_reason(history, spec)
         if hold or not overview_stats.get("chartable"):
-            unavailable_chart_count += 1
+            if spec.get("key") != "latest_non_vote_tps":
+                unavailable_chart_count += 1
             continue
         first, last = overview_stats.get("first"), overview_stats.get("last")
         present = [point for point in points if point.get("value") is not None]
@@ -22440,8 +23367,8 @@ def build_derived_observation_records(
             name="Unavailable Overview history charts",
             value=unavailable_chart_count,
             unit="charts",
-            population="configured Overview history series",
-            denominator=f"{len(charts_module.SERIES)} configured series",
+            population="configured Overview history cards",
+            denominator=f"{overview_card_count} configured Overview history cards",
             window=f"{timestamps[0]}->{timestamps[-1]}",
             snapshot_collected_at=latest_at,
             source_path="overview.history.unavailable_chart_count",

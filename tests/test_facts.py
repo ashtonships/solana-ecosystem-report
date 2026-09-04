@@ -353,6 +353,33 @@ def use_legacy_xstock_provenance(asset):
 
 
 class TestFactContract(unittest.TestCase):
+    def test_latest_non_vote_tps_names_its_actual_formula_and_sample_slot(self):
+        source = canonical_snapshot(9)
+        source["performance"].update({
+            "latest_non_vote_tps": 40.0,
+            "non_vote_available": True,
+        })
+
+        record = next(
+            item for item in facts.public_observation_records(source)
+            if item["metric_id"] == "latest_non_vote_tps"
+        )
+
+        self.assertEqual(record["value"], 40.0)
+        self.assertEqual(record["observed_slot"], 123)
+        self.assertEqual(
+            record["calculation_method"],
+            "numNonVoteTransactions / samplePeriodSecs",
+        )
+
+        source["performance"]["non_vote_available"] = False
+        unavailable = next(
+            item for item in facts.public_observation_records(source)
+            if item["metric_id"] == "latest_non_vote_tps"
+        )
+        self.assertIsNone(unavailable["value"])
+        self.assertEqual(unavailable["status"], "unavailable")
+
     def test_schema_nine_preserves_every_schema_eight_summary_fact_semantic(self):
         schema_eight = canonical_snapshot(8)
         schema_nine = canonical_snapshot(9)
@@ -503,6 +530,7 @@ class TestFactContract(unittest.TestCase):
             "mean_tps": 4_100.0,
             "peak_tps": 4_500.0,
             "latest_non_vote_tps": 2_300.0,
+            "non_vote_available": True,
             "mean_non_vote_tps": 2_000.0,
             "mean_vote_share_pct": 51.0,
         })

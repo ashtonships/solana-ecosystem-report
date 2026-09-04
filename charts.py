@@ -84,6 +84,18 @@ SERIES: list[dict[str, Any]] = [
         "note": "getRecentPerformanceSamples, read directly from the RPC endpoint.",
     },
     {
+        "key": "latest_non_vote_tps",
+        "label": "Non-vote transactions per second",
+        "path": ("performance", "latest_non_vote_tps"),
+        "unit": "TPS",
+        "decimals": 0,
+        "basis": "measured",
+        "note": (
+            "getRecentPerformanceSamples non-vote transactions divided by the same "
+            "sample duration as total TPS."
+        ),
+    },
+    {
         "key": "mean_slot_time_secs",
         "label": "Mean slot time",
         "path": ("performance", "mean_slot_time_secs"),
