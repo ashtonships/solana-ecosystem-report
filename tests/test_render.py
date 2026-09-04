@@ -7465,9 +7465,9 @@ class TestReleaseMetadata(unittest.TestCase):
                     "are recorded in GitHub Actions"
                 ),
                 "age_seconds_at_generation": 14339,
-                "cadence_seconds": 3600,
+                "cadence_seconds": 900,
                 "freshness_limit_seconds": 25200,
-                "next_scheduled_trigger_at": "2026-08-26T00:17:00+00:00",
+                "next_scheduled_trigger_at": "2026-08-26T00:07:00+00:00",
                 "schedule_note": (
                     "next configured GitHub Actions trigger; scheduled runs may be "
                     "delayed or dropped"
@@ -7517,9 +7517,25 @@ class TestReleaseMetadata(unittest.TestCase):
         self.assertEqual(boundary["history"]["invalid_timestamp_count"], 1)
         self.assertEqual(boundary["history"]["gap_count"], 0)
         self.assertEqual(boundary["history"]["largest_gap_seconds"], 25200)
-        # Hourly cadence since 2026-09-03: next :17 trigger after 14:00.
+        # Fifteen-minute workflow cadence: next :07 trigger after 14:00.
         self.assertEqual(boundary["next_scheduled_trigger_at"],
-                         "2026-08-25T14:17:00+00:00")
+                         "2026-08-25T14:07:00+00:00")
+
+
+    def test_update_status_matches_workflow_trigger_boundaries(self):
+        workflow = (Path(__file__).parents[1] / ".github/workflows/update.yml").read_text()
+        self.assertIn('7,22,37,52 * * * *', workflow)
+        for observed, expected in (
+            ("2026-09-04T22:36:44+00:00", "2026-09-04T22:37:00+00:00"),
+            ("2026-09-04T22:07:00+00:00", "2026-09-04T22:22:00+00:00"),
+            ("2026-09-04T22:22:00+00:00", "2026-09-04T22:37:00+00:00"),
+            ("2026-09-04T22:37:00+00:00", "2026-09-04T22:52:00+00:00"),
+            ("2026-09-04T23:52:00+00:00", "2026-09-05T00:07:00+00:00"),
+        ):
+            with self.subTest(observed=observed):
+                status = render.build_update_status({}, [], observed)
+                self.assertEqual(status["cadence_seconds"], 900)
+                self.assertEqual(status["next_scheduled_trigger_at"], expected)
 
 
 class TestPythonCompatibility(unittest.TestCase):
