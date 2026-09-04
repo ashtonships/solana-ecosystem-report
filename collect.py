@@ -35,6 +35,7 @@ from typing import Any
 
 import blocks
 import cadence
+import cluster_software as cluster_software_module
 import economics
 import facts
 import feature_accounts
@@ -83,7 +84,7 @@ def source_code_state(root: Path = Path(__file__).parent) -> dict[str, Any]:
         revision = None
     try:
         status = subprocess.run(
-            ["git", "status", "--porcelain", "--", ".",
+            ["git", "--no-optional-locks", "status", "--porcelain", "--", ".",
              ":(exclude)snapshots/**", ":(exclude)history/**",
              ":(exclude)state/**", ":(exclude)preview/**", ":(exclude)dist/**"],
             cwd=root, check=False,
@@ -109,6 +110,7 @@ RPC_CALLS: list[tuple[str, list[Any]]] = [
     ("getVoteAccounts", []),
     ("getInflationRate", []),
     ("getInflationGovernor", [{"commitment": "finalized"}]),
+    ("getClusterNodes", []),
 ]
 
 
@@ -509,6 +511,7 @@ def build_snapshot(
     dune: dict[str, Any] | None = None,
     provenance: dict[str, Any] | None = None,
     feature_activation: dict[str, Any] | None = None,
+    cluster_software: dict[str, Any] | None = None,
     collection_schedule: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the machine-readable snapshot. Pure — no network, no clock."""
@@ -639,12 +642,45 @@ def build_snapshot(
         # default snapshots keep their exact prior shape.
         **({"dune": dune} if dune is not None else {}),
         **({"feature_activation": feature_activation} if feature_activation is not None else {}),
+        **({"cluster_software": cluster_software} if cluster_software is not None else {}),
     }
 
 
 def snapshot_filename(collected_at: str) -> str:
     """UTC timestamp, filesystem-safe, sorts chronologically."""
     return f"snapshot-{collected_at.replace(':', '').replace('-', '').replace('.', '-')}.json"
+
+
+def load_block_production_fallbacks(
+    directory: Path, limit: int = 32,
+) -> list[dict[str, Any]]:
+    """Load bounded private contexts from the newest immutable snapshots."""
+    contexts = []
+    for path in sorted(directory.glob("snapshot-*.json"), reverse=True)[:max(0, limit)]:
+        try:
+            snapshot = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, ValueError):
+            continue
+        if not isinstance(snapshot, dict):
+            continue
+        schedule = snapshot.get("collection_schedule")
+        schedule_entry = schedule.get("block_production") \
+            if isinstance(schedule, dict) else None
+        validators = snapshot.get("validators")
+        production = validators.get("block_production") \
+            if isinstance(validators, dict) else None
+        contexts.append({
+            "source": copy.deepcopy(snapshot.get("source")),
+            "collected_at": snapshot.get("collected_at"),
+            "epoch": copy.deepcopy(snapshot.get("epoch")),
+            "collection_schedule": {
+                "block_production": copy.deepcopy(schedule_entry),
+            },
+            "validators": {
+                "block_production": copy.deepcopy(production),
+            },
+        })
+    return contexts
 
 
 def _check_immutable_text(path: Path, text: str) -> bool:
@@ -784,6 +820,7 @@ def sources(
     supply_state: dict[str, Any] | None = None,
     with_dune: bool = False,
     previous_snapshot: dict[str, Any] | None = None,
+    block_production_fallbacks: list[dict[str, Any]] | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
     """Stage 1 — collect attributable inputs.
@@ -830,6 +867,10 @@ def sources(
 
     batch = fetch_rpc(endpoint)
     indexed = index_results(batch)
+    cluster_software = cluster_software_module.normalize_cluster_software(
+        indexed.get("getClusterNodes"), endpoint,
+        datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
     slot = indexed.get("getSlot")
     block_time = fetch_block_time(slot, endpoint) if isinstance(slot, int) else None
     epoch_range = blocks.completed_epoch_range(
@@ -838,13 +879,127 @@ def sources(
     old_validators = previous.get("validators") \
         if isinstance(previous.get("validators"), dict) else {}
     old_production = old_validators.get("block_production")
+
+    def production_fallback(
+        candidates: list[dict[str, Any]],
+    ) -> tuple[dict[str, Any], str] | None:
+        if (not isinstance(epoch_range, dict)
+                or epoch_range.get("available") is not True):
+            return None
+
+        def nonnegative_int(value: Any) -> bool:
+            return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+        def timestamp(value: Any) -> datetime | None:
+            if not isinstance(value, str):
+                return None
+            try:
+                stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                return None
+            if stamp.utcoffset() is None:
+                return None
+            return stamp.astimezone(timezone.utc)
+
+        current_identity = growth_module.rpc_endpoint_identity(endpoint)
+        expected_range = tuple(epoch_range.get(field) for field in (
+            "epoch", "first_slot", "last_slot", "leader_slots",
+        ))
+        if not all(nonnegative_int(value) for value in expected_range):
+            return None
+        expected_epoch, expected_first, expected_last, expected_slots = expected_range
+        if expected_slots != expected_last - expected_first + 1:
+            return None
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            candidate_source = candidate.get("source")
+            if (not isinstance(candidate_source, dict)
+                    or current_identity is None
+                    or candidate_source.get("endpoint_identity") != current_identity):
+                continue
+            validators = candidate.get("validators")
+            production = validators.get("block_production") \
+                if isinstance(validators, dict) else None
+            if not isinstance(production, dict) or production.get("available") is not True:
+                continue
+            if tuple(production.get(field) for field in (
+                "epoch", "first_slot", "last_slot", "leader_slots",
+            )) != expected_range:
+                continue
+            if (not all(nonnegative_int(production.get(field)) for field in (
+                    "context_slot", "blocks_produced", "skipped_slots"))
+                    or production.get("blocks_produced") + production.get("skipped_slots")
+                    != expected_slots
+                    or production.get("context_slot") < expected_last
+                    or not isinstance(production.get("validators"), list)
+                    or not production["validators"]):
+                continue
+            source = production.get("source")
+            if (not isinstance(source, dict)
+                    or source.get("method") != "getBlockProduction"
+                    or source.get("commitment") != "finalized"):
+                continue
+            collection = production.get("collection")
+            if (not isinstance(collection, dict)
+                    or collection.get("mode") != "contiguous_chunks"
+                    or collection.get("coverage_complete") is not True
+                    or collection.get("first_slot") != expected_first
+                    or collection.get("last_slot") != expected_last
+                    or collection.get("coverage_numerator_slots") != expected_slots
+                    or collection.get("coverage_denominator_slots") != expected_slots):
+                continue
+            observed = timestamp(production.get("vote_enrichment_observed_at"))
+            if observed is None:
+                continue
+            age_seconds = (reference.astimezone(timezone.utc) - observed).total_seconds()
+            if age_seconds < 0 or age_seconds > PUBLICATION_FRESHNESS_SECONDS:
+                continue
+            schedule = candidate.get("collection_schedule")
+            schedule_entry = schedule.get("block_production") \
+                if isinstance(schedule, dict) else None
+            success_candidates = (
+                schedule_entry.get("last_success_at")
+                if isinstance(schedule_entry, dict) else None,
+                candidate.get("collected_at"),
+                production.get("vote_enrichment_observed_at"),
+            )
+            last_success = next((
+                value for value in success_candidates
+                if timestamp(value) is not None
+                and timestamp(value) <= reference.astimezone(timezone.utc)
+            ), None)
+            if last_success is not None:
+                return copy.deepcopy(production), last_success
+        return None
+
+    fallback_candidates = [previous]
+    if isinstance(block_production_fallbacks, list):
+        fallback_candidates.extend(block_production_fallbacks)
+    retained_production = production_fallback(fallback_candidates)
+    previous_epoch = previous.get("epoch") \
+        if isinstance(previous.get("epoch"), dict) else {}
+    current_epoch_info = indexed.get("getEpochInfo") \
+        if isinstance(indexed.get("getEpochInfo"), dict) else {}
+    old_range_known = (
+        isinstance(old_production, dict)
+        and all(isinstance(old_production.get(field), int)
+                and not isinstance(old_production.get(field), bool)
+                for field in ("epoch", "first_slot", "last_slot"))
+    )
     completed_epoch_changed = (
         isinstance(epoch_range, dict)
         and epoch_range.get("available") is True
         and (
-            not isinstance(old_production, dict)
-            or any(old_production.get(field) != epoch_range.get(field)
-                   for field in ("epoch", "first_slot", "last_slot"))
+            any(old_production.get(field) != epoch_range.get(field)
+                for field in ("epoch", "first_slot", "last_slot"))
+            if old_range_known else (
+                isinstance(previous_epoch.get("epoch"), int)
+                and not isinstance(previous_epoch.get("epoch"), bool)
+                and isinstance(current_epoch_info.get("epoch"), int)
+                and not isinstance(current_epoch_info.get("epoch"), bool)
+                and previous_epoch.get("epoch") != current_epoch_info.get("epoch")
+            )
         )
     )
     block_due = (
@@ -858,15 +1013,34 @@ def sources(
             raw_production, indexed.get("getVoteAccounts"), epoch_range,
             vote_observed_at,
         )
+        block_refresh_succeeded = block_production.get("available") is True
+        retained_used = not block_refresh_succeeded and retained_production is not None
+        if retained_used:
+            block_production = copy.deepcopy(retained_production[0])
     else:
-        block_production = (
-            copy.deepcopy(old_production)
-            if isinstance(old_production, dict) else {"available": False}
-        )
+        block_refresh_succeeded = False
+        failed_schedule = schedule["block_production"]["state"] == "failed"
+        retained_used = failed_schedule and retained_production is not None
+        if retained_used:
+            block_production = copy.deepcopy(retained_production[0])
+        elif failed_schedule and isinstance(old_production, dict) \
+                and old_production.get("available") is True:
+            block_production = {
+                "available": False,
+                "reason": "Prior completed-epoch production evidence exceeded its freshness limit.",
+            }
+        else:
+            block_production = (
+                copy.deepcopy(old_production)
+                if isinstance(old_production, dict) else {"available": False}
+            )
     record(
         "block_production", attempted=block_due,
-        succeeded=block_due and block_production.get("available") is True,
+        succeeded=block_due and block_refresh_succeeded,
     )
+    if (retained_used
+            and schedule["block_production"]["last_success_at"] is None):
+        schedule["block_production"]["last_success_at"] = retained_production[1]
     # Economic sources are third-party and optional: a failure there degrades
     # that section only, and never blocks the on-chain snapshot.
     if with_economics:
@@ -975,6 +1149,7 @@ def sources(
         "activity": activity,
         "news": feeds,
         "feature_activation": feature_activation,
+        "cluster_software": cluster_software,
         "growth": growth_data,
         "dune": dune_data,
         "collection_schedule": schedule,
@@ -997,6 +1172,7 @@ def normalize(raw: dict[str, Any]) -> dict[str, Any]:
         dune=raw.get("dune"),
         provenance=raw.get("provenance"),
         feature_activation=raw.get("feature_activation"),
+        cluster_software=raw.get("cluster_software"),
         collection_schedule=raw.get("collection_schedule"),
     )
 
@@ -1011,6 +1187,7 @@ def collect(
     with_growth: bool = True,
     with_dune: bool = False,
     previous_snapshot: dict[str, Any] | None = None,
+    block_production_fallbacks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """One-shot Sources → Normalize → Validate without persisting cursor state.
 
@@ -1027,6 +1204,7 @@ def collect(
         with_growth=with_growth,
         with_dune=with_dune,
         previous_snapshot=previous_snapshot,
+        block_production_fallbacks=block_production_fallbacks,
     )
     return snapshot
 
@@ -1042,6 +1220,7 @@ def collect_with_state(
     supply_state: dict[str, Any] | None = None,
     with_dune: bool = False,
     previous_snapshot: dict[str, Any] | None = None,
+    block_production_fallbacks: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     """Validate a snapshot and return, but do not persist, its next cursor."""
     raw = sources(
@@ -1055,6 +1234,7 @@ def collect_with_state(
         supply_state=supply_state,
         with_dune=with_dune,
         previous_snapshot=previous_snapshot,
+        block_production_fallbacks=block_production_fallbacks,
     )
     next_supply_state = raw.pop("_growth_supply_state", None)
     snapshot = pipeline.validate(normalize(raw))
@@ -1124,6 +1304,7 @@ def main() -> int:
             previous = candidate if isinstance(candidate, dict) else None
         except (OSError, json.JSONDecodeError, ValueError):
             previous = None
+    block_production_fallbacks = load_block_production_fallbacks(args.out_dir)
 
     supply_state = None
     if not args.no_growth:
@@ -1144,6 +1325,7 @@ def main() -> int:
             samples=args.samples,
             supply_state=supply_state,
             previous_snapshot=previous,
+            block_production_fallbacks=block_production_fallbacks,
         )
     except CollectionError as error:
         print(f"collection failed: {error}", file=sys.stderr)

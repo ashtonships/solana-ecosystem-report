@@ -1685,6 +1685,14 @@ class TestHtml(unittest.TestCase):
             self.assertNotIn("skip-rate enrichment are intentionally omitted", workbench)
             self.assertNotIn("validator-table-note", workbench)
 
+        snapshot["collection_schedule"] = {"block_production": {
+            "state": "failed", "last_success_at": "2026-08-05T09:00:00+00:00",
+        }}
+        for context in ("desktop", "mobile"):
+            retained = render.render_validator_workbench(snapshot, context)
+            self.assertIn("Latest refresh failed. Last complete production evidence:", retained)
+            self.assertIn("These retained counts are not a new observation.", retained)
+
     def test_completed_epoch_markdown_bounds_human_table_without_mutating_rows(self):
         snapshot = load_fixture()
         snapshot["schema_version"] = 8
@@ -5588,6 +5596,7 @@ class TestPublicObservationBindings(unittest.TestCase):
                 "xstock_indexed_dex_transport_complete",
                 "xstock_indexed_dex_market_coverage",
             ),
+            "Cluster-node software versions": summary(*render.CLUSTER_SOFTWARE_METRICS),
             "Issuer proof of reserves": summary("xstock_proof_of_reserves_coverage"),
             "Solana Data provider ranges": summary(
                 "stablecoin_active_address_provider_count",

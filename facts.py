@@ -1237,6 +1237,25 @@ REPORT_METRICS.update(_report_metric_group(
     ),
 ))
 
+REPORT_METRICS.update(_report_metric_group(
+    source="solana-rpc-getClusterNodes", source_url=SOLANA_RPC_DOCS + "getclusternodes",
+    window="one RPC-observed gossip-node response",
+    collection_method="getClusterNodes; unique returned node pubkeys",
+    caveat="Unweighted nodes known to one RPC endpoint; not validator, stake or client adoption.",
+    rows=tuple(
+        ("cluster_software_" + field, label, ("cluster_software", field), "nodes",
+         "unique node pubkeys returned by the queried RPC", "observed node population", method)
+        for field, label, method in (
+            ("observed_node_count", "RPC-observed cluster nodes", "count unique returned pubkeys"),
+            ("version_reported_node_count", "Nodes reporting a software version", "count nodes with a non-null version"),
+            ("unknown_version_node_count", "Nodes with unknown software version", "count nodes with a null version"),
+            ("other_reported_version_node_count", "Nodes in other reported version groups", "sum version groups beyond the displayed limit"),
+        )
+    ),
+))
+for _cluster_metric in tuple(key for key in REPORT_METRICS if key.startswith("cluster_software_")):
+    REPORT_METRICS[_cluster_metric]["event_time_path"] = ("cluster_software", "observed_at")
+
 PUBLIC_METRICS: dict[str, dict[str, Any]] = {**METRICS, **REPORT_METRICS}
 
 DERIVED_REPORT_METRIC_INPUTS: dict[str, tuple[str, ...]] = {
@@ -2381,6 +2400,17 @@ def _public_fact_metadata(fact: dict[str, Any]) -> dict[str, Any]:
             "source_path": ".".join(str(part) for part in spec["path"]),
             "source_url": spec["source_url"],
         }
+    if metric_id == "cluster_software_version_nodes":
+        return {
+            "name": f"Nodes reporting version {fact.get('subject_id')}",
+            "population": "unique node pubkeys returned by the queried RPC",
+            "denominator": "observed node population", "window": "one getClusterNodes response",
+            "collection_method": "Solana RPC getClusterNodes",
+            "calculation_method": "count nodes with this exact returned version string",
+            "caveat": "Unweighted gossip-node version count, not validator, stake or client adoption.",
+            "value": fact.get("value"), "type": "numeric",
+            "source_path": "cluster_software.versions", "source_url": SOLANA_RPC_DOCS + "getclusternodes",
+        }
     if metric_id in ("economic_source_available", "news_source_available"):
         section = "economics" if metric_id.startswith("economic_") else "news"
         label = coverage.get("label") or fact.get("subject_id")
@@ -2975,6 +3005,21 @@ def dune_activity_facts(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
     return dedupe_facts(observations)
 
 
+def cluster_software_detail_facts(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    section = snapshot.get("cluster_software")
+    if not isinstance(section, dict) or section.get("available") is not True:
+        return []
+    return [{
+        "metric_id": "cluster_software_version_nodes", "subject_id": row["version"],
+        "event_time": section.get("observed_at"), "event_slot": None,
+        "collected_at": snapshot.get("collected_at"), "value": row["node_count"],
+        "unit": "nodes", "basis": "measured", "state": "current",
+        "source": "solana-rpc-getClusterNodes", "source_revision": None,
+        "source_schema": snapshot.get("schema_version"), "quality": None,
+        "coverage": {"version": row["version"]},
+    } for row in section.get("versions", [])]
+
+
 def public_observation_records(
     snapshot: dict[str, Any], history: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
@@ -2988,6 +3033,7 @@ def public_observation_records(
         *validator_detail_facts(observation_snapshot),
         *block_production_detail_facts(source_snapshot(observation_snapshot, "block_production")),
         *source_availability_facts(observation_snapshot),
+        *cluster_software_detail_facts(observation_snapshot),
         *feature_activation_detail_facts(source_snapshot(observation_snapshot, "feature_activation")),
         *dune_activity_facts(source_snapshot(observation_snapshot, "dune")),
     ])

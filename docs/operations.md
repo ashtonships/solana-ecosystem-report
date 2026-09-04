@@ -4,7 +4,7 @@ The production workflow requests runs at minutes 7, 22, 37 and 52 of each UTC ho
 
 ## Source refresh tiers
 
-Core network RPC and approved price collection run on every update. Block activity,
+Core network RPC, the RPC-observed node-version census and approved price collection run on every update. Block activity,
 completed-epoch production and selected feature accounts refresh hourly. Provider
 activity and news refresh every six hours. Selected token supply and Dune refresh
 daily. Endpoint changes force new on-chain collection rather than reusing another

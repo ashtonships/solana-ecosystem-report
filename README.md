@@ -96,6 +96,7 @@ decoding. The default endpoint requires no authentication.
 | `getRecentPerformanceSamples` | Same-window total/non-vote TPS, vote share and slot time |
 | `getSupply` | Total, circulating, and non-circulating SOL |
 | `getVoteAccounts` | Active vs delinquent validators, stake distribution, commissions |
+| `getClusterNodes` | Exact software-version groups for nodes known to the queried RPC; unknown versions retained, no validator-client or stake inference |
 | `getInflationRate` | Current effective total, validator, and foundation inflation rates |
 | `getInflationGovernor` | Initial, terminal, taper, and foundation policy parameters |
 | `getBlockTime` | Wall-clock time of the current slot (depends on `getSlot`) |
