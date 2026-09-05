@@ -45,15 +45,27 @@ history remains in JSON. Markdown bounds the leader-production table to the
 
 ## Quick start
 
-Collect a fresh local candidate and render all three outputs with one shell
-command. The default public RPC is suitable for this bounded verification path,
-not as an implicit production endpoint:
+To inspect the committed report immediately, replay its recorded evidence
+offline. This creates the dashboard, Markdown and JSON without credentials,
+network requests, or changes to snapshots:
+
+```bash
+python3 -B render.py --snapshot snapshots/latest.json --out-dir dist --replay
+open dist/index.html        # macOS — xdg-open on Linux, start on Windows
+```
+
+Replay retains the evidence's original collection time and availability. It is
+a local recorded preview, not a fresh collection or production release.
+
+To collect new evidence and render it, use the bounded keyless public RPC path:
 
 ```bash
 python3 collect.py && python3 render.py
 ```
 
-The equivalent steps, including optional inspection commands, are:
+Public RPC may throttle or fail; the existing recorded replay remains usable.
+Production automation requires an approved endpoint. The equivalent collection
+steps, including optional inspection commands, are:
 
 ```bash
 python3 collect.py          # bounded local RPC, adopted growth + first-party metadata → snapshots/
@@ -195,7 +207,7 @@ Current production defaults keep uncleared sources out of new public candidates.
 | xStocks public API | Defer / externally blocked | API terms need clarification; the adopted on-chain path does not call this API |
 | Firedancer releases | Adopt, metadata/link only | Five official release records; no copied release bodies |
 | SIMD proposal frontmatter | Adopt, metadata/link only | Watched proposal title/status/link only; proposal status is distinct from mainnet activation |
-| Solana News and curated upgrades | Defer / held | No RSS or repository-archive collection; Agave and Solana Status remain the active first-party metadata sources |
+| Solana News and curated upgrades | Defer / held | No RSS or repository-archive collection; Agave, Firedancer, Solana Status and watched SIMD frontmatter remain the adopted metadata sources |
 | Dune activity query | Optional, keyed | Completed UTC daily query results with execution identity, age, row hash and coverage; executions require a durable once-per-day reservation and explicit allowance |
 | X official announcements | Optional, keyed | Four-account recent search, at most 20 posts; finite total/day request reservations precede transport; missing approved remaining allowance pauses paid reads |
 
@@ -617,10 +629,9 @@ ecosystem dashboards.
   Solana Data rows remain held pending separate acceptance.
 - Exact cross-venue tokenized-equity volume remains unavailable. Supply,
   issuance, reserves, AUM, liquidity, and indexed DEX pools are not substitutes.
-- CoinGecko, DeFiLlama, non-adopted Solana Data rows (including Fee Payers),
-  xStocks APIs, Solana News,
-  curated upgrades, and SIMD metadata retain the source decisions and holds
-  listed above.
+- DeFiLlama, non-adopted Solana Data rows (including Fee Payers), xStocks APIs,
+  Solana News and curated upgrades remain held. CoinGecko Demo price and
+  watched SIMD frontmatter use the narrower adopted contracts listed above.
 - Dune and X remain owner-gated; the default path creates no account, requests
   no credential, executes no paid query, and performs no scraping.
 - A release requires one independent local review and, after an approved
