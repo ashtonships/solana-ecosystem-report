@@ -1033,7 +1033,7 @@ class TestHtml(unittest.TestCase):
         self.assertIn("chart-series--total", markup)
         self.assertIn("chart-series--non-vote", markup)
         self.assertIn(
-            ".prototype-page--report .chart-series--non-vote polyline",
+            ".prototype-page--report .sparkline .chart-series--non-vote polyline",
             render.CSS,
         )
 
@@ -2449,7 +2449,9 @@ class TestHtml(unittest.TestCase):
         controller = page.split("<script data-mobile-controller>", 1)[1].split("</script>", 1)[0]
         self.assertEqual(page.count("<span class='development-result-count' data-development-result-count"), 2)
         self.assertIn("role='status' aria-live='polite'", page)
-        self.assertIn("resultCount.textContent = `${visibleCount}", controller)
+        self.assertIn("resultCount.textContent = visibleCount < matchingCount", controller)
+        self.assertIn("`${visibleCount} of ${matchingCount} events`", controller)
+        self.assertIn("`${visibleCount} ${visibleCount === 1 ? 'event' : 'events'}${suffix}`", controller)
         self.assertIn("Upgrade watch unavailable", page)
 
     def test_development_stream_can_switch_between_timeline_and_grid(self):

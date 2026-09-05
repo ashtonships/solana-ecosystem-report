@@ -125,3 +125,21 @@ three successful scheduled cycles after PR #53 remain unproved, and the local
 cycle monitor is paused. Dune/X paid reads, a permitted date-aligned daily Jito
 source, and native iOS interaction verification remain open. The original
 submitted revision and submission receipt are unchanged by these releases.
+
+
+## 2026-09-05 — app-wide interaction polish
+
+- Kept chart sample keyboard input separate from carousel navigation; restored
+  distinct desktop total/non-vote TPS series styling.
+- Kept all matching mobile source groups open during filtering, including
+  empty-search recovery.
+- Added full-sample History keyboard inspection, transformed SVG pointer
+  coordinates, and a keyboard-reachable snapshot picker footer. Preserved
+  selected A/B snapshots across mobile/desktop transitions.
+- Added 12-event progressive activity batches with accurate counts and readable
+  focus order. Project filters, Timeline/Grid and expanded batches now share
+  state across responsive layouts. Every activity record remains in static HTML.
+- Removed the collapsed Methods disclosure's 296px blank area and separated
+  the source-flow return label from its line.
+- Added executable browser interaction checks and full-page light/dark captures
+  across all five routes. See [UI verification](docs/ui-qa/2026-09-05/README.md).

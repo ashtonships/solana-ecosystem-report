@@ -4737,7 +4737,7 @@ CSS = r"""
       stroke-dasharray: 6 4;
     }
 
-    .prototype-page--report .chart-series--non-vote polyline {
+    .prototype-page--report .sparkline .chart-series--non-vote polyline {
       stroke: var(--ink);
       stroke-dasharray: 5 3;
     }
@@ -7609,6 +7609,19 @@ CSS = r"""
       display: flex;
       flex-direction: column;
     }
+
+    .prototype-page--methods details.method-card {
+      display: block;
+      min-height: 0;
+      margin-top: 12px;
+      padding-block: 0;
+    }
+    .prototype-page--methods details.method-card > summary {
+      min-height: 52px;
+      padding-block: 17px;
+      cursor: pointer;
+    }
+    .prototype-page--methods details.method-card[open] { padding-bottom: 18px; }
 
     .prototype-page--methods .method-card .eyebrow {
       margin-bottom: 16px;
@@ -19254,7 +19267,7 @@ def render_source_flow(
     </g>
     <g class='diagram-note'>
       <text text-anchor='middle' x='544' y='164'>deterministic transforms</text><text text-anchor='middle' x='886' y='164'>declared rules + visible gaps</text>
-      <text text-anchor='middle' x='1227' y='164'>HTML · Markdown · JSON</text><text text-anchor='middle' x='886' y='266'>Re-render &amp; reconciliation</text>
+      <text text-anchor='middle' x='1227' y='164'>HTML · Markdown · JSON</text><text text-anchor='middle' x='886' y='248'>Re-render &amp; reconciliation</text>
     </g>
   </svg></div>
   <div class='flow-mobile'>
@@ -20808,7 +20821,12 @@ def render_development_stream(snapshot: dict[str, Any], context: str) -> str:
         "<span><i class='development-source-dot--firedancer'></i>Firedancer</span>"
         "<span><i class='development-source-dot--xnews'></i>X</span>"
         "<span><i class='development-source-dot--news'></i>Solana News</span><span><i class='development-source-dot--simd'></i>SIMD</span><span><i class='development-source-dot--status'></i>Status</span></div>"
-        f"{stream_body}<p class='development-graph-note'>{graph_note}</p>"
+        f"{stream_body}"
+        "<div class='development-controls' data-development-pagination hidden>"
+        "<div class='development-control-group'><div>"
+        f"<button type='button' data-development-more aria-controls='{prefix}-development-events'>"
+        "Show more activity</button></div></div></div>"
+        f"<p class='development-graph-note'>{graph_note}</p>"
         "<div class='development-filter-empty' hidden>No recorded events match this filter.</div></section>"
         f"<ul class='development-freshness' id='{prefix}-development-source-status' "
         f"aria-label='Development source freshness'>{''.join(freshness)}</ul>"
@@ -21859,6 +21877,7 @@ MOBILE_CONTROLLER = r"""
     pulseNext.addEventListener('click', () => goToPulse(pulseIndex + 1));
     pulseDots.forEach((dot, index) => dot.addEventListener('click', () => goToPulse(index)));
     pulseTrack.addEventListener('keydown', (event) => {
+      if (event.target !== pulseTrack || event.defaultPrevented) return;
       if (event.key === 'ArrowLeft') { event.preventDefault(); goToPulse(pulseIndex - 1); }
       if (event.key === 'ArrowRight') { event.preventDefault(); goToPulse(pulseIndex + 1); }
       if (event.key === 'Home') { event.preventDefault(); goToPulse(0); }
@@ -22399,6 +22418,13 @@ MOBILE_CONTROLLER = r"""
   });
 
   const developmentStreams = Array.from(document.querySelectorAll('[data-development-stream]'));
+  const developmentPageSize = 12;
+  const developmentState = {
+    selectedType: 'all', selectedSource: 'all', selectedWindow: 'all',
+    selectedView: 'timeline', visibleLimit: developmentPageSize,
+  };
+  const developmentRenderers = [];
+  const updateDevelopmentStreams = () => developmentRenderers.forEach((renderStream) => renderStream());
   developmentStreams.forEach((stream) => {
     const controls = stream.querySelector('[data-development-controls]');
     const buttons = Array.from(stream.querySelectorAll('[data-development-filter]'));
@@ -22410,19 +22436,28 @@ MOBILE_CONTROLLER = r"""
     const dateGroups = Array.from(stream.querySelectorAll('[data-development-date-group]'));
     const empty = stream.querySelector('.development-filter-empty');
     const resultCount = stream.querySelector('[data-development-result-count]');
+    const pagination = stream.querySelector('[data-development-pagination]');
+    const moreButton = stream.querySelector('[data-development-more]');
     if (!controls || !buttons.length || !eventList || !events.length) return;
-    let selectedType = 'all';
-    let selectedSource = sourceSelect?.value || 'all';
-    let selectedWindow = windowSelect?.value || 'all';
     controls.hidden = false;
-    eventList.dataset.view = 'timeline';
     const developmentAge = (event) => {
       if (event.dataset.developmentAgeDays === '') return null;
       const age = Number(event.dataset.developmentAgeDays);
       return Number.isFinite(age) ? age : null;
     };
     const applyDevelopmentFilters = () => {
+      const {selectedType, selectedSource, selectedWindow, selectedView, visibleLimit} = developmentState;
+      if (sourceSelect) sourceSelect.value = selectedSource;
+      if (windowSelect) windowSelect.value = selectedWindow;
+      eventList.dataset.view = selectedView;
+      buttons.forEach((button) => button.setAttribute(
+        'aria-pressed', String(button.dataset.developmentFilter === selectedType),
+      ));
+      viewButtons.forEach((button) => button.setAttribute(
+        'aria-pressed', String(button.dataset.developmentView === selectedView),
+      ));
       let visibleCount = 0;
+      let matchingCount = 0;
       events.forEach((event) => {
         const age = developmentAge(event);
         const matchesType = selectedType === 'all' || event.dataset.developmentKind === selectedType;
@@ -22433,8 +22468,9 @@ MOBILE_CONTROLLER = r"""
           (selectedWindow === 'older' && age > 90)
         ));
         const matches = matchesType && matchesSource && matchesWindow;
-        event.hidden = !matches;
-        if (matches) visibleCount += 1;
+        if (matches) matchingCount += 1;
+        event.hidden = !matches || matchingCount > visibleLimit;
+        if (!event.hidden) visibleCount += 1;
       });
       dateGroups.forEach((group) => {
         group.hidden = !Array.from(group.querySelectorAll('[data-development-event]')).some(
@@ -22451,34 +22487,47 @@ MOBILE_CONTROLLER = r"""
         activeFilters.hidden = !labels.length;
       }
       if (empty) empty.hidden = visibleCount !== 0;
+      if (pagination) pagination.hidden = visibleCount >= matchingCount;
       if (resultCount) {
         const suffix = stream.classList.contains('development-stream--mobile') ? '' : ' shown';
-        resultCount.textContent = `${visibleCount} ${visibleCount === 1 ? 'event' : 'events'}${suffix}`;
+        resultCount.textContent = visibleCount < matchingCount
+          ? `${visibleCount} of ${matchingCount} events`
+          : `${visibleCount} ${visibleCount === 1 ? 'event' : 'events'}${suffix}`;
       }
     };
+    if (moreButton) moreButton.addEventListener('click', () => {
+      const previouslyVisible = new Set(events.filter((event) => !event.hidden));
+      developmentState.visibleLimit += developmentPageSize;
+      updateDevelopmentStreams();
+      const firstNewEvent = events.find((event) => !event.hidden && !previouslyVisible.has(event));
+      if (firstNewEvent) {
+        const focusTarget = firstNewEvent.querySelector('a, summary') || firstNewEvent;
+        if (focusTarget === firstNewEvent) focusTarget.setAttribute('tabindex', '-1');
+        focusTarget.focus();
+      }
+    });
     if (sourceSelect) sourceSelect.addEventListener('change', () => {
-      selectedSource = sourceSelect.value;
-      applyDevelopmentFilters();
+      developmentState.selectedSource = sourceSelect.value;
+      developmentState.visibleLimit = developmentPageSize;
+      updateDevelopmentStreams();
     });
     if (windowSelect) windowSelect.addEventListener('change', () => {
-      selectedWindow = windowSelect.value;
-      applyDevelopmentFilters();
+      developmentState.selectedWindow = windowSelect.value;
+      developmentState.visibleLimit = developmentPageSize;
+      updateDevelopmentStreams();
     });
     buttons.forEach((button) => button.addEventListener('click', () => {
-      selectedType = button.dataset.developmentFilter || 'all';
-      buttons.forEach((candidate) => candidate.setAttribute(
-        'aria-pressed', candidate === button ? 'true' : 'false',
-      ));
-      applyDevelopmentFilters();
+      developmentState.selectedType = button.dataset.developmentFilter || 'all';
+      developmentState.visibleLimit = developmentPageSize;
+      updateDevelopmentStreams();
     }));
     viewButtons.forEach((button) => button.addEventListener('click', () => {
-      eventList.dataset.view = button.dataset.developmentView || 'timeline';
-      viewButtons.forEach((candidate) => candidate.setAttribute(
-        'aria-pressed', candidate === button ? 'true' : 'false',
-      ));
+      developmentState.selectedView = button.dataset.developmentView || 'timeline';
+      updateDevelopmentStreams();
     }));
-    applyDevelopmentFilters();
+    developmentRenderers.push(applyDevelopmentFilters);
   });
+  updateDevelopmentStreams();
 
   const search = document.getElementById('mobile-source-search');
   const sourceFilters = Array.from(document.querySelectorAll('[data-source-filter]'));
@@ -22515,7 +22564,9 @@ MOBILE_CONTROLLER = r"""
     });
   });
   sourceGroups.forEach((group) => group.addEventListener('toggle', () => {
-    if (group.open) sourceGroups.forEach((other) => { if (other !== group) other.open = false; });
+    const filtering = (search && search.value.trim()) ||
+      sourceFilters.some((button) => button.getAttribute('aria-pressed') === 'true');
+    if (group.open && !filtering) sourceGroups.forEach((other) => { if (other !== group) other.open = false; });
   }));
   const reset = document.querySelector('[data-reset-sources]');
   if (reset) reset.addEventListener('click', () => {
@@ -22574,6 +22625,7 @@ MOBILE_CONTROLLER = r"""
     const wrapRect = wrap.getBoundingClientRect();
     chartPoints.forEach((item) => item.removeAttribute('data-chart-active'));
     point.setAttribute('data-chart-active', '');
+    activeSample = Math.max(0, parseInt(point.dataset.chartSample, 10) - 1);
     if (chartGuide) chartGuide.hidden = true;
     chartTooltip.querySelector('strong').textContent = `${point.dataset.chartSeries} · ${point.dataset.chartValue}`;
     chartTooltip.querySelector('span').textContent = `Recorded sample ${point.dataset.chartSample}`;
@@ -22585,20 +22637,25 @@ MOBILE_CONTROLLER = r"""
     chartTooltip.style.left = `${x}px`;
     chartTooltip.style.top = `${chartTooltip.offsetHeight + 12}px`;
   };
-  const showChartSampleTooltip = (event) => {
+  let activeSample = 0;
+  const showChartSampleTooltip = (event, requestedSample = null) => {
     if (!desktopChart || !chartTooltip || !chartSeriesA.length || !chartSeriesB.length) return;
-    const svgRect = desktopChart.getBoundingClientRect();
     const wrapRect = desktopChart.closest('.chart-wrap').getBoundingClientRect();
     const left = Number(desktopChart.dataset.chartLeft);
     const right = Number(desktopChart.dataset.chartRight);
-    const width = Number(desktopChart.dataset.chartWidth);
-    const chartX = (event.clientX - svgRect.left) * width / svgRect.width;
+    const matrix = desktopChart.getScreenCTM();
+    if (!matrix) return;
+    const count = Math.max(chartSeriesA.length, chartSeriesB.length);
+    const chartX = requestedSample === null ?
+      new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse()).x :
+      left + (right - left) * Math.max(0, Math.min(count - 1, requestedSample)) / Math.max(1, count - 1);
     const position = Math.max(0, Math.min(1, (chartX - left) / (right - left)));
     const indexA = Math.round(position * (chartSeriesA.length - 1));
     const indexB = Math.round(position * (chartSeriesB.length - 1));
     const sameScale = chartSeriesA.length === chartSeriesB.length;
     const guideCount = Math.max(chartSeriesA.length, chartSeriesB.length);
     const guideIndex = sameScale ? indexA : Math.round(position * (guideCount - 1));
+    activeSample = guideIndex;
     const guideX = left + (right - left) * guideIndex / Math.max(1, guideCount - 1);
     const formatValue = (value) => value == null ? 'Missing' : `${Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TPS`;
     chartPoints.forEach((point) => point.removeAttribute('data-chart-active'));
@@ -22613,7 +22670,7 @@ MOBILE_CONTROLLER = r"""
     }
     const halfWidth = chartTooltip.offsetWidth / 2;
     const x = Math.min(wrapRect.width - halfWidth - 8,
-      Math.max(halfWidth + 8, svgRect.left - wrapRect.left + guideX * svgRect.width / width));
+      Math.max(halfWidth + 8, new DOMPoint(guideX, 0).matrixTransform(matrix).x - wrapRect.left));
     chartTooltip.style.left = `${x}px`;
     chartTooltip.style.top = `${chartTooltip.offsetHeight + 12}px`;
   };
@@ -22623,8 +22680,23 @@ MOBILE_CONTROLLER = r"""
     if (chartTooltip) chartTooltip.hidden = true;
   };
   if (desktopChart) {
+    desktopChart.setAttribute('tabindex', '0');
+    desktopChart.setAttribute('aria-description', 'Use Left and Right arrows to inspect recorded samples. Home selects the first; End selects the last.');
     desktopChart.addEventListener('pointermove', showChartSampleTooltip);
-    desktopChart.addEventListener('pointerleave', hideChartTooltip);
+    desktopChart.addEventListener('pointerdown', showChartSampleTooltip);
+    desktopChart.addEventListener('pointerleave', () => {
+      if (!desktopChart.contains(document.activeElement)) hideChartTooltip();
+    });
+    desktopChart.addEventListener('focus', () => showChartSampleTooltip(null, activeSample));
+    desktopChart.addEventListener('blur', hideChartTooltip);
+    desktopChart.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const last = Math.max(chartSeriesA.length, chartSeriesB.length) - 1;
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? last :
+        activeSample + (event.key === 'ArrowRight' ? 1 : -1);
+      showChartSampleTooltip(null, next);
+    });
   }
   chartPoints.forEach((point) => {
     point.addEventListener('focus', () => showChartTooltip(point));
@@ -22760,7 +22832,9 @@ MOBILE_CONTROLLER = r"""
     trigger.setAttribute('aria-expanded', 'true');
     openHistoryPicker = trigger;
     positionHistoryPicker(trigger);
-    historyPicker.focus({preventScroll: true});
+    const selectedOption = historyPicker.querySelector('[aria-selected="true"]') ||
+      historyPicker.querySelector('.mobile-history-picker-option');
+    (selectedOption || historyPicker).focus({preventScroll: true});
   };
   const updateHistory = () => {
     if (!historySelectA || !historySelectB || !historySummary) return;
@@ -22794,12 +22868,14 @@ MOBILE_CONTROLLER = r"""
     const options = Array.from(historyPicker.querySelectorAll('.mobile-history-picker-option:not(:disabled)'));
     const current = options.indexOf(document.activeElement);
     if (event.key === 'Escape') { event.preventDefault(); closeHistoryPicker(true); }
-    if (event.key === 'Tab') closeHistoryPicker();
     if (!options.length || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 :
       (current + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
     options[next].focus();
+  });
+  if (historyPicker) historyPicker.addEventListener('focusout', (event) => {
+    if (openHistoryPicker && !historyPicker.contains(event.relatedTarget)) closeHistoryPicker();
   });
   document.addEventListener('pointerdown', (event) => {
     if (openHistoryPicker && !historyPicker?.contains(event.target) && !openHistoryPicker.contains(event.target)) closeHistoryPicker();
@@ -22816,6 +22892,21 @@ MOBILE_CONTROLLER = r"""
     updateHistory();
   }));
   updateHistory();
+  mobileViewport.addEventListener('change', () => {
+    if (!desktopHistoryControls || !historySelectA || !historySelectB) return;
+    closeHistoryPicker();
+    const desktopA = desktopHistoryControls.querySelector('[data-desktop-history-a]');
+    const desktopB = desktopHistoryControls.querySelector('[data-desktop-history-b]');
+    if (mobileViewport.matches) {
+      historySelectA.value = desktopA.value;
+      historySelectB.value = desktopB.value;
+      updateHistory();
+    } else {
+      desktopA.value = historySelectA.value;
+      desktopB.value = historySelectB.value;
+      desktopB.dispatchEvent(new Event('change'));
+    }
+  });
 
   const signalRails = [];
   signalRails.forEach((rail) => {
