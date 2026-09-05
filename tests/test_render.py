@@ -1438,8 +1438,8 @@ class TestHtml(unittest.TestCase):
                 surface.index("Top validator concentration"),
             )
             self.assertIn("class='validator-metric-carousel chart-carousel'", surface)
-            self.assertEqual(surface.count("data-validator-metric-card data-pulse-card"), 4)
-            self.assertEqual(surface.count("data-validator-metric-dot="), 4)
+            self.assertEqual(surface.count("data-validator-metric-card data-pulse-card"), 7)
+            self.assertEqual(surface.count("data-validator-metric-dot="), 7)
             self.assertIn("data-pulse-track tabindex='0'", surface)
             self.assertIn("data-pulse-previous aria-label='Previous validator metric'", surface)
             self.assertIn("data-pulse-next aria-label='Next validator metric'", surface)
@@ -2397,7 +2397,7 @@ class TestHtml(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertEqual(page.count("data:image/webp;base64,"), len(render.EDITORIAL_ART_ASSETS))
+        self.assertEqual(page.count("data:image/webp;base64,"), 2)
         self.assertLess(
             sum(path.stat().st_size for path, _expected_hash in render.EDITORIAL_ART_ASSETS.values()),
             600_000,
@@ -2406,7 +2406,10 @@ class TestHtml(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), expected_hash)
                 self.assertIn(expected_hash, notice)
-                self.assertEqual(page.count(f".project-editorial__art--{key}{{"), 1)
+                self.assertEqual(
+                    page.count(f".project-editorial__art--{key}{{"),
+                    int(key in re.findall(r"class='[^']*\bproject-editorial__art--([a-z-]+)", page)),
+                )
         self.assertIn("publisher images are not scraped or hotlinked", page)
 
     def test_desktop_about_snapshot_places_art_left_and_copy_right(self):
@@ -8029,3 +8032,171 @@ class TestSeptemberRendererRecovery(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRecoveredValidatorCharts(unittest.TestCase):
+    @staticmethod
+    def snapshot():
+        snapshot = load_fixture()
+        snapshot["schema_version"] = 8
+        rows = [
+            {"identity": f"node-{index}", "leader_slots": 1000,
+             "skipped_slots": skipped, "blocks_produced": 1000 - skipped,
+             "skip_rate": skipped / 1000, "vote_identity_matched": True}
+            for index, skipped in enumerate((0, 1, 5, 10, 50, 1000))
+        ]
+        snapshot["validators"].update({
+            "available": True, "active_count": 3,
+            "all_validators": [
+                {"vote_account": "vote-zero", "identity": "node-zero", "state": "current", "commission": 0, "stake_sol": 0},
+                {"vote_account": "vote-positive", "identity": "node-positive", "state": "current", "commission": 100, "stake_sol": 1000},
+                {"vote_account": "vote-unknown", "identity": "node-unknown", "state": "current", "commission": 5, "stake_sol": None},
+            ],
+            "block_production": {
+                "available": True, "epoch": 123, "first_slot": 1, "last_slot": 6000,
+                "leader_slots": 6000, "skipped_slots": 1066, "blocks_produced": 4934,
+                "skip_rate": 1066 / 6000, "validators": rows,
+            },
+        })
+        return snapshot
+
+    def test_skip_distribution_has_exact_zero_and_non_overlapping_positive_bins(self):
+        snapshot = self.snapshot()
+        distribution = render.validator_skip_distribution(snapshot)
+        self.assertEqual(distribution["counts"], [1, 1, 1, 1, 1, 1])
+        # A real zero-leader identity is excluded, never called a zero skip rate.
+        snapshot["validators"]["block_production"]["validators"].append({
+            "identity": "not-scheduled", "leader_slots": 0, "skipped_slots": 0,
+            "blocks_produced": 0, "skip_rate": None,
+        })
+        self.assertEqual(render.validator_skip_distribution(snapshot)["counts"], [1] * 6)
+        snapshot["validators"]["block_production"]["validators"][0]["skip_rate"] = None
+        self.assertIsNone(render.validator_skip_distribution(snapshot))
+
+    def test_skip_distribution_rejects_partial_or_duplicate_identity_population(self):
+        snapshot = self.snapshot()
+        rows = snapshot["validators"]["block_production"]["validators"]
+        rows.pop()
+        self.assertIsNone(render.validator_skip_distribution(snapshot))
+        snapshot = self.snapshot()
+        snapshot["validators"]["block_production"]["validators"][1]["identity"] = "node-0"
+        self.assertIsNone(render.validator_skip_distribution(snapshot))
+
+    def test_scatter_keeps_zero_stake_separate_and_excludes_unknown(self):
+        cards = render.render_validator_evidence_cards(self.snapshot(), [], None)
+        scatter = cards[2][1]
+        self.assertIn("data-stake-state='zero'", scatter)
+        self.assertIn("data-stake-state='positive'", scatter)
+        self.assertIn("vote-zero", scatter)
+        self.assertIn("vote-positive", scatter)
+        self.assertNotIn("vote-unknown", scatter)
+        self.assertIn("Missing values are not plotted", scatter)
+        snapshot = self.snapshot()
+        snapshot["validators"]["active_count"] = 4
+        self.assertIn("complete current vote-account population", render.render_validator_evidence_cards(snapshot, [], None)[2][1])
+        self.assertNotIn("data-stake-state", render.render_validator_evidence_cards(snapshot, [], None)[2][1])
+        for source_state in ({"available": False}, {"stale": True}, {"source_state": "last_known_good"}):
+            with self.subTest(source_state=source_state):
+                snapshot = self.snapshot()
+                snapshot["validators"].update(source_state)
+                scatter = render.render_validator_evidence_cards(snapshot, [], None)[2][1]
+                self.assertNotIn("data-stake-state", scatter)
+                self.assertIn("Commission and stake unavailable", scatter)
+
+    def test_history_breaks_at_missing_source_observations(self):
+        history = []
+        for index in range(5):
+            snapshot = self.snapshot()
+            snapshot["collected_at"] = f"2026-08-05T0{index}:00:00Z"
+            snapshot["validators"]["active_stake_sol"] = 100 + index
+            history.append(snapshot)
+        history[2]["validators"]["available"] = False
+        card = render.render_validator_evidence_cards(history[-1], history, None)[1][1]
+        self.assertEqual(card.count("data-stake-history-run"), 2)
+        self.assertIn("Unavailable / no new observation", card)
+        self.assertNotIn("102 SOL", card)
+
+    def test_editorial_css_only_embeds_selected_story_categories(self):
+        snapshot = editorial_fixture()
+        snapshot["news"]["items"] = snapshot["news"]["items"][:4]
+        snapshot["news"]["featured_item_id"] = "github-release:1"
+        css = render.editorial_art_css(snapshot)
+        self.assertIn(".project-editorial__art--hero-release{", css)
+        self.assertIn(".project-editorial__art--release{", css)
+        self.assertIn(".project-editorial__art--network{", css)
+        self.assertNotIn(".project-editorial__art--ecosystem{", css)
+        snapshot["news"]["items"][0]["category"] = "ecosystem"
+        self.assertIn(".project-editorial__art--ecosystem{", render.editorial_art_css(snapshot))
+
+    def test_skip_counts_and_scatter_pairs_bind_to_their_exact_observations(self):
+        def configure(snapshot):
+            snapshot["validators"] = self.snapshot()["validators"]
+        history, observations, indexes = TestPublicObservationBindings.observation_fixture(configure_latest=configure)
+        snapshot = history[-1]
+        cards = render.render_validator_evidence_cards(snapshot, history, indexes)
+        records = [record for record in observations if record["metric_id"].startswith("validator_skip_bucket_")]
+        self.assertEqual(len(records), 6)
+        self.assertEqual([record["value"] for record in records], [1] * 6)
+        for record in records:
+            self.assertEqual(len(record["input_observation_ids"]), 12)
+            self.assertIn(record["observation_id"], cards[0][1])
+        for metric in ("validator_commission_pct", "validator_stake_sol"):
+            record = indexes["subject"][(metric, "vote-zero", None, snapshot["collected_at"])]
+            self.assertIn(record["observation_id"], cards[2][1])
+        with self.assertRaisesRegex(ValueError, "skip-rate bucket has no public observation"):
+            broken = deepcopy(indexes)
+            del broken["derived"][("validator_skip_bucket_zero_count", snapshot["collected_at"])]
+            render.render_validator_evidence_cards(snapshot, history, broken)
+
+    def test_skip_rates_accept_source_rounding_but_bucket_exact_slot_ratios(self):
+        snapshot = self.snapshot()
+        row = snapshot["validators"]["block_production"]["validators"][1]
+        row.update(leader_slots=1880, skipped_slots=4, skip_rate=0.00212766)
+        snapshot["validators"]["block_production"].update(leader_slots=6880, skipped_slots=1069)
+        self.assertEqual(render.validator_skip_distribution(snapshot)["counts"], [1, 0, 2, 1, 1, 1])
+
+    def test_recorded_reproduction_command_uses_replay(self):
+        page = render.render_html(load_fixture())
+        command = re.search(r"aria-label='Local reproduction command'><code>(.*?)</code>", page, re.S).group(1)
+        self.assertIn("--replay", command)
+
+    def test_small_positive_stake_is_not_rounded_into_zero_in_inspection(self):
+        snapshot = self.snapshot()
+        snapshot["validators"]["all_validators"][1]["stake_sol"] = 0.000000001
+        scatter = render.render_validator_evidence_cards(snapshot, [], None)[2][1]
+        self.assertIn("1e-09 SOL", scatter)
+        self.assertIn("<td>1e-09</td>", scatter)
+        self.assertEqual(scatter.count("data-stake-state='zero'"), 1)
+        self.assertEqual(scatter.count("data-stake-state='positive'"), 1)
+
+    def test_histogram_includes_identities_beyond_the_ranked_table_limit(self):
+        snapshot = self.snapshot()
+        production = snapshot["validators"]["block_production"]
+        production["validators"] = [
+            dict(production["validators"][0], identity=f"producer-{index}")
+            for index in range(120)
+        ]
+        production.update(leader_slots=120000, skipped_slots=0)
+        self.assertEqual(render.validator_skip_distribution(snapshot)["counts"], [120, 0, 0, 0, 0, 0])
+        histogram = render.render_validator_evidence_cards(snapshot, [], None)[0][1]
+        self.assertEqual(histogram.count("display:none"), 5)
+
+    def test_recovered_chart_marks_contrast_in_both_themes(self):
+        self.assertRegex(render.CSS, r"\.validator-evidence-line \{[^}]*stroke:var\(--super-purple\)")
+        self.assertRegex(render.CSS, r"\.validator-evidence-point \{[^}]*fill:var\(--super-purple\); fill-opacity:1;")
+        self.assertRegex(render.CSS, r"\.validator-workbench \.validator-commission-bars\.validator-skip-bars \.validator-commission-bar i \{ background:var\(--super-purple\); \}")
+
+        def theme_colors(token):
+            return re.search(re.escape(token) + r": light-dark\((#[0-9a-f]{6}), (#[0-9a-f]{6})\)", render.CSS).groups()
+
+        def luminance(color):
+            channels = [int(color[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+            channels = [channel / 12.92 if channel <= .04045 else ((channel + .055) / 1.055) ** 2.4 for channel in channels]
+            return sum(channel * weight for channel, weight in zip(channels, (.2126, .7152, .0722)))
+
+        # Desktop cards, mobile cards, and histogram tracks use these actual tokens.
+        for background in ("--prototype-subtle", "--prototype-paper", "--prototype-subtle-strong"):
+            for theme, (mark, surface) in enumerate(zip(theme_colors("--super-purple"), theme_colors(background))):
+                values = sorted((luminance(mark), luminance(surface)))
+                with self.subTest(background=background, theme=theme):
+                    self.assertGreaterEqual((values[1] + .05) / (values[0] + .05), 3)
