@@ -2503,6 +2503,52 @@ class TestWorkflowGateCoverage(unittest.TestCase):
         self.assertIn('echo "run_timestamp=$run_timestamp" >> "$GITHUB_OUTPUT"', update)
         self.assertIn("Record release id for the smoke check", update)
 
+    def test_bootstrap_exports_verified_archival_release_metadata(self):
+        import os
+        import textwrap
+
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        bootstrap = text.split("  bootstrap:", 1)[1].split("\n  deploy:", 1)[0]
+        self.assertIn("run_timestamp: ${{ steps.release_metadata.outputs.run_timestamp }}", bootstrap)
+        self.assertIn("release_id: ${{ steps.release_metadata.outputs.release_id }}", bootstrap)
+        self.assertLess(bootstrap.index("verify_release.py verify-package"),
+                        bootstrap.index("- id: release_metadata"))
+        step = bootstrap.split("- id: release_metadata", 1)[1]
+        script = textwrap.dedent(step.split("python3 - <<'PY'\n", 1)[1].split("\n          PY", 1)[0])
+        release = {"generated_at": "2026-08-31T19:54:16+00:00", "release_id": "archival-release"}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "output"
+            with patch.dict(os.environ, {"GITHUB_OUTPUT": str(output)}), \
+                    patch.object(Path, "read_text", return_value=json.dumps({"release": release})):
+                exec(compile(script, "bootstrap-metadata", "exec"), {})
+            self.assertEqual(output.read_text(),
+                             "run_timestamp=2026-08-31T19:54:16+00:00\nrelease_id=archival-release\n")
+
+    def test_smoke_retries_old_cdn_release_but_rejects_persistent_mismatch(self):
+        import os
+        import textwrap
+
+        deploy = self.WORKFLOW.read_text().split("  deploy:", 1)[1]
+        script = textwrap.dedent(deploy.split("python3 - <<'PY'\n", 1)[1].split("\n          PY", 1)[0])
+        stamp = "2026-09-04T23:00:00+00:00"
+        current = {"release": {"generated_at": stamp, "release_id": "expected"},
+                   "observations": [{}]}
+        old = copy.deepcopy(current)
+        old["release"]["release_id"] = "previous"
+        for responses, succeeds in (([old, current], True), ([old] * 6, False)):
+            with self.subTest(succeeds=succeeds), patch.dict(os.environ, {
+                "REPORT_URL": "https://example.com/report", "RUN_TIMESTAMP": stamp,
+                "SMOKE_MAX_AGE_SECONDS": "600", "RELEASE_ID": "expected",
+            }), patch("urllib.request.urlopen", side_effect=[
+                io.BytesIO(json.dumps(payload).encode()) for payload in responses
+            ]) as fetch, patch("time.sleep"), redirect_stdout(io.StringIO()):
+                if succeeds:
+                    exec(compile(script, "deploy-smoke", "exec"), {})
+                else:
+                    with self.assertRaisesRegex(SystemExit, "does not match"):
+                        exec(compile(script, "deploy-smoke", "exec"), {})
+                self.assertEqual(fetch.call_count, len(responses))
+
     def test_deploy_smoke_check_binds_hosted_artifact_to_the_run(self):
         text = self.WORKFLOW.read_text(encoding="utf-8")
         deploy = text.split("  deploy:", 1)[1]
