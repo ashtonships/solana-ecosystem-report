@@ -14861,6 +14861,7 @@ CSS = r"""
     }
 
     .report-ticker__viewport {
+      position: relative;
       display: flex;
       align-items: center;
       flex: 1 1 auto;
@@ -17787,7 +17788,7 @@ def render_validator_evidence_cards(
             for tick in ticks
         ) if positive else ""
         scatter_markup = (
-            "<svg class='validator-evidence-chart' viewBox='0 0 420 230' role='img' aria-label='Commission versus activated stake by current vote account; positive stake uses a logarithmic axis and zero stake has a separate rail'>"
+            "<svg class='validator-evidence-chart' viewBox='-20 0 440 230' role='img' aria-label='Commission versus activated stake by current vote account; positive stake uses a logarithmic axis and zero stake has a separate rail'>"
             f"{grid}<line x1='66' x2='404' y1='188' y2='188' class='validator-evidence-grid'/><text x='60' y='192' text-anchor='end'>Zero SOL</text>{''.join(dots)}"
             + "".join(f"<text x='{66 + 3.38 * value:.2f}' y='211' text-anchor='middle'>{value}%</text>" for value in (0, 25, 50, 75, 100))
             + "<text x='235' y='228' text-anchor='middle'>Commission</text></svg>"

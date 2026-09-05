@@ -4865,6 +4865,7 @@ class TestFormatting(unittest.TestCase):
 
     def test_mobile_ticker_is_anchored_below_the_header_and_keeps_motion(self):
         page = render.render_html(load_fixture())
+        self.assertIn(".report-ticker__viewport {\n      position: relative;", render.CSS)
         self.assertIn("--mobile-topbar-height: 52px", page)
         self.assertIn(".mobile-topbar { position: relative;", page)
         self.assertIn("top:0;", page)
