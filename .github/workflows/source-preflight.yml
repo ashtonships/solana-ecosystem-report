@@ -1,0 +1,117 @@
+name: Private source preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_key:
+        description: Ephemeral RSA 4096 public key in PEM format; private key stays local
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  dune-usage:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Encrypt credit-free Dune usage metadata
+        env:
+          DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}
+          PREFLIGHT_PUBLIC_KEY: ${{ inputs.public_key }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          from datetime import date, datetime, timezone
+          import json
+          import math
+          import os
+          from pathlib import Path
+          import subprocess
+          import tempfile
+          import urllib.request
+
+          MAX_RESPONSE_BYTES = 16384
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+
+          def main():
+              api_key = os.environ.pop("DUNE_API_KEY", "")
+              public_key = os.environ.pop("PREFLIGHT_PUBLIC_KEY", "")
+              try:
+                  if not api_key or not public_key.startswith("-----BEGIN PUBLIC KEY-----") or len(public_key) > 2048:
+                      raise ValueError("configuration")
+                  with tempfile.TemporaryDirectory() as directory:
+                      key_path = Path(directory) / "recipient.pem"
+                      key_path.write_text(public_key, encoding="ascii")
+                      inspected = subprocess.run(
+                          ["openssl", "pkey", "-pubin", "-in", str(key_path), "-text_pub", "-noout"],
+                          capture_output=True, check=True, timeout=5,
+                      )
+                      if not inspected.stdout.startswith(b"Public-Key: (4096 bit)"):
+                          raise ValueError("recipient")
+                      # Credit-free: https://docs.dune.com/api-reference/usage/endpoint/get-usage
+                      request = urllib.request.Request(
+                          "https://api.dune.com/api/v1/usage", data=b"{}", method="POST",
+                          headers={"X-Dune-API-Key": api_key, "Content-Type": "application/json"},
+                      )
+                      opener = urllib.request.build_opener(NoRedirect())
+                      with opener.open(request, timeout=15) as response:
+                          raw = response.read(MAX_RESPONSE_BYTES + 1)
+                      if len(raw) > MAX_RESPONSE_BYTES:
+                          raise ValueError("response limit")
+                      payload = json.loads(raw)
+                      if not isinstance(payload, dict):
+                          raise ValueError("response shape")
+                      periods = payload.get("billing_periods", payload.get("billingPeriods"))
+                      if not isinstance(periods, list):
+                          raise ValueError("periods")
+                      today = datetime.now(timezone.utc).date()
+                      current = []
+                      for period in periods:
+                          if not isinstance(period, dict):
+                              raise ValueError("period")
+                          start = date.fromisoformat(period["start_date"])
+                          end = date.fromisoformat(period["end_date"])
+                          if start >= end:
+                              raise ValueError("period dates")
+                          # End-date inclusivity is undocumented; reject an ending period on rollover.
+                          if start <= today < end:
+                              current.append(period)
+                      if len(current) != 1:
+                          raise ValueError("current period")
+                      period = current[0]
+                      for field in ("credits_used", "credits_included"):
+                          value = period[field]
+                          if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+                              raise ValueError("credits")
+                      summary = json.dumps({
+                          "observed_on": today.isoformat(),
+                          "start_date": period["start_date"],
+                          "end_date": period["end_date"],
+                          "credits_used": period["credits_used"],
+                          "credits_included": period["credits_included"],
+                      }, separators=(",", ":"), allow_nan=False).encode("ascii")
+                      if len(summary) >= 400:
+                          raise ValueError("summary limit")
+                      encrypted = subprocess.run(
+                          ["openssl", "pkeyutl", "-encrypt", "-pubin", "-inkey", str(key_path),
+                           "-pkeyopt", "rsa_padding_mode:oaep", "-pkeyopt", "rsa_oaep_md:sha256"],
+                          input=summary, capture_output=True, check=True, timeout=5,
+                      )
+                      if len(encrypted.stdout) != 512:
+                          raise ValueError("ciphertext length")
+                      print("ciphertext:" + base64.b64encode(encrypted.stdout).decode("ascii"))
+                  print("Source preflight completed.")
+                  return 0
+              except Exception:
+                  print("Source preflight failed; no account metadata disclosed.")
+                  return 1
+
+          if __name__ == "__main__":
+              raise SystemExit(main())
+          PY
