@@ -672,7 +672,7 @@ class TestReleaseVerifier(unittest.TestCase):
                 ):
                     verify_release.verify_artifacts(samples, data)
 
-    def test_required_routes_carousel_rasters_and_csp_cannot_disappear(self):
+    def test_required_routes_carousel_rasters_and_csp_cannot_change(self):
         cases = (
             ("id='project'", "id='removed'", "project route anchor"),
             ('<meta http-equiv="Content-Security-Policy"', '<meta data-removed="csp"',
@@ -680,7 +680,7 @@ class TestReleaseVerifier(unittest.TestCase):
             ("data-pulse-track", "data-removed-pulse-track", "Overview chart carousel"),
             ("data:image/png;base64,", "data:image/gif;base64,",
              "Project raster illustrations"),
-            ("data:image/webp;base64,", "data:image/gif;base64,",
+            ("</style>", "/* data:image/webp;base64, */</style>",
              "Project editorial imagery"),
         )
         for old, new, message in cases:

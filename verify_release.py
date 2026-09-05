@@ -1028,7 +1028,8 @@ def verify_artifacts(
     expected_pngs = 2 + len(render.used_release_art_tags(data["snapshot"]))
     require(html_text.count("data:image/png;base64,") == expected_pngs,
             "HTML omits pinned Project raster illustrations")
-    require(html_text.count("data:image/webp;base64,") == len(render.EDITORIAL_ART_ASSETS),
+    expected_webps = render.editorial_art_css(data["snapshot"]).count("data:image/webp;base64,")
+    require(html_text.count("data:image/webp;base64,") == expected_webps,
             "HTML omits pinned Project editorial imagery")
     require("data-content-key='project'" in html_text,
             "HTML omits the Project editorial surface")

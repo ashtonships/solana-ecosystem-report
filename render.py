@@ -1091,7 +1091,21 @@ def about_recorded_art_css() -> str:
 def editorial_art_css(snapshot: dict[str, Any] | None = None) -> str:
     """Embed reviewed editorial illustrations without runtime requests."""
     rules = []
+    used_keys = set(EDITORIAL_ART_ASSETS)
+    if snapshot is not None:
+        items, featured_id = project_editorial_items(snapshot)
+        featured = next((item for item in items if item.get("id") == featured_id), None)
+        supporting = project_editorial_supporting(items, featured_id)
+        placements = [(item, "release") for item in ([featured] if featured else []) + supporting]
+        if featured:
+            placements.append((featured, "hero-release"))
+        used_keys = {
+            release_key if item.get("category") == "release" else project_editorial_art_key(item)
+            for item, release_key in placements if not project_editorial_release_tag(item)
+        }
     for key, (path, expected_hash) in EDITORIAL_ART_ASSETS.items():
+        if key not in used_keys:
+            continue
         artwork = path.read_bytes()
         if hashlib.sha256(artwork).hexdigest() != expected_hash:
             raise ValueError(f"embedded editorial artwork {key} does not match its pinned hash")
@@ -3420,6 +3434,21 @@ def render_markdown(
 # ── HTML ─────────────────────────────────────────────────────────────────────
 
 CSS = r"""
+    .validator-workbench .validator-evidence-chart { display:block; width:100%; height:auto; margin-top:12px; overflow:visible; }
+    .validator-workbench .validator-evidence-chart text { fill:var(--muted); font-size:14px; font-family:inherit; }
+    .validator-evidence-grid { stroke:var(--rule); stroke-width:1; }
+    .validator-evidence-line { fill:none; stroke:var(--super-purple); stroke-width:2.5; }
+    .validator-evidence-point { fill:var(--super-purple); fill-opacity:1; }
+    .validator-workbench .validator-commission-bars.validator-skip-bars { grid-template-columns:repeat(5,minmax(0,1fr)); }
+    .validator-workbench .validator-skip-bars small { overflow-wrap:anywhere; }
+    .validator-workbench .validator-commission-bars.validator-skip-bars .validator-commission-bar i { background:var(--super-purple); }
+    .validator-chart-evidence { margin-top:12px; font-size:11px; }
+    .validator-chart-evidence summary { cursor:pointer; padding:10px 0; }
+    .validator-chart-evidence > div { max-height:240px; overflow:auto; }
+    .validator-chart-evidence table { width:100%; font-size:10px; text-align:left; }
+    .validator-chart-evidence th,.validator-chart-evidence td { padding:6px; border-bottom:1px solid var(--rule); }
+    .validator-chart-evidence code { overflow-wrap:anywhere; font-size:9px; }
+
     [data-desktop-history-panel][hidden], [data-desktop-history-controls][hidden] { display:none; }
     .desktop-history-picker { display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; margin-bottom:20px; }
     .desktop-history-picker label { display:grid; gap:7px; font-size:12px; font-weight:600; }
@@ -14832,6 +14861,7 @@ CSS = r"""
     }
 
     .report-ticker__viewport {
+      position: relative;
       display: flex;
       align-items: center;
       flex: 1 1 auto;
@@ -17601,9 +17631,179 @@ def render_growth_workbench(
     )
 
 
+VALIDATOR_SKIP_BUCKETS = (
+    ("zero", "0%", 0.0, 0.0),
+    ("to_point_one", "(0, 0.1]%", 0.0, 0.001),
+    ("to_point_five", "(0.1, 0.5]%", 0.001, 0.005),
+    ("to_one", "(0.5, 1]%", 0.005, 0.01),
+    ("to_five", "(1, 5]%", 0.01, 0.05),
+    ("to_hundred", "(5, 100]%", 0.05, 1.0),
+)
+
+
+def validator_skip_distribution(snapshot: dict[str, Any]) -> dict[str, Any] | None:
+    """Bucket the complete production-identity population, never ranked rows."""
+    if not detect.source_eligible(snapshot, "validators"):
+        return None
+    production = recorded_block_production(snapshot)
+    rows = production.get("validators", [])
+    if not rows or any(not isinstance(row, dict) for row in rows):
+        return None
+    identities = [row.get("identity") for row in rows]
+    if any(not isinstance(identity, str) or not identity for identity in identities) or len(set(identities)) != len(rows):
+        return None
+    for row in rows:
+        leader, skipped, rate = row.get("leader_slots"), row.get("skipped_slots"), row.get("skip_rate")
+        if (not isinstance(leader, int) or isinstance(leader, bool) or leader < 0
+                or not isinstance(skipped, int) or isinstance(skipped, bool) or not 0 <= skipped <= leader):
+            return None
+        if leader and (not is_number(rate) or not math.isclose(rate, skipped / leader, abs_tol=1e-8)):
+            return None
+    if (sum(row["leader_slots"] for row in rows) != production.get("leader_slots")
+            or sum(row["skipped_slots"] for row in rows) != production.get("skipped_slots")):
+        return None
+    scheduled = [row for row in rows if row["leader_slots"] > 0]
+    counts = [
+        sum(row["skipped_slots"] == 0 if key == "zero" else low < row["skipped_slots"] / row["leader_slots"] <= high for row in scheduled)
+        for key, _, low, high in VALIDATOR_SKIP_BUCKETS
+    ]
+    return {"rows": rows, "counts": counts}
+
+
+def render_validator_evidence_cards(
+    snapshot: dict[str, Any], history: list[dict[str, Any]],
+    observation_indexes: dict[str, dict[tuple[Any, ...], dict[str, Any]]] | None,
+) -> list[tuple[str, str]]:
+    """Three recorded-evidence charts shared by the desktop and mobile carousel."""
+    snapshot_at = str(snapshot.get("collected_at"))
+    unavailable = "<p class='validator-component-unavailable'>{}</p>"
+    distribution = validator_skip_distribution(snapshot)
+    if distribution is None:
+        skip_markup = unavailable.format("Distribution unavailable — complete identity-level production evidence is required.")
+    else:
+        counts = distribution["counts"]
+        bars = []
+        for (key, label, _, _), count in zip(VALIDATOR_SKIP_BUCKETS, counts):
+            record = observation_indexes["derived"].get((f"validator_skip_bucket_{key}_count", snapshot_at)) if observation_indexes is not None else None
+            if observation_indexes is not None and record is None:
+                raise ValueError(f"skip-rate bucket has no public observation: {key}")
+            binding = observation_ids_attribute([record["observation_id"]]) if record else ""
+            if key == "zero":
+                zero_markup = f"<p class='validator-component-headline'{binding}>{count:,} <span>identities with zero skips</span></p>"
+                continue
+            height = 100 * count / (max(counts[1:], default=0) or 1)
+            bars.append(
+                f"<li{binding}><strong>{count:,}</strong><span class='validator-commission-bar'>"
+                f"<i style='--bucket-height:{height:.2f}%;display:{'block' if count else 'none'}'></i></span>"
+                f"<small>{label}</small></li>"
+            )
+        production = recorded_block_production(snapshot)
+        epoch_binding = summary_observation_attribute(observation_indexes, snapshot_at, ("block_production_epoch",))
+        skip_markup = (
+            f"{zero_markup}<ol class='validator-commission-bars validator-skip-bars'>{''.join(bars)}</ol>"
+            f"<p class='validator-component-note'{epoch_binding}>Completed epoch {fmt_id(production.get('epoch'))}. "
+            "Positive skip rates only in the histogram; each bar counts production identities, not vote accounts. "
+            "Bins include their upper bound. Identities without scheduled leader slots are excluded.</p>"
+        )
+        clock = (snapshot.get("collection_schedule") or {}).get("block_production", {})
+        if clock.get("state") in ("failed", "reused"):
+            skip_markup += (
+                "<p class='validator-component-note'>Retained completed-epoch evidence; this refresh is not a new production observation. "
+                f"Last complete collection: {html.escape(timestamp_label(clock.get('last_success_at')))}.</p>"
+            )
+
+    spec = {"key": "active_stake_sol"}
+    points = charts_module.extract(history or [snapshot], spec)
+    present = [point for point in points if is_number(point["value"])]
+    history_markup = unavailable.format("Active-stake history unavailable — no eligible source observations.")
+    if present:
+        low, high, ticks, step = charts_module.nice_axis(min(p["value"] for p in present), max(p["value"] for p in present))
+        start, end = points[0]["t"], points[-1]["t"]
+        def history_x(point: dict[str, Any]) -> float:
+            return 66 + 338 * (point["t"] - start) / (end - start or 1)
+        def history_y(point: dict[str, Any]) -> float:
+            return 20 + 160 * (high - point["value"]) / (high - low or 1)
+        grid = "".join(
+            f"<line x1='66' x2='404' y1='{20 + 160 * (high - tick) / (high - low or 1):.2f}' y2='{20 + 160 * (high - tick) / (high - low or 1):.2f}' class='validator-evidence-grid'/>"
+            f"<text x='60' y='{24 + 160 * (high - tick) / (high - low or 1):.2f}' text-anchor='end'>{html.escape(label)}</text>"
+            for tick, label in zip(ticks, charts_module.tick_labels(ticks, step))
+        )
+        runs = []
+        for run in charts_module.segments(points):
+            binding = observation_ids_attribute([
+                observation_indexes["summary"][("active_stake_sol", point["at"])]["observation_id"]
+                for point in run
+            ]) if observation_indexes is not None else ""
+            path = " ".join(f"{'M' if index == 0 else 'L'}{history_x(point):.2f},{history_y(point):.2f}" for index, point in enumerate(run))
+            if len(run) > 1:
+                runs.append(f"<path data-stake-history-run{binding} d='{path}' class='validator-evidence-line'/>")
+            else:
+                runs.append(f"<circle{binding} cx='{history_x(run[0]):.2f}' cy='{history_y(run[0]):.2f}' r='3' class='validator-evidence-point'/>")
+        table_rows = []
+        for point in points:
+            binding = summary_observation_attribute(observation_indexes, point["at"], ("active_stake_sol",))
+            value = f"{point['value']:,} SOL" if is_number(point["value"]) else "Unavailable / no new observation"
+            table_rows.append(f"<tr{binding}><th scope='row'>{html.escape(point['at'])}</th><td>{value}</td></tr>")
+        history_markup = (
+            "<svg class='validator-evidence-chart' viewBox='0 0 420 215' role='img' aria-label='Recorded active stake over time; gaps indicate missing or ineligible observations'>"
+            f"{grid}{''.join(runs)}<text x='66' y='206'>{html.escape(charts_module.fmt_time(start))}</text>"
+            f"<text x='404' y='206' text-anchor='end'>{html.escape(charts_module.fmt_time(end))} UTC</text></svg>"
+            "<p class='validator-component-note'>Recorded activated stake in SOL. The vertical axis follows the observed range. "
+            "Missing and ineligible source observations break the line; no interpolation across collection gaps.</p>"
+            "<details class='validator-chart-evidence'><summary>Inspect recorded stake history</summary>"
+            f"<div tabindex='0' role='region' aria-label='Recorded stake history values'><table><thead><tr><th>Recorded UTC</th><th>Active stake</th></tr></thead><tbody>{''.join(table_rows)}</tbody></table></div></details>"
+        )
+
+    validators = snapshot.get("validators", {})
+    rows = [row for row in validators.get("all_validators", [])
+            if isinstance(row, dict) and row.get("state") == "current"] \
+        if detect.source_eligible(snapshot, "validators") else []
+    accounts = [row.get("vote_account") for row in rows]
+    complete = (isinstance(validators.get("active_count"), int) and not isinstance(validators.get("active_count"), bool)
+                and len(rows) == validators["active_count"] and all(isinstance(account, str) and account for account in accounts)
+                and len(set(accounts)) == len(accounts))
+    scatter_rows = [row for row in rows if is_number(row.get("stake_sol")) and row["stake_sol"] >= 0
+                    and is_number(row.get("commission")) and 0 <= row["commission"] <= 100] if complete else []
+    scatter_markup = unavailable.format("Commission and stake unavailable — the complete current vote-account population with recorded numeric pairs is required.")
+    if scatter_rows:
+        positive = [row["stake_sol"] for row in scatter_rows if row["stake_sol"] > 0]
+        log_low = math.floor(math.log10(min(positive))) if positive else 0
+        log_high = max(log_low + 1, math.ceil(math.log10(max(positive)))) if positive else 1
+        dots, table_rows = [], []
+        for row in scatter_rows:
+            binding = subject_observation_attribute(observation_indexes, snapshot_at, (
+                ("validator_commission_pct", row["vote_account"]), ("validator_stake_sol", row["vote_account"]),
+            ))
+            state = "positive" if row["stake_sol"] > 0 else "zero"
+            y = 20 + 140 * (log_high - math.log10(row["stake_sol"])) / (log_high - log_low) if state == "positive" else 188
+            title = f"{row['vote_account']} · {row['commission']}% commission · {row['stake_sol']:,} SOL"
+            dots.append(f"<circle{binding} data-stake-state='{state}' cx='{66 + 3.38 * row['commission']:.2f}' cy='{y:.2f}' r='3' class='validator-evidence-point'><title>{html.escape(title)}</title></circle>")
+            table_rows.append(f"<tr{binding}><th scope='row'><code>{html.escape(row['vote_account'])}</code></th><td>{row['commission']}%</td><td>{row['stake_sol']:,}</td></tr>")
+        ticks = list(range(log_low, log_high + 1, max(1, math.ceil((log_high - log_low) / 4))))
+        if ticks[-1] != log_high:
+            ticks.append(log_high)
+        grid = "".join(
+            f"<line x1='66' x2='404' y1='{20 + 140 * (log_high - tick) / (log_high - log_low):.2f}' y2='{20 + 140 * (log_high - tick) / (log_high - log_low):.2f}' class='validator-evidence-grid'/>"
+            f"<text x='60' y='{24 + 140 * (log_high - tick) / (log_high - log_low):.2f}' text-anchor='end'>{html.escape(fmt_sol(10 ** tick) if tick >= 0 else f'{10 ** tick:g} SOL')}</text>"
+            for tick in ticks
+        ) if positive else ""
+        scatter_markup = (
+            "<svg class='validator-evidence-chart' viewBox='-20 0 440 230' role='img' aria-label='Commission versus activated stake by current vote account; positive stake uses a logarithmic axis and zero stake has a separate rail'>"
+            f"{grid}<line x1='66' x2='404' y1='188' y2='188' class='validator-evidence-grid'/><text x='60' y='192' text-anchor='end'>Zero SOL</text>{''.join(dots)}"
+            + "".join(f"<text x='{66 + 3.38 * value:.2f}' y='211' text-anchor='middle'>{value}%</text>" for value in (0, 25, 50, 75, 100))
+            + "<text x='235' y='228' text-anchor='middle'>Commission</text></svg>"
+            "<p class='validator-component-note'>Current vote accounts; each point is a recorded commission and activated-stake pair. "
+            "Positive stake uses a log scale; zero stake has a separate rail. Missing values are not plotted. Overlapping points do not represent account counts.</p>"
+            "<details class='validator-chart-evidence'><summary>Inspect commission and stake pairs</summary>"
+            f"<div tabindex='0' role='region' aria-label='Commission and stake values'><table><thead><tr><th>Vote account</th><th>Commission</th><th>Stake (SOL)</th></tr></thead><tbody>{''.join(table_rows)}</tbody></table></div></details>"
+        )
+    return [("Skip-rate distribution", skip_markup), ("Active-stake history", history_markup), ("Commission and stake", scatter_markup)]
+
+
 def render_validator_workbench(
     snapshot: dict[str, Any], context: str,
     observation_indexes: dict[str, dict[tuple[Any, ...], dict[str, Any]]] | None = None,
+    history: list[dict[str, Any]] | None = None,
 ) -> str:
     """Ranked, inspectable validator surface from native vote-account state."""
     validators = snapshot.get("validators", {})
@@ -17853,7 +18053,20 @@ def render_validator_workbench(
                 f"<small>{unmatched_production} unmatched · {match_pct:.2f}% coverage</small></div></article>"
             )
 
-        metric_total = 4 if production_markup else 3
+        recovered_cards = render_validator_evidence_cards(snapshot, history or [], observation_indexes)
+        original_total = 4 if production_markup else 3
+        metric_total = original_total + len(recovered_cards)
+        production_markup = production_markup.replace("4 of 4: Epoch production", f"4 of {metric_total}: Epoch production")
+        recovered_markup = "".join(
+            "<article class='validator-metric-component validator-evidence-component' "
+            "data-validator-metric-card data-pulse-card role='group' aria-roledescription='slide' "
+            f"aria-label='{original_total + index + 1} of {metric_total}: {label}' "
+            f"data-validator-component='{component}'>"
+            f"<header><div><span>Recorded evidence</span><h3>{label}</h3></div></header>{body}</article>"
+            for index, ((label, body), component) in enumerate(zip(recovered_cards, (
+                "validator-skip-distribution", "validator-stake-history", "validator-commission-stake",
+            )))
+        )
         participation_binding = summary_observation_attribute(
             observation_indexes, snapshot_at,
             ("active_count", "delinquent_validator_count", "delinquent_pct", "current_validator_share_pct"),
@@ -17958,7 +18171,7 @@ def render_validator_workbench(
                 "<p class='validator-component-unavailable'>Distribution unavailable — the snapshot does not retain the complete current-validator population.</p>"
             )
             + "</article>"
-            f"{production_markup}</div>"
+            f"{production_markup}{recovered_markup}</div>"
             f"<div class='pulse-dots' data-pulse-dots hidden role='group' "
             f"aria-label='Choose a validator metric'>{metric_dots}</div></div>"
         )
@@ -18927,7 +19140,7 @@ def render_data_catalog(
         f"{release_details}</article>"
         "<article class='support-panel'><h2 class='panel-kicker'>Reproduce</h2>"
         "<p class='panel-copy'>Regenerate every local artifact from the selected snapshot without a browser or network request.</p>"
-        "<pre class='command' aria-label='Local reproduction command'><code>python3 render.py \\\n  --snapshot snapshots/latest.json \\\n  --out-dir preview</code></pre>"
+        "<pre class='command' aria-label='Local reproduction command'><code>python3 render.py \\\n  --snapshot snapshots/latest.json \\\n  --out-dir preview --replay</code></pre>"
         "<p class='panel-meta'>Local command · deterministic inputs</p></article></section>"
     )
 
@@ -20841,6 +21054,7 @@ def render_mobile_data(
     snapshot: dict[str, Any], analysis: dict[str, Any] | None = None,
     comparison: dict[str, Any] | None = None,
     observation_indexes: dict[str, dict[tuple[Any, ...], dict[str, Any]]] | None = None,
+    history: list[dict[str, Any]] | None = None,
 ) -> str:
     observed = timestamp_label(snapshot.get("collected_at"))
     observed_time = observed.rsplit(" · ", 1)[-1]
@@ -21085,7 +21299,7 @@ def render_mobile_data(
         f"{render_report_coverage(snapshot, analysis, comparison, 'mobile', observation_indexes)}"
         f"{render_feature_activation(snapshot, 'mobile', observation_indexes)}"
         f"{render_community_news(snapshot, 'mobile')}"
-        f"{render_validator_workbench(snapshot, 'mobile', observation_indexes)}"
+        f"{render_validator_workbench(snapshot, 'mobile', observation_indexes, history)}"
         f"{render_cluster_software(snapshot, 'mobile', observation_indexes)}"
         f"{render_growth_workbench(snapshot, 'mobile', observation_indexes)}"
         "<details class='chart-disclosure mobile-activity-evidence'><summary>Inspect sampled fees and address activity</summary>"
@@ -23056,7 +23270,7 @@ def render_html(
         render_feature_activation(snapshot, "desktop", observation_bindings),
         render_data_catalog(snapshot, analysis, comparison, history, observation_bindings),
         render_community_news(snapshot, "desktop"),
-        render_validator_workbench(snapshot, "desktop", observation_bindings),
+        render_validator_workbench(snapshot, "desktop", observation_bindings, history),
         render_cluster_software(snapshot, "desktop", observation_bindings),
         render_growth_workbench(snapshot, "desktop", observation_bindings),
         "<details class='data-appendix'><summary>Full recorded data appendix</summary>"
@@ -23089,7 +23303,7 @@ def render_html(
         "<footer class='page-footer'><p>A dash means unavailable, never zero. Sampled values retain their coverage and "
         "interval; chart gaps remain gaps.</p>"
         f"<span>Snapshot {collected}</span></footer>",
-        render_mobile_data(snapshot, analysis, comparison, observation_bindings),
+        render_mobile_data(snapshot, analysis, comparison, observation_bindings, history),
         "</section>",
 
         # Methodology: prototype flow, three cards, and compact evidence model.
@@ -23636,6 +23850,29 @@ def build_derived_observation_records(
                     input_observation_ids=inputs,
                     caveat="Exact, mutually exclusive commission buckets over the retained current population.",
                 )
+
+    skip_distribution = validator_skip_distribution(history[-1])
+    if skip_distribution is not None:
+        inputs = []
+        for row in skip_distribution["rows"]:
+            for metric_id in ("validator_leader_slots", "validator_skipped_slots"):
+                record = subjects.get((metric_id, row["identity"], None, latest_at))
+                if record is None:
+                    raise ValueError("skip-rate distribution has no public production input")
+                inputs.append(record["observation_id"])
+        production = recorded_block_production(history[-1])
+        for (key, label, _, _), count in zip(VALIDATOR_SKIP_BUCKETS, skip_distribution["counts"]):
+            add(
+                metric_id=f"validator_skip_bucket_{key}_count", subject_id=latest_at,
+                name=f"Production identities with skip rate {label}", value=count, unit="production identities",
+                population="complete recorded production identities with positive leader slots",
+                denominator=f"{sum(skip_distribution['counts'])} recorded production identities with positive leader slots",
+                window=f"completed epoch {production.get('epoch')}", snapshot_collected_at=latest_at,
+                source_path="validators.block_production.validators[]",
+                calculation_method=f"count identities with positive leader slots and skipped_slots / leader_slots in {label}; zero separate; positive bins exclude lower and include upper bound",
+                input_observation_ids=inputs,
+                caveat="Production identities are not vote accounts or unique operators. Zero-leader identities are excluded; retained epoch evidence is not a new refresh observation.",
+            )
 
     chart_count_records = []
     chartable_series_count = 0
