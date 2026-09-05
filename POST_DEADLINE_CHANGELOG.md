@@ -24,7 +24,14 @@ The submission itself is unchanged; this file itemizes later work for judges and
 - Provider-range observations over a full 365-day Solana Data window now publish
   (2,191 observations with per-provider provenance and ranges).
 
-## 2026-09-02 (planned/in-flight)
+## 2026-09-02 (historical plan)
+
+This list records the plan at that date, not the current backlog. Stability
+hardening and Ecosystem Pulse subsequently merged in PRs #7, #11, and #12;
+rights-safe news and upgrade metadata followed in PRs #17–19. The Dune adapter
+and its later corrections are implemented, but current paid reads remain
+held. Solana News content remains held; the empty WIP PR #13 is not a release
+dependency. See the later release entries for deployed evidence.
 - Provider observation revision model (revised provider rows append a new revision with
   `supersedes` semantics instead of conflicting; charts select latest valid revision;
   raw evidence retained) — fixes the 2026-09-02 04:40 UTC scheduled-run failure.
@@ -82,3 +89,39 @@ The submission itself is unchanged; this file itemizes later work for judges and
 - Dune and X paid reads remain disabled because no finite remaining allowance is
   committed. The live report shows those states and preserves dated evidence;
   this release did not make a paid request.
+
+### Later September 4 releases (PRs #48–53)
+
+- **PR #48** (`11f3d59`): total/non-vote TPS overlays, source-native provider
+  comparison and inspection, desktop/mobile growth and History parity, source
+  search, and bounded human-readable Markdown with complete JSON evidence.
+- **PR #49** (`9253cfb`): restored the shared value/unit spacing in charts.
+- **PR #50** (`fb19ba7`): tiered collection with fast RPC/price refreshes,
+  hourly heavy sources, six-hour news/provider refreshes, and daily token/Dune
+  lanes. Reused evidence keeps its original source clocks; paid-source budgets
+  and publication holds still apply.
+- **PR #51** (`bb98dbf`): observed cluster-node software versions with an
+  explicit denominator, bounded recovery of the last complete production
+  observation, and failed-refresh disclosure.
+- **PR #52** (`e89caf6`): aligned publication metadata with the configured
+  900-second cadence and next scheduled trigger. This configuration is not a
+  guarantee of fifteen-minute delivery by GitHub Actions.
+- **PR #53** (`9e71658`): linked protocol proposals and date-grouped recorded
+  activity, source/date/type filters, Timeline/Grid views, and native evidence
+  disclosures on desktop and mobile. The current catalog contains 22 datasets.
+
+[Production run 33931392861](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/33931392861)
+passed 1,080 tests (two Python 3.10 availability skips on that runner), collection,
+data/package verification, Pages deployment, and the live release-ID smoke check.
+Its clean renderer is `83a9f533466acb0a1149f970ea232d3ef8670987`, generated at
+`2026-09-05T00:03:36+00:00`. All three hosted files were byte-matched to that
+release; the reviewer verification also reproduced those bytes locally and
+passed all 1,080 tests without skips.
+
+The release ID is
+`7e07d1f20f0c1b2ea2ee0888df73a433cf377e04356e9b56cc406e1d161877ee`.
+This is manual deployment evidence. As checked on September 5 at 00:48 UTC,
+three successful scheduled cycles after PR #53 remain unproved, and the local
+cycle monitor is paused. Dune/X paid reads, a permitted date-aligned daily Jito
+source, and native iOS interaction verification remain open. The original
+submitted revision and submission receipt are unchanged by these releases.

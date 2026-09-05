@@ -301,6 +301,9 @@ jobs:
       inputs.mode == 'bootstrap'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      run_timestamp: ${{ steps.release_metadata.outputs.run_timestamp }}
+      release_id: ${{ steps.release_metadata.outputs.release_id }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -336,6 +339,20 @@ jobs:
           PY
           python3 verify_release.py verify-package --artifacts samples \
             --manifest release-manifest.json
+
+      - id: release_metadata
+        name: Export verified bootstrap release metadata
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          release = json.loads(Path("samples/report.json").read_text())["release"]
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              print(f"run_timestamp={release['generated_at']}", file=output)
+              print(f"release_id={release['release_id']}", file=output)
+          PY
 
       - name: Archive approved bootstrap artifact
         run: >-
@@ -399,37 +416,37 @@ jobs:
                   )
                   with urllib.request.urlopen(request, timeout=30) as response:
                       payload = json.loads(response.read(32 * 1024 * 1024))
+                  generated_at = payload.get("release", {}).get("generated_at")
+                  if not isinstance(generated_at, str):
+                      raise ValueError("smoke check: report.json has no release.generated_at")
+                  generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+                  expected = datetime.fromisoformat(run_timestamp)
+                  skew = abs((generated - expected).total_seconds())
+                  if skew > max_age:
+                      raise ValueError(
+                          f"smoke check: generated_at {generated_at} differs from "
+                          f"RUN_TIMESTAMP {run_timestamp} by {skew:.0f}s "
+                          f"(tolerance {max_age:.0f}s)"
+                      )
+
+                  release = payload.get("release") or {}
+                  release_id = str(release.get("release_id", ""))
+                  if expected_release_id and release_id != expected_release_id:
+                      raise ValueError(
+                          f"smoke check: release_id {release_id!r} does not match "
+                          f"artifact manifest release {expected_release_id!r}"
+                      )
+
+                  observations = payload.get("observations")
+                  if not isinstance(observations, list) or not observations:
+                      raise ValueError("smoke check: observations must be a non-empty list")
                   break
               except Exception as error:  # retry until the CDN serves the update
                   last_error = error
-                  time.sleep(10 * (attempt + 1))
-          if payload is None:
-              raise SystemExit(f"smoke check could not fetch {url}: {last_error}")
-
-          generated_at = payload.get("release", {}).get("generated_at")
-          if not isinstance(generated_at, str):
-              raise SystemExit("smoke check: report.json has no release.generated_at")
-          generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
-          expected = datetime.fromisoformat(run_timestamp)
-          skew = abs((generated - expected).total_seconds())
-          if skew > max_age:
-              raise SystemExit(
-                  f"smoke check: generated_at {generated_at} differs from "
-                  f"RUN_TIMESTAMP {run_timestamp} by {skew:.0f}s "
-                  f"(tolerance {max_age:.0f}s)"
-              )
-
-          release = payload.get("release") or {}
-          release_id = str(release.get("release_id", ""))
-          if expected_release_id and release_id != expected_release_id:
-              raise SystemExit(
-                  f"smoke check: release_id {release_id!r} does not match "
-                  f"artifact manifest release {expected_release_id!r}"
-              )
-
-          observations = payload.get("observations")
-          if not isinstance(observations, list) or not observations:
-              raise SystemExit("smoke check: observations must be a non-empty list")
+                  if attempt < 5:
+                      time.sleep(10 * (attempt + 1))
+          else:
+              raise SystemExit(f"smoke check could not verify {url}: {last_error}")
           print(f"smoke check ok: generated_at={generated_at} release={release_id} "
                 f"observations={len(observations)}")
           PY
