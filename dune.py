@@ -48,7 +48,13 @@ METRIC_UNITS = {
     "daily_xstocks_dex_trade_legs": "trade_legs",
     "daily_xstocks_dex_priced_trade_legs": "trade_legs",
     "daily_transaction_fees_sol": "sol",
+    "daily_non_vote_median_fee_lamports": "lamports",
 }
+MAX_EXACT_MEDIAN_FEE_LAMPORTS = 2 ** 52 - 1
+NON_VOTE_MEDIAN_FEE_BASIS = (
+    "exact median of indexed non-vote transaction fees in solana.transactions, "
+    "including failed transactions; completed UTC day"
+)
 XSTOCK_DIMENSION = "pinned_107_xstocks"
 MAX_COUNT = 2 ** 63 - 1
 XSTOCK_REGISTRY = {
@@ -267,6 +273,12 @@ def _validate_result(
         if (type(row["sample_count"]) is not int or row["sample_count"] < 0
                 or row["sample_count"] > MAX_COUNT):
             return f"row {index} has an invalid sample count"
+        if metric == "daily_non_vote_median_fee_lamports" and (
+            value > MAX_EXACT_MEDIAN_FEE_LAMPORTS or value * 2 != int(value * 2)
+            or row["sample_count"] == 0
+            or (row["sample_count"] % 2 == 1 and value != int(value))
+        ):
+            return f"row {index} requires an exact half-lamport median and positive population count"
         dimension = row["dimension"]
         if metric == "daily_dex_volume_by_project":
             if not isinstance(dimension, str) or not dimension.strip() or len(dimension) > 200:
@@ -813,6 +825,7 @@ def _derive_aggregates(rows: Any) -> dict[str, Any] | None:
     dex_by_project: dict[str, dict[str, float]] = {}
     xstock_rows: dict[str, dict[str, float]] = {}
     transaction_fees: dict[str, float] = {}
+    median_fees: dict[str, tuple[float, int]] = {}
     for row in rows:
         if not isinstance(row, dict):
             continue
@@ -837,7 +850,9 @@ def _derive_aggregates(rows: Any) -> dict[str, Any] | None:
             xstock_rows.setdefault(day, {})[metric_id] = value
         elif metric_id == "daily_transaction_fees_sol":
             transaction_fees[day] = value
-    if not fee_payers and not dex_total and not xstock_rows and not transaction_fees:
+        elif metric_id == "daily_non_vote_median_fee_lamports":
+            median_fees[day] = (value, row["sample_count"])
+    if not fee_payers and not dex_total and not xstock_rows and not transaction_fees and not median_fees:
         return None
 
     def latest(daily: dict[str, float]) -> tuple[str, float] | None:
@@ -869,8 +884,11 @@ def _derive_aggregates(rows: Any) -> dict[str, Any] | None:
     candidates = [item[0] for item in (fee_latest, dex_latest, fees_latest) if item is not None]
     if xstock_day is not None:
         candidates.append(xstock_day)
+    median_day = max(median_fees) if median_fees else None
+    if median_day is not None:
+        candidates.append(median_day)
     latest_day = max(candidates) if candidates else None
-    return {
+    aggregates = {
         "latest_day": latest_day,
         "fee_payers_latest": fee_latest[1] if fee_latest else None,
         "fee_payers_day": fee_latest[0] if fee_latest else None,
@@ -892,6 +910,15 @@ def _derive_aggregates(rows: Any) -> dict[str, Any] | None:
         "basis": "provider-reported (Dune); trade-leg volume, not unique-user volume",
         "scope": "completed UTC days before execution; fee payers exclude vote transactions; DEX volume sums swap legs",
     }
+    if median_day is not None:
+        median_value, population_count = median_fees[median_day]
+        aggregates.update({
+            "non_vote_median_fee_latest_lamports": median_value,
+            "non_vote_median_fee_day": median_day,
+            "non_vote_median_fee_transaction_count": population_count,
+            "non_vote_median_fee_basis": NON_VOTE_MEDIAN_FEE_BASIS,
+        })
+    return aggregates
 
 
 def _success_section(

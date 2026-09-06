@@ -2596,10 +2596,16 @@ def _public_fact_metadata(fact: dict[str, Any]) -> dict[str, Any]:
         "dune_daily_non_vote_fee_payers", "dune_daily_dex_volume_usd",
         "dune_daily_xstocks_dex_volume_usd", "dune_daily_xstocks_dex_trade_legs",
         "dune_daily_xstocks_dex_priced_trade_legs", "dune_daily_transaction_fees_sol",
+        "dune_daily_non_vote_median_fee_lamports",
     }:
         return {
             "name": coverage.get("name"), "population": coverage.get("population"),
-            "denominator": "one UTC day within the registered query coverage",
+            "denominator": (
+                f"{coverage['transaction_count']} indexed non-vote transactions, including failed transactions"
+                if metric_id == "dune_daily_non_vote_median_fee_lamports"
+                and type(coverage.get("transaction_count")) is int else
+                "one UTC day within the registered query coverage"
+            ),
             "window": (
                 (("completed UTC day " if coverage.get("complete_day") else "legacy partial UTC day ")
                  + str(coverage.get("day"))) if coverage.get("day") else "unavailable"
@@ -2985,6 +2991,9 @@ def dune_activity_facts(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
          "matched xStock DEX trade legs with finite nonnegative amount_usd", "COUNT_IF(amount_usd is valid) over matched legs"),
         ("dune_daily_transaction_fees_sol", "Dune daily all-transaction fees", "transaction_fees_latest_sol", "transaction_fees_day", "SOL",
          "vote and non-vote Solana transactions indexed by gas_solana.fees", "SUM(tx_fee) for a complete UTC day; transaction fees only, not REV or Jito tips"),
+        ("dune_daily_non_vote_median_fee_lamports", "Dune daily non-vote median transaction fee", "non_vote_median_fee_latest_lamports", "non_vote_median_fee_day", "lamports",
+         "indexed non-vote Solana transactions, including failed transactions",
+         "exact median of solana.transactions.fee: fee histogram cumulative counts select the two middle ranks and average their lamport values"),
     ):
         value = aggregates.get(key)
         value = value if _is_number(value) and value >= 0 else None
@@ -3003,6 +3012,8 @@ def dune_activity_facts(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
             "basis": "recorded", "state": status, "source": "dune-registered-activity-query",
             "source_revision": None, "source_schema": snapshot.get("schema_version"),
             "coverage": {"name": label, "population": population, "calculation": calculation,
+                         **({"transaction_count": aggregates.get("non_vote_median_fee_transaction_count")}
+                            if metric == "dune_daily_non_vote_median_fee_lamports" else {}),
                          "day": day, "complete_day": complete, "source_url": source_url,
                          "source_path": ("dune.aggregates." if record is section else "dune.last_known_good.aggregates.") + key,
                          "unavailable_reason": (aggregates.get("xstocks_dex_volume_reason")

@@ -7598,6 +7598,45 @@ class TestPythonCompatibility(unittest.TestCase):
 
 
 class TestSeptemberRendererRecovery(unittest.TestCase):
+    def test_daily_median_preserves_half_lamports_population_and_separate_sample(self):
+        snapshot = load_fixture()
+        snapshot['schema_version'] = 9
+        aggregates = {
+            'non_vote_median_fee_latest_lamports': 5000.5,
+            'non_vote_median_fee_day': '2026-09-01',
+            'non_vote_median_fee_transaction_count': 240,
+            'non_vote_median_fee_basis': 'exact median of indexed non-vote transaction fees in solana.transactions, including failed transactions; completed UTC day',
+        }
+        snapshot['dune'] = {
+            'available': True, 'query_id': 8590950,
+            'execution_ended_at': '2026-09-02T01:00:00Z',
+            'aggregates': aggregates,
+        }
+        for stale in (False, True):
+            with self.subTest(stale=stale):
+                candidate = deepcopy(snapshot)
+                if stale:
+                    candidate['dune'] = {'available': False, 'last_known_good': snapshot['dune']}
+                projected = render.project_public_envelope(candidate)
+                record = projected['dune'].get('last_known_good', projected['dune'])
+                self.assertEqual(record['aggregates'], aggregates)
+                indexes = render.public_observation_indexes(render.facts_module.public_observation_records(candidate))
+                pulse = render.render_ecosystem_pulse(candidate, indexes)
+                self.assertIn('5,000.50 lamports', pulse)
+                self.assertIn('240 indexed transactions, including failed transactions', pulse)
+                self.assertIn('block-sample median is a separate observation', pulse)
+                coverage = render.render_report_coverage(candidate, None, None, 'desktop', indexes)
+                row = coverage.split("data-requirement='R14'", 1)[1].split('</tr>', 1)[0]
+                self.assertIn('Stale' if stale else 'Recorded', row)
+                self.assertIn('Dune-indexed', row)
+                metric = indexes['summary'][('dune_daily_non_vote_median_fee_lamports', candidate['collected_at'])]
+                self.assertIn(metric['observation_id'], pulse)
+                self.assertIn(metric['observation_id'], row)
+        del aggregates['non_vote_median_fee_latest_lamports']
+        pulse = render.render_ecosystem_pulse(snapshot)
+        self.assertIn('No completed-day median was recorded', pulse)
+        self.assertNotIn('5,000.50 lamports', pulse)
+
     def test_provider_detail_uses_the_same_complete_date_as_its_headline(self):
         source = {
             'available': True,

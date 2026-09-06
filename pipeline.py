@@ -1208,6 +1208,29 @@ def _dune_semantic_failures(section: Any, collected_at: datetime | None) -> list
             errors.append("transaction fees must be finite, nonnegative and from a completed UTC day")
         elif fee_value is not None:
             days.append(fee_day.isoformat())
+    median_keys = {
+        "non_vote_median_fee_latest_lamports", "non_vote_median_fee_day",
+        "non_vote_median_fee_transaction_count", "non_vote_median_fee_basis",
+    }
+    if median_keys & set(aggregates):
+        median = aggregates.get("non_vote_median_fee_latest_lamports")
+        median_day = dune_module._day(aggregates.get("non_vote_median_fee_day"))
+        population_count = aggregates.get("non_vote_median_fee_transaction_count")
+        if not median_keys <= set(aggregates):
+            errors.append("non-vote median fee requires its value, day, population count and basis")
+        if aggregates.get("non_vote_median_fee_basis") != dune_module.NON_VOTE_MEDIAN_FEE_BASIS:
+            errors.append("non-vote median fee basis must retain exact median and failed-transaction scope")
+        if (not _is_number(median) or not 0 <= median <= dune_module.MAX_EXACT_MEDIAN_FEE_LAMPORTS
+                or median * 2 != int(median * 2)):
+            errors.append("non-vote median fee must be an exact nonnegative half-lamport value within the precision bound")
+        if type(population_count) is not int or not 0 < population_count <= dune_module.MAX_COUNT:
+            errors.append("non-vote median fee requires a positive integer transaction population count")
+        elif population_count % 2 == 1 and _is_number(median) and median != int(median):
+            errors.append("non-vote median fee must be integer lamports for an odd transaction population")
+        if median_day is None or ended is None or median_day >= ended.astimezone(timezone.utc).date():
+            errors.append("non-vote median fee must be from a completed UTC day before execution")
+        else:
+            days.append(median_day.isoformat())
     latest_day = dune_module._day(aggregates.get("latest_day"))
     if not days or latest_day is None or latest_day.isoformat() != max(days):
         errors.append("latest_day must match the available dated totals")

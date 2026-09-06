@@ -1,6 +1,6 @@
 -- Solana ecosystem activity metrics for the report's Dune adapter.
 --
--- Produces seven metric families with the adapter's expected columns:
+-- Produces eight metric families with the adapter's expected columns:
 --   daily_non_vote_fee_payers   — fee payers (vote transactions excluded)
 --   daily_dex_volume_total      — TRADE-LEG DEX volume, all projects summed
 --   daily_dex_volume_by_project — TRADE-LEG DEX volume per project
@@ -8,6 +8,7 @@
 --   daily_xstocks_dex_trade_legs — all OR-matched xStock trade legs
 --   daily_xstocks_dex_priced_trade_legs — legs with valid USD pricing
 --   daily_transaction_fees_sol — exact transaction fee total, not REV or Jito tips
+--   daily_non_vote_median_fee_lamports — exact indexed non-vote median, failures included
 --
 -- IMPORTANT BASIS NOTES:
 --   1. solana.transactions contains NO vote transactions at all (votes live in
@@ -145,6 +146,42 @@ fee_payers AS (
       AND block_time < CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS DATE)
     GROUP BY 1
 ),
+non_vote_fee_histogram AS (
+    SELECT
+        CAST(DATE_TRUNC('day', block_time) AS DATE) AS day,
+        fee,
+        COUNT(*) AS fee_count
+    FROM solana.transactions
+    WHERE block_time >= CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS DATE) - INTERVAL '2' DAY
+      AND block_time < CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS DATE)
+    GROUP BY 1, 2
+),
+non_vote_fee_ranks AS (
+    SELECT
+        day, fee, fee_count,
+        SUM(fee_count) OVER (PARTITION BY day) AS transaction_count,
+        SUM(CASE WHEN fee IS NULL OR fee < 0 OR fee > 4503599627370495
+                 THEN fee_count ELSE 0 END) OVER (PARTITION BY day) AS invalid_count,
+        SUM(fee_count) OVER (
+            PARTITION BY day ORDER BY fee ROWS UNBOUNDED PRECEDING
+        ) AS cumulative_count
+    FROM non_vote_fee_histogram
+),
+non_vote_fee_medians AS (
+    -- BIGINT rank division truncates. For an even population the two middle
+    -- fees are averaged; for an odd population both ranks select the same fee.
+    -- Reject the whole day if any fee is missing, negative or outside the
+    -- exact DOUBLE half-lamport range. Do not silently median a valid subset.
+    SELECT
+        day,
+        (CAST(MIN(fee) AS DOUBLE) + CAST(MAX(fee) AS DOUBLE)) / 2.0 AS value,
+        MAX(transaction_count) AS sample_count
+    FROM non_vote_fee_ranks
+    WHERE invalid_count = 0
+      AND cumulative_count >= (transaction_count + 1) / 2
+      AND cumulative_count - fee_count < (transaction_count + 2) / 2
+    GROUP BY 1
+),
 transaction_fee_days AS (
     SELECT
         CAST(block_date AS DATE) AS day,
@@ -198,6 +235,17 @@ SELECT
     'fee_payers'                     AS unit,
     CAST(sample_count AS BIGINT)     AS sample_count
 FROM fee_payers
+
+UNION ALL
+
+SELECT
+    'daily_non_vote_median_fee_lamports' AS metric_id,
+    day,
+    CAST(NULL AS VARCHAR) AS dimension,
+    value,
+    'lamports' AS unit,
+    sample_count
+FROM non_vote_fee_medians
 
 UNION ALL
 

@@ -114,12 +114,15 @@ DUNE_AGGREGATE_PUBLIC_FIELDS = frozenset(
     "xstocks_dex_priced_trade_legs xstocks_dex_day xstocks_dex_volume_available "
     "xstocks_dex_volume_reason xstocks_registry xstocks_basis "
     "transaction_fees_latest_sol transaction_fees_day transaction_fees_basis "
+    "non_vote_median_fee_latest_lamports non_vote_median_fee_day "
+    "non_vote_median_fee_transaction_count non_vote_median_fee_basis "
     "basis scope".split()
 )
 DUNE_DAILY_METRIC_IDS = frozenset({
     "dune_daily_non_vote_fee_payers", "dune_daily_dex_volume_usd",
     "dune_daily_xstocks_dex_volume_usd", "dune_daily_xstocks_dex_trade_legs",
     "dune_daily_xstocks_dex_priced_trade_legs", "dune_daily_transaction_fees_sol",
+    "dune_daily_non_vote_median_fee_lamports",
 })
 CONTENT_SECURITY_POLICY = (
     "default-src 'none'; base-uri 'none'; connect-src 'none'; font-src data:; "
@@ -17095,6 +17098,20 @@ def render_ecosystem_pulse(
         attributes=binding("dune_daily_transaction_fees_sol"),
     ) if dune_aggregates else None
 
+    daily_median = dune_aggregates.get("non_vote_median_fee_latest_lamports")
+    median_day = dune_aggregates.get("non_vote_median_fee_day") or "date unavailable"
+    median_count = dune_aggregates.get("non_vote_median_fee_transaction_count")
+    median_card = card(
+        "Daily median fee · non-vote",
+        f"{fmt(daily_median)} lamports" if is_number(daily_median) else "Unavailable",
+        (f"Dune · {dune_state} · {median_day} · {day_description(median_day)} · "
+         f"{fmt(median_count)} indexed transactions, including failed transactions · "
+         "exact median; the retained block-sample median is a separate observation"
+         if is_number(daily_median) else
+         "No completed-day median was recorded in this query result; the block-sample median remains separately labelled."),
+        attributes=binding("dune_daily_non_vote_median_fee_lamports"),
+    ) if dune_aggregates else None
+
     pulse_cards = [sol_card, addresses_card, fee_payers_card, app_revenue_card,
                    rev_card, supply_card]
     if dex_card is not None:
@@ -17103,6 +17120,8 @@ def render_ecosystem_pulse(
         pulse_cards.append(xstock_card)
     if transaction_fee_card is not None:
         pulse_cards.append(transaction_fee_card)
+    if median_card is not None:
+        pulse_cards.append(median_card)
 
     return (
         "<h2>Ecosystem Pulse <span class='keyless'>assembled from recorded snapshot data</span></h2>"
@@ -18726,6 +18745,7 @@ DUNE_CATALOG_METRICS = (
     "dune_daily_xstocks_dex_trade_legs",
     "dune_daily_xstocks_dex_priced_trade_legs",
     "dune_daily_transaction_fees_sol",
+    "dune_daily_non_vote_median_fee_lamports",
 )
 
 
@@ -18753,6 +18773,7 @@ def dune_catalog_source(snapshot: dict[str, Any]) -> tuple[str, str, str, str]:
         "xstocks_dex_trade_legs",
         "xstocks_dex_priced_trade_legs",
         "transaction_fees_latest_sol",
+        "non_vote_median_fee_latest_lamports",
     ))
     query_id = record.get("query_id") or section.get("query_id")
     source = f"Dune query {query_id}" if query_id else "Dune registered query"
@@ -19015,7 +19036,19 @@ def render_report_coverage(snapshot, analysis, comparison, context, observation_
                 when = ''
             elif dune.get('last_known_good') and state == 'Unavailable':
                 window = 'Current DEX volume unavailable; an older Dune result is retained in JSON.'
-        elif identifier in ('R13', 'R14') and usable:
+        elif identifier == 'R14':
+            daily = indexes['summary'].get(('dune_daily_non_vote_median_fee_lamports', snapshot_at))
+            if daily is not None:
+                evidence_ids.append(daily['observation_id'])
+            if daily is not None and is_number(daily.get('value')) and daily.get('status') in ('current', 'stale'):
+                state = 'Stale' if daily.get('status') == 'stale' else 'Recorded'
+                scope = 'Exact median of Dune-indexed non-vote transaction fees, including failures; the block-sample median remains separate.'
+                window = str(daily.get('window') or '')
+                when = str(daily.get('observed_at') or '')
+            elif usable:
+                window = activity_evidence_label(snapshot)
+                when = ''
+        elif identifier == 'R13' and usable:
             window = activity_evidence_label(snapshot)
             when = ''
         elif identifier == 'R17':
