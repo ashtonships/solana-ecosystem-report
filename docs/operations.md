@@ -27,11 +27,13 @@ No key is a spending authorization. Query execution and X search have separate, 
 
 Dune result retrieval consumes credits, so `--with-dune`, a key and query ID are
 not sufficient. Reads additionally require `DUNE_PAID_READS_ENABLED=true` and an
-owner-created `.github/dune-result-read-budget.json`. The dated 2026-09-06 trial
-reserved its two reads and one execution in run `34010172983`; that allowance
-is exhausted and expires at 2026-09-07T00:00:00Z. A durable receipt bounds
-total/daily reads and at most 500
-rows across the six contracted columns. Paid reads have no automatic retry. To
+owner-created `.github/dune-result-read-budget.json`. The 2026-09-06 trial
+reserved its two reads and one execution in run `34010172983`; those reservations
+remain spent. The owner subsequently approved eight additional daily executions
+and sixteen additional result reads through September 14 UTC. The ledger now
+allows eighteen reads total, including the two spent reads, with at most two
+reads per UTC day and 500 rows per read across the six contracted columns.
+Expiration is exclusive at 2026-09-15T00:00:00Z. Paid reads have no automatic retry. To
 allow a refresh, the workflow also needs `DUNE_EXECUTION_ENABLED=true` and the
 tracked `.github/dune-execution-ledger.json`. That ledger records at most one
 attempted execution per query and UTC day. A transport failure or killed run
@@ -40,15 +42,19 @@ before enabling; the code does not purchase credits or raise a cap. See the
 [query contract](dune/query-registry.md).
 
 The completed trial used `update.yml` on `main` with `mode=update` and
-`dune_refresh_once=true`. Do not repeat that trial or reset its ledger. Any
-future paid collection needs a newly approved finite allowance and verified
-account limits. Keep both repository paid-source flags disabled;
-manual activation is scoped to that dispatch. A cadence override is accepted
-only with matching, unconsumed read and execution receipts for the current run
-and UTC day. Scheduled runs do not inherit this manual permission. Spent or
-expired allowances are not reset or retried. The account's saved 25-credit query
-ceiling and $0 extra-spending limit were verified before the trial; result-read
-credits are separate from the execution ceiling.
+`dune_refresh_once=true`. Do not repeat that trial or reset its ledger. Activate
+the approved daily window by enabling `DUNE_PAID_READS_ENABLED` and
+`DUNE_EXECUTION_ENABLED` only after verifying the account's included-credit
+allowance, saved 25-credit execution ceiling and locked $0 extra-spending limit.
+Use the ordinary daily cadence, without the manual cadence override. Scheduler
+delays may produce fewer than eight refreshes; eight is the maximum additional
+execution allowance, not a delivery promise. Result-read credits are separate
+from the execution ceiling. No subscription change or extra spending is approved.
+
+Disable both repository enable flags when the allowance is spent or the window
+ends. Expired or exhausted accounting independently prevents paid requests even
+if flags remain enabled. Spent reservations are not refunded, deleted or reset;
+any continuation after this window needs new approval and fresh account checks.
 
 X needs `X_BEARER_TOKEN`, `X_PAID_READS_ENABLED=true` and an approved `.github/x-read-budget.json`. Missing, corrupt, expired or exhausted accounting skips paid search. No file is initialized from snapshot counts: a response may have cost money even if it was filtered, never published or lost with a runner.
 

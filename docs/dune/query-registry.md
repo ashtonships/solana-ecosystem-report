@@ -113,7 +113,9 @@ failed publication and killed runners do not refund the durable attempt.
 A local authorized run reserves directly against an existing persistent ledger.
 
 The separate result-read ledger requires confirmed remaining credits. The
-2026-09-06 allowance permits two reads total and expires the next UTC midnight.
+2026-09-06 approved extension permits eighteen reads total, including the two
+already reserved by the trial, with two reads per UTC day. It expires exclusively
+at 2026-09-15T00:00:00Z; September 14 is the last eligible UTC day.
 Its exact fields are `version`, `starts_on`, `expires_on`,
 `query_id`, `total_read_limit`, `daily_read_limit`, `max_rows_per_read`, and
 `reservations`.
@@ -158,8 +160,9 @@ usage after success or failure before reporting the trial's final outcome.
 completed one execution, `01M1TDTS0G45E5EY0SEDDGV33G`, at
 2026-09-06T03:57:58.943975Z. The production audit reported
 **4.627115385 execution credits**, below the saved 25-credit cap. The account
-usage page showed $0 additional spending. The finite two-read allowance is
-exhausted; this success does not authorize another run or continuing Dune refreshes.
+usage page showed $0 additional spending. The original two-read trial allowance
+is exhausted. The subsequent daily allowance below was separately approved;
+the successful trial alone did not authorize continuing refreshes.
 
 The [published snapshot](https://github.com/ashtonships/solana-ecosystem-report/blob/b58fbb08ff7f8fd0fdcbe70f790b36f5ddcf57da/snapshots/latest.json)
 records 194 returned rows and the following September 5 completed-day aggregates:
@@ -184,6 +187,31 @@ In the HTML report, open **Data → Full recorded data appendix** for the DEX,
 xStock price-coverage, and transaction-fee cards. Full precision and provenance
 remain in JSON. Carried evidence retains its original observation date; ordinary
 core updates do not authorize additional paid Dune reads.
+
+## Approved daily allowance — 2026-09-06
+
+The owner approved at most eight additional daily executions of query 8590950,
+each subject to the saved 25-credit execution ceiling, and sixteen additional
+result reads capped at 500 rows each. The eligible additional UTC days are
+September 7 through September 14. Extra spending remains locked at $0; no
+subscription change, credit purchase or extra spending is authorized. A fresh
+account check recorded 2,492.016 included credits remaining before activation.
+Execution and result-read credits remain separate accounting categories.
+
+The result-read ledger retains run `34010172983:1` unchanged, increases the total
+limit from two to eighteen, and extends exclusive expiration to September 15.
+The daily limit remains two reads. The execution ledger is unchanged and still
+permits at most one attempted execution per query per UTC day. With September 6
+already spent, these limits allow at most eight further executions; failures and
+interruptions do not refund their reservations.
+
+Scheduled activation requires both `DUNE_PAID_READS_ENABLED` and
+`DUNE_EXECUTION_ENABLED`, the existing credentials and the committed allowance.
+Use the normal 24-hour source cadence rather than `dune_refresh_once`; this
+allowance does not guarantee eight successful or evenly spaced refreshes.
+Disable both flags when spent or expired. The ledger independently blocks
+requests after exhaustion or 2026-09-15T00:00:00Z. Preserve all accounting after
+the window; any extension requires new approval and another account check.
 
 ## Offline verification
 
