@@ -5638,6 +5638,14 @@ CSS = r"""
       border-radius:12px;
       background:var(--prototype-paper);
     }
+    .prototype-page--data .growth-table-panel > h3 {
+      margin:0;
+      padding:16px 16px 0;
+    }
+    .prototype-page--data .growth-table-panel > p {
+      margin:0;
+      padding:12px 16px;
+    }
     .prototype-page--data .validator-table-tools {
       display:flex;
       min-height:72px;
@@ -13967,6 +13975,8 @@ CSS = r"""
       .mobile-data-workbench .validator-bars li { grid-template-columns:24px 92px minmax(60px,1fr) 40px; gap:7px; }
       .mobile-data-workbench .validator-bars li:nth-child(n+7) { display:none; }
       .mobile-data-workbench .validator-table-panel { border-radius:12px; }
+      .prototype-page--data .mobile-data-workbench .growth-table-panel > h3 { padding:14px 14px 0; }
+      .prototype-page--data .mobile-data-workbench .growth-table-panel > p { padding:12px 14px; }
       .mobile-data-workbench .validator-table-tools { display:block; min-height:0; padding:14px; }
       .mobile-data-workbench .validator-table-tools label { width:100%; }
       .mobile-data-workbench .validator-table-tools input { min-height:46px; font-size:13px; }
