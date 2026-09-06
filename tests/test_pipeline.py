@@ -944,6 +944,51 @@ class TestPublishGate(unittest.TestCase):
         result = self.gate_result(semantic_candidate(dune=section))
         self.assertTrue(result["publishable"], result)
 
+    def test_optional_dune_median_validates_complete_group_and_population(self):
+        from tests.test_dune import _result_payload, NOW
+        row = {"metric_id": "daily_non_vote_median_fee_lamports", "day": "2026-09-01",
+               "dimension": None, "value": 5000.5, "unit": "lamports", "sample_count": 20}
+        section = dune._success_section(
+            "8590950", "https://dune.com/queries/8590950", dune.SOURCE_URL,
+            _result_payload(NOW, [row]), "fresh", NOW,
+        )
+        self.assertEqual(pipeline._dune_semantic_failures(section, NOW), [])
+        release_section = dune._success_section(
+            "8590950", "https://dune.com/queries/8590950", dune.SOURCE_URL,
+            _result_payload(REFERENCE_TIME, [dict(row, day="2026-08-23")]),
+            "fresh", REFERENCE_TIME,
+        )
+        release = self.gate_result(semantic_candidate(dune=release_section))
+        self.assertTrue(release["publishable"], release)
+        for field, value in (
+            ("non_vote_median_fee_latest_lamports", None),
+            ("non_vote_median_fee_latest_lamports", 5000.25),
+            ("non_vote_median_fee_latest_lamports", dune.MAX_EXACT_MEDIAN_FEE_LAMPORTS + 1),
+            ("non_vote_median_fee_transaction_count", 0),
+            ("non_vote_median_fee_transaction_count", True),
+            ("non_vote_median_fee_transaction_count", 3),
+            ("non_vote_median_fee_day", "2026-09-02"),
+            ("non_vote_median_fee_basis", "approximate successful transaction median"),
+        ):
+            with self.subTest(field=field, value=value):
+                invalid = copy.deepcopy(section)
+                invalid["aggregates"][field] = value
+                self.assertTrue(pipeline._dune_semantic_failures(invalid, NOW))
+        for field in ("non_vote_median_fee_latest_lamports", "non_vote_median_fee_day",
+                      "non_vote_median_fee_transaction_count", "non_vote_median_fee_basis"):
+            invalid = copy.deepcopy(section)
+            del invalid["aggregates"][field]
+            self.assertTrue(pipeline._dune_semantic_failures(invalid, NOW))
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(nonfinite_median=value, odd_population=3):
+                invalid = copy.deepcopy(section)
+                invalid["aggregates"].update(
+                    non_vote_median_fee_latest_lamports=value,
+                    non_vote_median_fee_transaction_count=3,
+                )
+                errors = pipeline._dune_semantic_failures(invalid, NOW)
+                self.assertTrue(any("precision bound" in error for error in errors), errors)
+
     def test_dune_xstock_counts_only_passes_the_full_publish_gate(self):
         rows = [
             {

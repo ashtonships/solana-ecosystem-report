@@ -123,6 +123,37 @@ class TestNewSourcePublicObservations(unittest.TestCase):
             self.assertEqual(rows[metric]["window"], "completed UTC day 2026-09-03")
             self.assertTrue(rows[metric]["source_path"].startswith("dune.aggregates."))
 
+    def test_daily_median_observation_retains_population_day_and_cached_scope(self):
+        source = snapshot(at="2026-09-04T13:00:00Z", schema=9)
+        record = {"available": True, "query_id": "8590950",
+                  "execution_ended_at": "2026-09-04T01:00:00Z", "aggregates": {
+                      "non_vote_median_fee_latest_lamports": 5000.5,
+                      "non_vote_median_fee_day": "2026-09-02",
+                      "non_vote_median_fee_transaction_count": 20,
+                  }}
+        source["dune"] = record
+        metric = "dune_daily_non_vote_median_fee_lamports"
+        current = {r["metric_id"]: r for r in facts.public_observation_records(source)}[metric]
+        self.assertEqual(current["value"], 5000.5)
+        self.assertEqual(current["unit"], "lamports")
+        self.assertEqual(current["observed_at"], "2026-09-02")
+        self.assertEqual(current["window"], "completed UTC day 2026-09-02")
+        self.assertEqual(current["status"], "current")
+        self.assertIn("including failed transactions", current["population"])
+        self.assertEqual(current["denominator"], "20 indexed non-vote transactions, including failed transactions")
+        self.assertIn("exact median", current["calculation_method"])
+        self.assertNotEqual(current["metric_id"], "median_fee_lamports")
+        source["dune"] = {"available": False, "last_known_good": record}
+        cached = {r["metric_id"]: r for r in facts.public_observation_records(source)}[metric]
+        self.assertEqual(cached["value"], 5000.5)
+        self.assertEqual(cached["status"], "stale")
+        self.assertEqual(cached["observed_at"], "2026-09-02")
+        self.assertIn("last_known_good", cached["source_path"])
+        source["dune"] = {"available": True, "aggregates": {}}
+        missing = {r["metric_id"]: r for r in facts.public_observation_records(source)}[metric]
+        self.assertIsNone(missing["value"])
+        self.assertEqual(missing["status"], "unavailable")
+
 
 class TestPublicationHistory(unittest.TestCase):
     def test_unavailable_current_economics_withholds_old_values_without_mutation(self):

@@ -2,13 +2,13 @@
 
 | Query | Owner / recorded evidence | Metrics | Window |
 | --- | --- | --- | --- |
-| [8590950](https://dune.com/queries/8590950) | Ashton; query/execution identity recorded in the published snapshots | Fee-payer counts; transaction fees; DEX trade-leg USD volume total/by project; xStocks volume and price coverage | SQL candidate: two completed UTC days for fees/payers; eight completed UTC days for DEX trades |
+| [8590950](https://dune.com/queries/8590950) | Ashton; query/execution identity recorded in the published snapshots | Fee-payer counts; transaction fees; exact non-vote median fee; DEX trade-leg USD volume total/by project; xStocks volume and price coverage | SQL candidate: two completed UTC days for fees/payers/median; eight completed UTC days for DEX trades |
 
-The reviewed execution ended on September 3, 2026 at 01:19:20 UTC. Its query ID
-is already configured; the old “pending query” description was outdated.
-The revised [`solana-activity.sql`](./solana-activity.sql) is a local candidate.
-The remotely saved query has **not** been changed or executed during this work;
-apply and verify that SQL separately under the existing account authorization.
+The September 6 seven-family query execution and its bounded daily allowance
+are recorded below. The local SQL adds an eighth family for the exact daily
+non-vote median fee. Its live execution and measured cost are not yet verified;
+the existing approved daily refresh is the validation path. Do not reset the
+September 6 reservation or use a one-off execution to test this extension.
 
 The six result columns remain `metric_id`, `day`, `dimension`, `value`, `unit`,
 and `sample_count`. Every row is validated: family, unit, finite nonnegative
@@ -130,7 +130,7 @@ the committed snapshot and retains its original execution date and contract.
 
 On 2026-09-06, the owner signed in to Dune as `@clearout`. Query 8590950 was
 saved through the editor and reopened in a fresh page. Full editor clipboard
-readback matched `docs/dune/solana-activity.sql` exactly (SHA256
+readback matched the then-current seven-family SQL exactly (SHA256
 `9ca466907db200ebdc697b08316a8fb07a8b9648977e975057937ff2bf0520da`).
 The prior SQL was retained privately for rollback. This establishes saved-query
 convergence, not successful execution or measured coverage.
@@ -179,7 +179,7 @@ records 194 returned rows and the following September 5 completed-day aggregates
 The 296 unpriced trade legs prevent a complete xStock USD total. The USD family
 is withheld rather than assigning zero or extrapolating prices. Fee payers are
 not a network-wide unique-user count, and transaction fees are not total REV.
-The source SQL has seven families; this result does not establish seven available
+That executed SQL had seven families; this result does not establish seven available
 latest values. Published aggregates and execution provenance are retained; raw
 result rows are not part of the public snapshot.
 
@@ -221,3 +221,36 @@ The tests mock every Dune request, clock and ledger. They exercise documented
 URLs, execution races, daily reservation/replay, HTTP classification, deadlines,
 whole-row validation, incomplete days, source isolation and retained public
 semantics. No live or paid Dune request is needed to run them.
+
+## Exact daily non-vote median extension
+
+The eighth family, `daily_non_vote_median_fee_lamports`, uses
+[`solana.transactions`](https://docs.dune.com/data-catalog/solana/transactions),
+whose `fee` is an integer lamport amount and whose population excludes votes.
+Failed transactions remain included. A daily fee histogram and cumulative
+counts select the two middle transaction ranks; their arithmetic mean is the
+exact median, including half-lamport values for even populations. This is
+independent of the all-transaction fee total and the retained block sample.
+
+The six-column response is unchanged. `sample_count` records the full indexed
+non-vote population for that day. Null, negative or out-of-range fees withhold
+the entire day's median. The precision ceiling is 2^52 - 1 lamports; the adapter
+and publication gate also validate the date, population, basis and half-lamport
+precision. An absent family remains unavailable, including older query results.
+
+Offline tests exercise the production histogram/rank CTEs with SQLite window
+functions and adapted date syntax, against exact Python medians, day boundaries,
+failed transactions and invalid populations. They do not prove Dune compilation,
+index completeness or execution cost. The next ordinary execution must succeed
+within the existing 25-credit cap before this metric can be reported as recorded.
+No extra execution, purchased credit or subscription change is authorized here.
+
+The eight-family SQL was saved and reloaded on September 6; the full editor
+readback matched SHA256
+`480fae748b5386c4bc73454c14d496e32cae41709af546118b5f73a202cb74d5`.
+The save shortcut unexpectedly queued an execution; it was cancelled while
+queued. Dune Usage records it as **Cancelled, 0 credits**, with extra spending
+$0 and the included balance unchanged. This is not a successful live validation.
+The existing September 6 workflow reservations remain spent and unchanged;
+there is no further manual attempt. The next approved ordinary daily execution
+remains the validation path.

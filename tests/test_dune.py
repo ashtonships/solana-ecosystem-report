@@ -108,6 +108,59 @@ class FakeClock:
 
 
 class CollectDuneTests(unittest.TestCase):
+    def test_optional_daily_median_preserves_exact_value_count_and_independent_day(self):
+        for value in (0, 5000.5, dune.MAX_EXACT_MEDIAN_FEE_LAMPORTS):
+            with self.subTest(value=value):
+                rows = copy.deepcopy(FRESH_ROWS) + [{
+                    "metric_id": "daily_non_vote_median_fee_lamports", "day": "2026-08-31",
+                    "dimension": None, "value": value, "unit": "lamports", "sample_count": 20,
+                }]
+                result, _ = self.collect(_result_payload(NOW, rows))
+                self.assertTrue(result["available"], result)
+                aggregates = result["aggregates"]
+                self.assertEqual(aggregates["non_vote_median_fee_latest_lamports"], value)
+                self.assertEqual(aggregates["non_vote_median_fee_transaction_count"], 20)
+                self.assertEqual(aggregates["non_vote_median_fee_day"], "2026-08-31")
+                self.assertEqual(aggregates["latest_day"], "2026-09-01")
+                self.assertEqual(aggregates["non_vote_median_fee_basis"], dune.NON_VOTE_MEDIAN_FEE_BASIS)
+                self.assertEqual(pipeline._dune_semantic_failures(result, NOW), [])
+        old, _ = self.collect(_result_payload(NOW))
+        self.assertNotIn("non_vote_median_fee_latest_lamports", old["aggregates"])
+
+    def test_daily_median_only_selects_latest_completed_day(self):
+        rows = [{
+            "metric_id": "daily_non_vote_median_fee_lamports", "day": day,
+            "dimension": None, "value": value, "unit": "lamports", "sample_count": count,
+        } for day, value, count in (
+            ("2026-08-31", 6000, 11), ("2026-09-01", 5000.5, 20),
+            ("2026-09-02", 9999, 3),
+        )]
+        result, _ = self.collect(_result_payload(NOW, rows))
+        self.assertTrue(result["available"], result)
+        aggregates = result["aggregates"]
+        self.assertEqual(aggregates["latest_day"], "2026-09-01")
+        self.assertEqual(aggregates["non_vote_median_fee_latest_lamports"], 5000.5)
+        self.assertEqual(aggregates["non_vote_median_fee_transaction_count"], 20)
+        self.assertEqual(pipeline._dune_semantic_failures(result, NOW), [])
+
+    def test_daily_median_rejects_nonexact_or_unscoped_rows(self):
+        original = {
+            "metric_id": "daily_non_vote_median_fee_lamports", "day": "2026-09-01",
+            "dimension": None, "value": 5000.5, "unit": "lamports", "sample_count": 20,
+        }
+        for field, value in (
+            ("value", -1), ("value", True), ("value", float("inf")),
+            ("value", float("nan")), ("value", 5000.25),
+            ("value", dune.MAX_EXACT_MEDIAN_FEE_LAMPORTS + 1),
+            ("sample_count", 0), ("sample_count", True), ("sample_count", 2.5),
+            ("sample_count", 3),
+            ("unit", "sol"), ("dimension", "successful-only"), ("day", "2026-09-03"),
+        ):
+            with self.subTest(field=field, value=value):
+                row = dict(original, **{field: value})
+                result, _ = self.collect(_result_payload(NOW, [row]))
+                self.assertFalse(result["available"], result)
+
     def setUp(self):
         self.clock = FakeClock()
         self.addCleanup(mock.patch.stopall)
