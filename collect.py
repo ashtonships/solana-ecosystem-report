@@ -1128,7 +1128,9 @@ def sources(
         record("growth_providers", attempted=False, succeeded=False)
     # Dune is keyed and paid (credits); like economics it degrades to
     # `available: false` on its own and never blocks the on-chain snapshot.
-    dune_due = with_dune and refresh_due("dune")
+    dune_due = with_dune and (
+        refresh_due("dune") or dune_module.has_reserved_one_off_refresh(now=reference)
+    )
     dune_data = (
         dune_module.collect_dune() if dune_due
         else previous_section("dune") if with_dune else None

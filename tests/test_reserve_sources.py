@@ -10,6 +10,73 @@ import reserve_sources
 
 
 class ReservationWorkflowTests(unittest.TestCase):
+    def one_off_fixture(self, root, now):
+        (root / '.github').mkdir()
+        (root / 'snapshots').mkdir()
+        policy = json.loads((Path(__file__).resolve().parents[1] / reserve_sources.LEDGERS[1]).read_text())
+        # Only the temporary fixture starts unused; real durable receipts remain intact.
+        policy['reservations'] = {}
+        (root / reserve_sources.LEDGERS[1]).write_text(json.dumps(policy))
+        (root / reserve_sources.LEDGERS[0]).write_text('{"version":1,"attempts":{}}')
+        schedule = reserve_sources.cadence.initial_schedule()
+        schedule['dune'].update(last_attempt_at=(now - timedelta(minutes=15)).isoformat(),
+                                last_success_at=None, state='failed')
+        (root / 'snapshots/latest.json').write_text(json.dumps({
+            'dune': {'last_known_good': {'execution_ended_at': (now - timedelta(days=3)).isoformat()}},
+            'collection_schedule': schedule,
+        }))
+        return {
+            'GITHUB_ACTIONS': 'true', 'GITHUB_EVENT_NAME': 'workflow_dispatch',
+            'GITHUB_RUN_ID': '42', 'GITHUB_RUN_ATTEMPT': '1',
+            'DUNE_QUERY_ID': '8590950', 'DUNE_EXECUTION_ENABLED': 'true',
+            'DUNE_PAID_READS_ENABLED': 'true', 'DUNE_API_KEY_PRESENT': 'true',
+            'DUNE_REFRESH_ONCE_REQUESTED': 'true',
+        }
+
+    def test_one_off_dispatch_requires_both_receipts_and_cannot_repeat(self):
+        now = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            env = self.one_off_fixture(root, now)
+            settings = reserve_sources.prepare(root, root / 'tmp', env, now)
+            self.assertEqual(settings['DUNE_REFRESH_ONCE'], 'true')
+            authorized = {**env, **settings}
+            self.assertTrue(reserve_sources.dune.has_reserved_one_off_refresh(authorized, now))
+            for changed in ({'GITHUB_EVENT_NAME': 'schedule'}, {'GITHUB_RUN_ATTEMPT': '2'},
+                            {'DUNE_QUERY_ID': '1'}, {'DUNE_EXECUTION_ENABLED': 'false'}):
+                self.assertFalse(reserve_sources.dune.has_reserved_one_off_refresh({**authorized, **changed}, now))
+            self.assertFalse(reserve_sources.dune.has_reserved_one_off_refresh(authorized, now + timedelta(days=1)))
+            reads = json.loads((root / reserve_sources.LEDGERS[1]).read_text())
+            self.assertEqual(reads['reservations']['42:1']['reads'], 2)
+            self.assertEqual(reads['reservations']['42:1']['max_rows_per_read'], 500)
+            before = [(root / name).read_bytes() for name in reserve_sources.LEDGERS[:2]]
+            with mock.patch('builtins.print'):
+                repeat = reserve_sources.prepare(root, root / 'repeat', {**env, 'GITHUB_RUN_ATTEMPT': '2'}, now)
+            self.assertEqual(repeat['DUNE_EXECUTION_ENABLED'], 'false')
+            self.assertEqual(repeat['DUNE_PAID_READS_ENABLED'], 'false')
+            self.assertNotIn('DUNE_REFRESH_ONCE', repeat)
+            self.assertEqual(before, [(root / name).read_bytes() for name in reserve_sources.LEDGERS[:2]])
+            receipt = Path(settings['DUNE_RESULT_READ_RECEIPT'])
+            receipt.with_name(receipt.name + '.consumed').touch()
+            self.assertFalse(reserve_sources.dune.has_reserved_one_off_refresh(authorized, now))
+
+    def test_one_off_window_query_and_dispatch_gates_leave_execution_unspent(self):
+        for day, changes in (
+            (5, {}), (7, {}), (6, {'DUNE_QUERY_ID': '1'}),
+            (6, {'GITHUB_EVENT_NAME': 'schedule'}),
+            (6, {'DUNE_EXECUTION_ENABLED': 'false'}),
+        ):
+            with self.subTest(day=day, changes=changes), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                now = datetime(2026, 9, day, 12, tzinfo=timezone.utc)
+                env = self.one_off_fixture(root, now)
+                before = [(root / name).read_bytes() for name in reserve_sources.LEDGERS[:2]]
+                with mock.patch('builtins.print'):
+                    settings = reserve_sources.prepare(root, root / 'tmp', {**env, **changes}, now)
+                self.assertEqual(settings['DUNE_EXECUTION_ENABLED'], 'false')
+                self.assertEqual(settings['DUNE_PAID_READS_ENABLED'], 'false')
+                self.assertEqual(before, [(root / name).read_bytes() for name in reserve_sources.LEDGERS[:2]])
+
     def test_failure_after_reservation_cannot_reuse_allowance(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -252,10 +319,15 @@ class ReservationWorkflowTests(unittest.TestCase):
         self.assertLess(block.index('python3 reserve_sources.py'), block.index('git push'))
         self.assertLess(block.index('git push'), block.index('>> "$GITHUB_ENV"'))
         self.assertIn("DUNE_API_KEY_PRESENT: ${{ secrets.DUNE_API_KEY != '' }}", block)
-        self.assertIn("DUNE_PAID_READS_ENABLED: ${{ vars.DUNE_PAID_READS_ENABLED || 'false' }}", block)
+        for flag in ('DUNE_PAID_READS_ENABLED', 'DUNE_EXECUTION_ENABLED'):
+            self.assertIn(
+                f"{flag}: ${{{{ (github.event_name == 'workflow_dispatch' && inputs.dune_refresh_once && 'true') || vars.{flag} || 'false' }}}}",
+                block,
+            )
         self.assertIn('.github/dune-result-read-budget.json', block)
         self.assertIn("X_BEARER_TOKEN_PRESENT: ${{ secrets.X_BEARER_TOKEN != '' }}", block)
         self.assertIn('GITHUB_SHA= python3 collect.py', workflow)
+        self.assertIn("github.event_name == 'workflow_dispatch' && inputs.dune_refresh_once", block)
 
 
 if __name__ == '__main__':

@@ -605,6 +605,44 @@ def execution_refresh_due(
     )
 
 
+def has_reserved_one_off_refresh(
+    env: dict[str, str] | None = None, now: datetime | None = None,
+) -> bool:
+    """Read-only cadence override; spending still consumes both committed receipts."""
+    environment = os.environ if env is None else env
+    if (environment.get('GITHUB_ACTIONS') != 'true'
+            or environment.get('GITHUB_EVENT_NAME') != 'workflow_dispatch'
+            or any(environment.get(key) != 'true' for key in (
+                'DUNE_REFRESH_ONCE', 'DUNE_EXECUTION_ENABLED', 'DUNE_PAID_READS_ENABLED',
+            ))):
+        return False
+    reference = now or datetime.now(timezone.utc)
+    try:
+        if reference.utcoffset() is None:
+            return False
+        day = reference.astimezone(timezone.utc).date().isoformat()
+        query = environment['DUNE_QUERY_ID']
+        token = f"{environment['GITHUB_RUN_ID']}:{environment['GITHUB_RUN_ATTEMPT']}"
+        reads = _read_result_ledger(Path(environment['DUNE_RESULT_READ_LEDGER']))
+        executions = _read_execution_ledger(Path(environment['DUNE_EXECUTION_LEDGER']))
+        for key, expected in (
+            ('DUNE_RESULT_READ_RECEIPT', reads['reservations'].get(token)),
+            ('DUNE_EXECUTION_RECEIPT', executions['attempts'].get(query, {}).get(day)),
+        ):
+            path = Path(environment[key])
+            receipt = json.loads(path.read_text(encoding='utf-8'))
+            if (not isinstance(receipt, dict) or receipt != expected
+                    or receipt.get('run_token') != token or receipt.get('query_id') != query
+                    or receipt.get('utc_date') != day
+                    or _parse_utc(receipt.get('reserved_at')) is None
+                    or _parse_utc(receipt['reserved_at']) > reference
+                    or path.with_name(path.name + '.consumed').exists()):
+                return False
+        return reads['reservations'][token]['reads'] == 2
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def collect_dune(
     env: dict[str, str] | None = None,
     now: datetime | None = None,
@@ -636,7 +674,10 @@ def _collect_dune(
     refresh_hours: float, sleep: Any,
 ) -> dict[str, Any]:
     start = time.monotonic()
-    deadline = start + EXECUTE_DEADLINE_SECONDS
+    # A dated receipt cannot authorize requests after its UTC day ends.
+    utc_reference = reference.astimezone(timezone.utc)
+    midnight = utc_reference.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    deadline = start + min(EXECUTE_DEADLINE_SECONDS, (midnight - utc_reference).total_seconds())
     api_key = environment["DUNE_API_KEY"]
     query_url = f"{PUBLIC_QUERY_URL_BASE}{query_id}"
     results_url = f"{API_BASE}/{query_id}/results"
@@ -900,6 +941,23 @@ def _success_section(
     return section
 
 
+def _audit_execution(query_id: str, execution_id: str, state: str, cost: Any = None) -> None:
+    """Log only validated execution identity and optional observed credit cost."""
+    allowed_states = {
+        'accepted', 'QUERY_STATE_PENDING', 'QUERY_STATE_EXECUTING',
+        'QUERY_STATE_COMPLETED', 'QUERY_STATE_FAILED', 'QUERY_STATE_CANCELLED',
+        'QUERY_STATE_EXPIRED',
+    }
+    numeric_cost = (
+        cost if type(cost) in (int, float) and math.isfinite(cost) and cost >= 0 else None
+    )
+    print('Dune execution audit: ' + json.dumps({
+        'query_id': query_id, 'execution_id': execution_id,
+        'state': state if isinstance(state, str) and state in allowed_states else 'unrecognized',
+        'execution_cost_credits': numeric_cost,
+    }, sort_keys=True, allow_nan=False), file=sys.stderr, flush=True)
+
+
 def _execute_and_poll(
     query_id: str, api_key: str, deadline: float, read_guard: dict[str, int], sleep: Any = None,
 ) -> dict[str, Any]:
@@ -914,6 +972,7 @@ def _execute_and_poll(
     execution_id = _response_execution_id(payload)
     if not execution_id or re.fullmatch(r"[A-Za-z0-9_-]+", execution_id) is None:
         return {"available": False, "reason": "dune execute returned an invalid execution id"}
+    _audit_execution(query_id, execution_id, 'accepted')
     execution_url = f"https://api.dune.com/api/v1/execution/{execution_id}"
     while time.monotonic() < deadline:
         _, status, error = _request_with_retry(
@@ -925,6 +984,8 @@ def _execute_and_poll(
                 or str(status.get("query_id")) != query_id):
             return {"available": False, "reason": "dune status execution/query identity mismatch"}
         state = status.get("state")
+        if state not in {"QUERY_STATE_PENDING", "QUERY_STATE_EXECUTING"}:
+            _audit_execution(query_id, execution_id, state, status.get('execution_cost_credits'))
         if state == "QUERY_STATE_COMPLETED":
             _, result, error = _result_read(
                 f"{execution_url}/results", api_key, read_guard, sleep=pause, deadline=deadline,

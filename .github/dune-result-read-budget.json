@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "starts_on": "2026-09-06",
+  "expires_on": "2026-09-07",
+  "query_id": "8590950",
+  "total_read_limit": 2,
+  "daily_read_limit": 2,
+  "max_rows_per_read": 500,
+  "reservations": {}
+}

@@ -52,32 +52,39 @@ def prepare(root: Path, output: Path, env: dict[str, str],
     if (env.get('DUNE_PAID_READS_ENABLED') == 'true'
             and env.get('DUNE_API_KEY_PRESENT') == 'true'):
         try:
-            if not _source_due(root, 'dune', now):
+            one_off = (env.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
+                       and env.get('DUNE_REFRESH_ONCE_REQUESTED') == 'true')
+            if not _source_due(root, 'dune', now) and not one_off:
                 print('Dune result read not reserved: collection cadence is not due or invalid.')
             else:
                 snapshot = json.loads((root / 'snapshots/latest.json').read_text())
                 section = snapshot.get('dune') or {}
                 due = dune.execution_refresh_due(section, now, float(env.get('DUNE_REFRESH_HOURS') or '24'))
-                execution_reserved = False
-                if due and env.get('DUNE_EXECUTION_ENABLED') == 'true':
+                execute = due and env.get('DUNE_EXECUTION_ENABLED') == 'true'
+                if one_off and not execute:
+                    raise ValueError('one-off refresh needs a due authorized execution')
+                # Validate and spend the finite dated allowance before reserving
+                # an execution. Expired/wrong-query budgets cannot create attempts.
+                read_path = root / LEDGERS[1]
+                read_receipt = dune.reserve_result_reads(
+                    read_path, env.get('DUNE_QUERY_ID', ''), token,
+                    2 if execute else 1, now,
+                )
+                read_receipt_path = output / 'dune-result-read-receipt.json'
+                _write_receipt(read_receipt_path, read_receipt)
+                if execute:
                     path = root / LEDGERS[0]
                     receipt = dune.reserve_execution_attempt(path, env.get('DUNE_QUERY_ID', ''), token, now)
                     receipt_path = output / 'dune-receipt.json'
                     _write_receipt(receipt_path, receipt)
                     settings.update(DUNE_EXECUTION_ENABLED='true', DUNE_EXECUTION_LEDGER=str(path),
                                     DUNE_EXECUTION_RECEIPT=str(receipt_path))
-                    execution_reserved = True
-                read_path = root / LEDGERS[1]
-                read_receipt = dune.reserve_result_reads(
-                    read_path, env.get('DUNE_QUERY_ID', ''), token,
-                    2 if execution_reserved else 1, now,
-                )
-                read_receipt_path = output / 'dune-result-read-receipt.json'
-                _write_receipt(read_receipt_path, read_receipt)
                 settings.update(
                     DUNE_PAID_READS_ENABLED='true', DUNE_RESULT_READ_LEDGER=str(read_path),
                     DUNE_RESULT_READ_RECEIPT=str(read_receipt_path),
                 )
+                if one_off:
+                    settings['DUNE_REFRESH_ONCE'] = 'true'
         except (OSError, ValueError, TypeError, KeyError):
             settings['DUNE_EXECUTION_ENABLED'] = 'false'
             print('Dune result read not reserved: finite accounting is missing, invalid or spent.')
