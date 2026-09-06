@@ -143,3 +143,13 @@ submitted revision and submission receipt are unchanged by these releases.
   the source-flow return label from its line.
 - Added executable browser interaction checks and full-page light/dark captures
   across all five routes. See [UI verification](docs/ui-qa/2026-09-05/README.md).
+
+
+## 2026-09-05 — mobile structure and metric inspection
+
+- Replaced the Data introduction's boxed navigation cards with a compact contents list and matching coverage disclosures.
+- Joined mobile History selectors and chart in one padded comparison component.
+- Added explanations and recorded-reading inspection to all seven validator and five growth cards.
+- Separated inline chart tap inspection from carousel swipe navigation; added an expanded chart dialog for drag inspection with focus and route/resize recovery.
+- Wrapped the shared narrow-screen footer before its name and timestamp overlap.
+- Added touch/keyboard checks and full-page captures across five routes and four widths. See [design verification](docs/ui-qa/2026-09-05-mobile-design/README.md).

@@ -3299,7 +3299,7 @@ class TestMobileFirstContracts(unittest.TestCase):
         history = self.distinct_history()
         page = self.page(history=history)
         comparison_index = page.index("id='mobile-history-comparison'")
-        newest_index = page.index("data-history-pair='1:2'", comparison_index)
+        newest_index = page.index("data-history-chart-pair='1:2'", comparison_index)
         selector_index = page.index("id='mobile-history-selector'")
         chart_index = page.index("class='mobile-history-trend'", newest_index)
         legend_index = page.index("class='mobile-history-legend'", chart_index)

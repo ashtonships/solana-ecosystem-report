@@ -1,0 +1,223 @@
+{
+  "checks": [
+    "Real touch swipe on inline chart moves carousel; tap inspects without swipe",
+    "Expanded chart drag owns inspection; Escape restores original card and focus",
+    "History selectors and selected chart share one containing component",
+    "Data contents retains five real section destinations",
+    "All 12 validator and growth cards explain their metric; recorded targets support tap and Escape",
+    "Expanded chart closes on resize or route change and restores visible focus"
+  ],
+  "errors": [],
+  "captures": [
+    {
+      "route": "overview",
+      "width": 320,
+      "theme": "light",
+      "file": "overview-320-light.png",
+      "height": 2711
+    },
+    {
+      "route": "data",
+      "width": 320,
+      "theme": "light",
+      "file": "data-320-light.png",
+      "height": 8826
+    },
+    {
+      "route": "methods",
+      "width": 320,
+      "theme": "light",
+      "file": "methods-320-light.png",
+      "height": 2321
+    },
+    {
+      "route": "history",
+      "width": 320,
+      "theme": "light",
+      "file": "history-320-light.png",
+      "height": 1487
+    },
+    {
+      "route": "project",
+      "width": 320,
+      "theme": "light",
+      "file": "project-320-light.png",
+      "height": 7633
+    },
+    {
+      "route": "overview",
+      "width": 393,
+      "theme": "light",
+      "file": "overview-393-light.png",
+      "height": 2556
+    },
+    {
+      "route": "data",
+      "width": 393,
+      "theme": "light",
+      "file": "data-393-light.png",
+      "height": 8428
+    },
+    {
+      "route": "methods",
+      "width": 393,
+      "theme": "light",
+      "file": "methods-393-light.png",
+      "height": 2174
+    },
+    {
+      "route": "history",
+      "width": 393,
+      "theme": "light",
+      "file": "history-393-light.png",
+      "height": 1481
+    },
+    {
+      "route": "project",
+      "width": 393,
+      "theme": "light",
+      "file": "project-393-light.png",
+      "height": 7021
+    },
+    {
+      "route": "overview",
+      "width": 768,
+      "theme": "light",
+      "file": "overview-768-light.png",
+      "height": 1858
+    },
+    {
+      "route": "data",
+      "width": 768,
+      "theme": "light",
+      "file": "data-768-light.png",
+      "height": 9473
+    },
+    {
+      "route": "methods",
+      "width": 768,
+      "theme": "light",
+      "file": "methods-768-light.png",
+      "height": 1751
+    },
+    {
+      "route": "history",
+      "width": 768,
+      "theme": "light",
+      "file": "history-768-light.png",
+      "height": 2707
+    },
+    {
+      "route": "project",
+      "width": 768,
+      "theme": "light",
+      "file": "project-768-light.png",
+      "height": 6869
+    },
+    {
+      "route": "overview",
+      "width": 1440,
+      "theme": "light",
+      "file": "overview-1440-light.png",
+      "height": 1900
+    },
+    {
+      "route": "data",
+      "width": 1440,
+      "theme": "light",
+      "file": "data-1440-light.png",
+      "height": 8560
+    },
+    {
+      "route": "methods",
+      "width": 1440,
+      "theme": "light",
+      "file": "methods-1440-light.png",
+      "height": 1395
+    },
+    {
+      "route": "history",
+      "width": 1440,
+      "theme": "light",
+      "file": "history-1440-light.png",
+      "height": 1833
+    },
+    {
+      "route": "project",
+      "width": 1440,
+      "theme": "light",
+      "file": "project-1440-light.png",
+      "height": 5991
+    },
+    {
+      "route": "overview",
+      "width": 393,
+      "theme": "dark",
+      "file": "overview-393-dark.png",
+      "height": 2556
+    },
+    {
+      "route": "data",
+      "width": 393,
+      "theme": "dark",
+      "file": "data-393-dark.png",
+      "height": 8428
+    },
+    {
+      "route": "methods",
+      "width": 393,
+      "theme": "dark",
+      "file": "methods-393-dark.png",
+      "height": 2174
+    },
+    {
+      "route": "history",
+      "width": 393,
+      "theme": "dark",
+      "file": "history-393-dark.png",
+      "height": 1481
+    },
+    {
+      "route": "project",
+      "width": 393,
+      "theme": "dark",
+      "file": "project-393-dark.png",
+      "height": 7021
+    },
+    {
+      "route": "overview",
+      "width": 1440,
+      "theme": "dark",
+      "file": "overview-1440-dark.png",
+      "height": 1900
+    },
+    {
+      "route": "data",
+      "width": 1440,
+      "theme": "dark",
+      "file": "data-1440-dark.png",
+      "height": 8560
+    },
+    {
+      "route": "methods",
+      "width": 1440,
+      "theme": "dark",
+      "file": "methods-1440-dark.png",
+      "height": 1395
+    },
+    {
+      "route": "history",
+      "width": 1440,
+      "theme": "dark",
+      "file": "history-1440-dark.png",
+      "height": 1833
+    },
+    {
+      "route": "project",
+      "width": 1440,
+      "theme": "dark",
+      "file": "project-1440-dark.png",
+      "height": 5991
+    }
+  ]
+}
