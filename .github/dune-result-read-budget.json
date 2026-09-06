@@ -1,10 +1,19 @@
 {
-  "version": 1,
-  "starts_on": "2026-09-06",
-  "expires_on": "2026-09-07",
-  "query_id": "8590950",
-  "total_read_limit": 2,
   "daily_read_limit": 2,
+  "expires_on": "2026-09-07",
   "max_rows_per_read": 500,
-  "reservations": {}
+  "query_id": "8590950",
+  "reservations": {
+    "34010172983:1": {
+      "max_rows_per_read": 500,
+      "query_id": "8590950",
+      "reads": 2,
+      "reserved_at": "2026-09-06T03:57:31+00:00",
+      "run_token": "34010172983:1",
+      "utc_date": "2026-09-06"
+    }
+  },
+  "starts_on": "2026-09-06",
+  "total_read_limit": 2,
+  "version": 1
 }
