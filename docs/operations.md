@@ -27,8 +27,8 @@ No key is a spending authorization. Query execution and X search have separate, 
 
 Dune result retrieval consumes credits, so `--with-dune`, a key and query ID are
 not sufficient. Reads additionally require `DUNE_PAID_READS_ENABLED=true` and an
-owner-created `.github/dune-result-read-budget.json`; that file is absent while
-allowance is unknown. A durable receipt bounds total/daily reads and at most 500
+owner-created `.github/dune-result-read-budget.json`. The dated 2026-09-06 trial
+allows two reads total and expires at 2026-09-07T00:00:00Z. A durable receipt bounds total/daily reads and at most 500
 rows across the six contracted columns. Paid reads have no automatic retry. To
 allow a refresh, the workflow also needs `DUNE_EXECUTION_ENABLED=true` and the
 tracked `.github/dune-execution-ledger.json`. That ledger records at most one
@@ -36,6 +36,15 @@ attempted execution per query and UTC day. A transport failure or killed run
 consumes the read/attempt reservation. Confirm credits and hard account caps
 before enabling; the code does not purchase credits or raise a cap. See the
 [query contract](dune/query-registry.md).
+
+For the approved one-time trial, dispatch `update.yml` on `main` with `mode=update`
+and `dune_refresh_once=true`. Keep both repository paid-source flags disabled;
+manual activation is scoped to that dispatch. A cadence override is accepted
+only with matching, unconsumed read and execution receipts for the current run
+and UTC day. Scheduled runs do not inherit this manual permission. Spent or
+expired allowances are not reset or retried. The account's saved 25-credit query
+ceiling and $0 extra-spending limit were verified before the trial; result-read
+credits are separate from the execution ceiling.
 
 X needs `X_BEARER_TOKEN`, `X_PAID_READS_ENABLED=true` and an approved `.github/x-read-budget.json`. Missing, corrupt, expired or exhausted accounting skips paid search. No file is initialized from snapshot counts: a response may have cost money even if it was filtered, never published or lost with a runner.
 

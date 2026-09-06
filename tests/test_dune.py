@@ -179,6 +179,50 @@ class CollectDuneTests(unittest.TestCase):
             "https://api.dune.com/api/v1/execution/exec-2/results?limit=500&columns=metric_id%2Cday%2Cdimension%2Cvalue%2Cunit%2Csample_count",
         ])
 
+    def test_result_request_cannot_start_execution_after_utc_receipt_day(self):
+        now = NOW.replace(hour=23, minute=59, second=59)
+        calls = []
+        def request(url, key, method='GET', body=None, timeout=30):
+            calls.append(method)
+            self.assertLessEqual(timeout, 1)
+            self.clock.sleep(2)
+            return 404, {}
+        with mock.patch.object(dune, '_request', side_effect=request):
+            result = dune.collect_dune(env=self.env, now=now)
+        self.assertFalse(result['available'])
+        self.assertEqual(calls, ['GET'])
+        self.assertIn('deadline', result['reason'])
+
+    def test_failed_execution_audit_keeps_identity_and_cost_without_raw_response(self):
+        request, _ = self.execution_responses()
+        def failed(url, key, **kwargs):
+            if url.endswith('/status'):
+                return 200, {'execution_id': 'exec-2', 'query_id': int(QUERY_ID),
+                             'state': 'QUERY_STATE_FAILED', 'execution_cost_credits': 2.5,
+                             'error': 'private-provider-detail', 'api_key': 'mock-key'}
+            return request(url, key, **kwargs)
+        output = io.StringIO()
+        with mock.patch.object(dune, '_request', side_effect=failed), mock.patch.object(dune.sys, 'stderr', output):
+            result = dune.collect_dune(env=self.env, now=NOW)
+        self.assertFalse(result['available'])
+        receipts = [json.loads(line.split(': ', 1)[1]) for line in output.getvalue().splitlines()]
+        self.assertEqual(receipts, [
+            {'query_id': QUERY_ID, 'execution_id': 'exec-2', 'state': 'accepted', 'execution_cost_credits': None},
+            {'query_id': QUERY_ID, 'execution_id': 'exec-2', 'state': 'QUERY_STATE_FAILED', 'execution_cost_credits': 2.5},
+        ])
+        for secret in ('private-provider-detail', 'mock-key', 'https://'):
+            self.assertNotIn(secret, output.getvalue())
+
+    def test_execution_audit_rejects_unrecognized_state_and_invalid_cost(self):
+        for cost in (True, -1, float('nan'), float('inf'), 'private-provider-detail'):
+            output = io.StringIO()
+            with mock.patch.object(dune.sys, 'stderr', output):
+                dune._audit_execution(QUERY_ID, 'exec-2', 'private-provider-detail', cost)
+            receipt = json.loads(output.getvalue().split(': ', 1)[1])
+            self.assertEqual(receipt['state'], 'unrecognized')
+            self.assertIsNone(receipt['execution_cost_credits'])
+            self.assertNotIn('private-provider-detail', output.getvalue())
+
     def test_saved_query_edit_404_executes_only_with_both_precommitted_allowances(self):
         request, calls = self.execution_responses()
         original = request

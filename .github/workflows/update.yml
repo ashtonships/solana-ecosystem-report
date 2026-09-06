@@ -15,6 +15,11 @@ on:
         options:
           - bootstrap
           - update
+      dune_refresh_once:
+        description: Request one Dune refresh using the committed finite allowance
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [main]
   pull_request:
@@ -89,8 +94,9 @@ jobs:
         env:
           DUNE_QUERY_ID: ${{ vars.DUNE_QUERY_ID }}
           DUNE_REFRESH_HOURS: ${{ vars.DUNE_REFRESH_HOURS || '24' }}
-          DUNE_PAID_READS_ENABLED: ${{ vars.DUNE_PAID_READS_ENABLED || 'false' }}
-          DUNE_EXECUTION_ENABLED: ${{ vars.DUNE_EXECUTION_ENABLED || 'false' }}
+          DUNE_PAID_READS_ENABLED: ${{ (github.event_name == 'workflow_dispatch' && inputs.dune_refresh_once && 'true') || vars.DUNE_PAID_READS_ENABLED || 'false' }}
+          DUNE_EXECUTION_ENABLED: ${{ (github.event_name == 'workflow_dispatch' && inputs.dune_refresh_once && 'true') || vars.DUNE_EXECUTION_ENABLED || 'false' }}
+          DUNE_REFRESH_ONCE_REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.dune_refresh_once && 'true' || 'false' }}
           DUNE_API_KEY_PRESENT: ${{ secrets.DUNE_API_KEY != '' }}
           X_PAID_READS_ENABLED: ${{ vars.X_PAID_READS_ENABLED || 'false' }}
           X_BEARER_TOKEN_PRESENT: ${{ secrets.X_BEARER_TOKEN != '' }}

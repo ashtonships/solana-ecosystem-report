@@ -154,6 +154,22 @@ class CollectCadenceTests(unittest.TestCase):
                 entry["last_success_at"], prior["collection_schedule"][key]["last_success_at"],
             )
 
+    def test_reserved_one_off_refreshes_only_dune_inside_its_daily_cadence(self):
+        prior = previous()
+        original = deepcopy(prior)
+        patches = self._base_patches()
+        with patches[0], patches[1], patches[2], patches[3], patches[4], \
+             patch.object(collect.dune_module, 'has_reserved_one_off_refresh', return_value=True), \
+             patch.object(collect.dune_module, 'collect_dune', return_value={'available': True, 'marker': 'new'}) as dune:
+            raw = collect.sources(ENDPOINT, with_dune=True, previous_snapshot=prior, now=NOW)
+        dune.assert_called_once_with()
+        self.assertEqual(raw['dune']['marker'], 'new')
+        self.assertEqual(raw['collection_schedule']['dune']['state'], 'fresh')
+        self.assertEqual(prior, original)
+        for key in set(raw['collection_schedule']) - {'dune'}:
+            self.assertEqual(raw['collection_schedule'][key]['last_attempt_at'],
+                             original['collection_schedule'][key]['last_attempt_at'])
+
     def test_six_hour_provider_refresh_does_not_run_or_advance_token_cursor(self):
         prior = previous({"growth_providers": timedelta(hours=6)})
         updated = deepcopy(prior["growth"])

@@ -112,8 +112,9 @@ attempt token and cannot reuse the committed reservation. Failed collection,
 failed publication and killed runners do not refund the durable attempt.
 A local authorized run reserves directly against an existing persistent ledger.
 
-The separate result-read ledger is deliberately absent until the owner confirms
-remaining credits. Its exact fields are `version`, `starts_on`, `expires_on`,
+The separate result-read ledger requires confirmed remaining credits. The
+2026-09-06 allowance permits two reads total and expires the next UTC midnight.
+Its exact fields are `version`, `starts_on`, `expires_on`,
 `query_id`, `total_read_limit`, `daily_read_limit`, `max_rows_per_read`, and
 `reservations`.
 The code ceiling is 500 rows per read. Dates are UTC with exclusive expiration.
@@ -125,24 +126,31 @@ the committed snapshot and retains its original execution date and contract.
 
 ## Registered-query convergence gate
 
-The local SQL is functional candidate code; it is not proof that query 8590950
-contains these seven families. Convergence requires an API key created by that
-query's owner, `Read/Write` scope, and an Analyst plan or higher for
-[`PATCH /api/v1/query/{queryId}`](https://docs.dune.com/api-reference/queries/endpoint/update).
-Before the owner-authorized mutation, read and retain the current query response
-from [`GET /api/v1/query/{queryId}`](https://docs.dune.com/api-reference/queries/endpoint/read),
-then PATCH only `query_id` and `query_sql`. Read it back and compare the returned
-SQL byte-for-byte with `docs/dune/solana-activity.sql`; do not report convergence
-from the PATCH status alone.
+On 2026-09-06, the owner signed in to Dune as `@clearout`. Query 8590950 was
+saved through the editor and reopened in a fresh page. Full editor clipboard
+readback matched `docs/dune/solana-activity.sql` exactly (SHA256
+`9ca466907db200ebdc697b08316a8fb07a8b9648977e975057937ff2bf0520da`).
+The prior SQL was retained privately for rollback. This establishes saved-query
+convergence, not successful execution or measured coverage.
 
-Updating SQL does not authorize execution. A first result still needs separately
-confirmed account credit allowance and the existing durable execution receipt
-flow. Enable `DUNE_EXECUTION_ENABLED` only after that allowance is known; let the
-workflow reserve/commit/push the attempt before its one POST. Then verify the
-execution-specific result contains all seven registered families, completed UTC
-dates, 107-mint coverage provenance, and internally consistent xStock counts.
-Keep the old query response and SQL for rollback. Current account allowance,
-write scope, and billed credits are `UNKNOWN` from repository evidence.
+Fresh account settings showed Plus trial, 2,496.643 included credits remaining,
+extra spending locked at $0 with no payment method, and the saved per-execution
+ceiling at 25 credits. The owner authorized one execution and at most two result
+reads of 500 rows each on 2026-09-06; no subscription change or extra spending.
+Result-read credits are separate from the execution ceiling.
+
+Use the explicit `dune_refresh_once` manual workflow input while keeping both
+repository enable flags false. It requests the same durable allowance and can
+bypass the ordinary collection cadence only with matching current-run receipts.
+Expired, spent or invalid accounting prevents paid requests. Do not refund a
+reservation or execute again after a failed trial.
+
+Execution results must still be checked for the registered metric families,
+completed UTC dates, 107-mint provenance and consistent xStock counts. The USD
+family is correctly absent when pricing is incomplete. An account cost cap is
+a provider stop condition; the 120-second client deadline does not prove that
+server-side computation stopped. Inspect the retained execution ID and account
+usage after success or failure before reporting the trial's final outcome.
 
 ## Offline verification
 

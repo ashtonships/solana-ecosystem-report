@@ -10,11 +10,16 @@
 
 ## Submission evidence boundary
 
-The tag preserves pre-deadline source and its recorded snapshot. It does not prove
-what was entered in the submission portal. The portal confirmation, submitted
-link or revision, submission timestamp, and receipt have not been independently
-verified from the available records. The current listing is in review; the
-scheduled announcement is 2026-09-15T03:59:59.999Z.
+The signed-in [@clearout profile](https://superteam.fun/earn/t/clearout) was
+independently inspected on 2026-09-06. It records one submission to this bounty;
+its **View Submission** link points to the canonical repository above. This
+verifies that a submission exists and identifies the submitted repository URL.
+The profile displays only a relative submission time, so the exact submission
+timestamp and any frozen commit remain unverified. The preserved tag establishes
+pre-deadline source, not a portal-bound revision.
+
+The listing is in review; the scheduled announcement is
+2026-09-15T03:59:59.999Z. No award is established.
 
 ## Post-deadline changes
 
