@@ -2356,6 +2356,157 @@ def rpc_access_label(snapshot: dict[str, Any]) -> str:
     )
 
 
+def daily_median_presentation(snapshot: dict[str, Any]) -> tuple[str, str, str]:
+    """Share the exact dated daily median without relabelling the block sample."""
+    label = "Daily median fee · non-vote"
+    observation = next((
+        row for row in facts_module.dune_activity_facts(snapshot)
+        if row.get("metric_id") == "dune_daily_non_vote_median_fee_lamports"
+    ), {})
+    coverage = observation.get("coverage", {})
+    count = coverage.get("transaction_count")
+    value = observation.get("value")
+    if (not is_number(value) or observation.get("state") not in ("current", "stale")
+            or coverage.get("complete_day") is not True
+            or type(count) is not int or count <= 0):
+        return label, "Unavailable", (
+            "No completed-day median was recorded in this query result; "
+            "the block-sample median remains separately labelled."
+        )
+    state = "stale retained result" if observation["state"] == "stale" else "recorded"
+    section = snapshot.get("dune", {})
+    record = section if section.get("available") is True else section.get("last_known_good", {})
+    legacy = "legacy result · " if record.get("aggregation_contract") != "completed-utc-days-v1" else ""
+    return label, f"{fmt(value)} lamports", (
+        f"Dune · {state} · {legacy}completed UTC day {coverage['day']} · "
+        f"{fmt(count)} indexed transactions, including failed transactions · "
+        "exact median; the retained block-sample median is a separate observation"
+    )
+
+
+def dune_daily_presentations(snapshot: dict[str, Any]) -> list[tuple[str, str, str, tuple[str, ...]]]:
+    """One reader contract for Dune headlines across HTML and Markdown."""
+    section = snapshot.get("dune") if isinstance(snapshot.get("dune"), dict) else {}
+    current = section.get("available") is True
+    record = section if current else section.get("last_known_good", {})
+    record = record if isinstance(record, dict) else {}
+    aggregates = record.get("aggregates") if isinstance(record.get("aggregates"), dict) else {}
+    state = (("stale retained result · last-known-good · current query unavailable" if aggregates else "unavailable") if not current else
+             "stale retained result" if record.get("freshness") == "stale" else "provider-reported")
+    source = f"Dune query {record.get('query_id') or section.get('query_id') or 'unavailable'} · {state}"
+
+    def day_description(day: Any) -> str:
+        moment = development_event_moment(day)
+        if moment is None and re.fullmatch(r"\d{4}-\d{2}-\d{2} 00:00:00(?:\.0+)? UTC", str(day)):
+            moment = development_event_moment(str(day)[:10])
+        ended = development_event_moment(record.get("execution_ended_at"))
+        description = "UTC day completeness unavailable"
+        if moment and ended:
+            if moment.date() < ended.astimezone(timezone.utc).date():
+                description = "completed UTC day"
+            elif moment.date() == ended.astimezone(timezone.utc).date():
+                description = "partial UTC day at execution"
+        if record.get("aggregation_contract") != "completed-utc-days-v1":
+            description = "legacy result · " + description
+        return f"{day or 'date unavailable'} · {description}"
+
+    rows = []
+    for label, key, day_key, metric, unit, note in (
+        ("Daily non-vote fee payers", "fee_payers_latest", "fee_payers_day",
+         "dune_daily_non_vote_fee_payers", "fee payers",
+         "distinct non-vote transaction fee payers; not people or a provider activity range"),
+        ("DEX volume (Dune, trade-leg)", "dex_volume_total_latest_usd", "dex_volume_total_day",
+         "dune_daily_dex_volume_usd", "USD",
+         "trade-leg volume sums each swap leg; multi-hop legs remain separate; not unique-user volume"),
+        ("Daily all-transaction fees", "transaction_fees_latest_sol", "transaction_fees_day",
+         "dune_daily_transaction_fees_sol", "SOL",
+         "all vote and non-vote transaction fees in gas_solana.fees; not protocol REV or Jito tips"),
+    ):
+        value = aggregates.get(key)
+        display = ((f"${fmt(value)}" if unit == "USD" else f"{fmt(value)} {unit}")
+                   if is_number(value) else "Unavailable")
+        detail = f"{source} · {day_description(aggregates.get(day_key))} · {note}"
+        if not is_number(value):
+            detail += "; no daily value recorded in this result"
+        rows.append((label, display, detail, (metric,)))
+
+    volume = aggregates.get("xstocks_dex_volume_latest_usd")
+    all_legs = aggregates.get("xstocks_dex_trade_legs")
+    priced = aggregates.get("xstocks_dex_priced_trade_legs")
+    complete = (aggregates.get("xstocks_dex_volume_available") is True
+                and is_number(volume) and is_number(all_legs) and is_number(priced)
+                and all_legs == priced)
+    coverage = (f"{fmt(priced)} of {fmt(all_legs)} scoped trade legs priced"
+                if is_number(all_legs) and is_number(priced) else "trade-leg coverage unavailable")
+    reason = ("OR-matched scoped rows counted once; not all equity or unique-user volume" if complete else
+              str(aggregates.get("xstocks_dex_volume_reason") or
+                  (f"USD volume withheld because pricing covers {fmt(priced)} of {fmt(all_legs)} scoped trade legs"
+                   if is_number(all_legs) and is_number(priced) and all_legs != priced else
+                   "registered query result did not contain pinned xStock coverage rows")))
+    rows.insert(2, (
+        "Covered xStocks DEX trade-leg volume", f"${fmt(volume)}" if complete else "Unavailable",
+        f"{source} · {day_description(aggregates.get('xstocks_dex_day'))} · {coverage} · {reason}",
+        ("dune_daily_xstocks_dex_volume_usd", "dune_daily_xstocks_dex_trade_legs",
+         "dune_daily_xstocks_dex_priced_trade_legs"),
+    ))
+    rows.append((*daily_median_presentation(snapshot), ("dune_daily_non_vote_median_fee_lamports",)))
+    return rows
+
+
+def daily_dune_metric_ids(snapshot: dict[str, Any], metric_ids: tuple[str, ...]) -> tuple[str, ...]:
+    """An absent historical Dune section has no observation record to bind."""
+    return metric_ids if isinstance(snapshot.get("dune"), dict) else ()
+
+
+def dune_project_presentation(snapshot: dict[str, Any]) -> tuple[str, list[dict[str, Any]], str | None]:
+    section = snapshot.get("dune") if isinstance(snapshot.get("dune"), dict) else {}
+    record = section if section.get("available") is True else section.get("last_known_good", {})
+    record = record if isinstance(record, dict) else {}
+    aggregates = record.get("aggregates") if isinstance(record.get("aggregates"), dict) else {}
+    projects = aggregates.get("dex_volume_by_project_top")
+    projects = [row for row in projects if isinstance(row, dict)] if isinstance(projects, list) else []
+    query_id = record.get("query_id") or section.get("query_id")
+    query_url = (record.get("query_url") or section.get("query_url")
+                 or (f"https://dune.com/queries/{query_id}" if query_id else None))
+    return (str(aggregates.get("dex_volume_total_day") or "date unavailable"), projects,
+            query_url if safe_external_href(query_url) else None)
+
+
+def render_daily_dune_cards(snapshot: dict[str, Any], observation_indexes=None) -> list[str]:
+    cards = []
+    for label, value, detail, metric_ids in dune_daily_presentations(snapshot):
+        extra = ""
+        if metric_ids == ("dune_daily_dex_volume_usd",):
+            day, projects, query_url = dune_project_presentation(snapshot)
+            if projects:
+                rows = "".join(
+                    f"<div class='pulse-provider-row'><span>{html.escape(str(row.get('dimension')))}</span>"
+                    f"<b>${fmt(row.get('value'))}</b></div>" for row in projects
+                )
+                link = (f"<a href='{html.escape(query_url, quote=True)}'>Source query</a>"
+                        if query_url else "Source query unavailable")
+                extra = (
+                    "<details class='pulse-provider-detail'>"
+                    f"<summary>Top DEXs by trade-leg volume · {html.escape(day)}</summary>{rows}"
+                    "<p class='pulse-provider-note'>Trade-leg volume sums each swap leg; "
+                    f"it is not unique-user volume. {link}</p></details>"
+                )
+        cards.append(card(label, value, detail, extra=extra, attributes=summary_observation_attribute(
+            observation_indexes, str(snapshot.get("collected_at")),
+            daily_dune_metric_ids(snapshot, metric_ids),
+        )))
+    return cards
+
+
+def render_daily_dune_html(snapshot: dict[str, Any], observation_indexes=None) -> str:
+    return (
+        "<details class='chart-disclosure mobile-daily-dune mobile-activity-evidence'>"
+        "<summary>Inspect daily Dune median fees, fee payers and DEX volume</summary>"
+        "<div class='grid'>" + "".join(render_daily_dune_cards(snapshot, observation_indexes))
+        + "</div></details>"
+    )
+
+
 def render_activity_markdown(
     snapshot: dict[str, Any],
     observation_indexes: dict[str, dict[tuple[Any, ...], dict[str, Any]]] | None = None,
@@ -2375,6 +2526,24 @@ def render_activity_markdown(
         )
 
     lines = ["## Fees, REV and activity", ""]
+    lines += ["### Recorded daily Dune measurements", ""]
+    for label, value, detail, metric_ids in dune_daily_presentations(snapshot):
+        lines += [
+            f"#### {label}", "",
+            f"**{value}**{binding(*daily_dune_metric_ids(snapshot, metric_ids))}", "",
+            markdown_text(detail), "",
+        ]
+        if metric_ids == ("dune_daily_dex_volume_usd",):
+            day, projects, query_url = dune_project_presentation(snapshot)
+            if projects:
+                lines += [f"Top DEXs by trade-leg volume · {markdown_text(day)}", "",
+                          "| DEX | Trade-leg volume (USD) |", "| --- | --- |"]
+                lines += [f"| {markdown_text(row.get('dimension'), table=True)} | ${fmt(row.get('value'))} |"
+                          for row in projects]
+                lines += [""]
+                if query_url:
+                    lines += [f"[Source query]({safe_markdown_href(query_url)})", ""]
+    lines += ["### Sampled block fees, REV and activity", ""]
 
     if not activity.get("available"):
         lines += ["_Block sampling unavailable in this snapshot._", ""]
@@ -6563,6 +6732,7 @@ CSS = r"""
     }
 
     .mobile-activity-evidence .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .mobile-daily-dune .grid { grid-template-columns:minmax(0,1fr); }
     .mobile-activity-evidence .card { min-width:0; padding:12px; }
     .mobile-activity-evidence .value { font-size:20px; overflow-wrap:anywhere; }
     .mobile-activity-evidence h2 { font-size:16px; margin-top:20px; }
@@ -16976,152 +17146,9 @@ def render_ecosystem_pulse(
             ),
         )
 
-    # (g) Dune aggregates — trade-leg DEX volume and fee payers from the
-    # saved public query. Derived at collection time; the raw rows never
-    # enter the snapshot, only these aggregates do.
-    dune_section = snapshot.get("dune", {}) if isinstance(snapshot.get("dune"), dict) else {}
-    dune_current = dune_section.get("available") is True
-    dune_record = dune_section if dune_current else dune_section.get("last_known_good", {})
-    dune_record = dune_record if isinstance(dune_record, dict) else {}
-    dune_aggregates = dune_record.get("aggregates", {}) \
-        if isinstance(dune_record.get("aggregates"), dict) else {}
-    dune_state = "provider-reported" if dune_current else "last-known-good · current query unavailable"
-    def day_description(day: Any) -> str:
-        moment = development_event_moment(day)
-        if moment is None and re.fullmatch(r"\d{4}-\d{2}-\d{2} 00:00:00(?:\.0+)? UTC", str(day)):
-            moment = development_event_moment(str(day)[:10])
-        ended = development_event_moment(dune_record.get("execution_ended_at"))
-        description = "UTC day completeness unavailable"
-        if moment and ended:
-            if moment.date() < ended.astimezone(timezone.utc).date():
-                description = "completed UTC day"
-            elif moment.date() == ended.astimezone(timezone.utc).date():
-                description = "partial UTC day at execution"
-        if dune_record.get("aggregation_contract") != "completed-utc-days-v1":
-            description = "legacy result · " + description
-        return description
-    if dune_aggregates:
-        dex_total = dune_aggregates.get("dex_volume_total_latest_usd")
-        if is_number(dex_total):
-            dex_day = dune_aggregates.get("dex_volume_total_day") or "date unavailable"
-            day_moment = development_event_moment(dex_day)
-            if day_moment is None and re.fullmatch(r"\d{4}-\d{2}-\d{2} 00:00:00(?:\.0+)? UTC", str(dex_day)):
-                day_moment = development_event_moment(str(dex_day)[:10])
-            execution_moment = development_event_moment(dune_record.get("execution_ended_at"))
-            day_basis = "UTC day completeness unavailable"
-            if day_moment and execution_moment:
-                execution_day = execution_moment.astimezone(timezone.utc).date()
-                if day_moment.date() < execution_day:
-                    day_basis = "completed UTC day"
-                elif day_moment.date() == execution_day:
-                    day_basis = "partial UTC day at execution"
-            if dune_record.get("aggregation_contract") != "completed-utc-days-v1":
-                day_basis = "legacy result · " + day_basis
-            top_rows = dune_aggregates.get("dex_volume_by_project_top") \
-                if isinstance(dune_aggregates.get("dex_volume_by_project_top"), list) else []
-            top_lines = "".join(
-                f"<div class='pulse-provider-row'><span>{html.escape(str(row.get('dimension')))}</span>"
-                f"<b>${fmt(row.get('value'))}</b></div>"
-                for row in top_rows if isinstance(row, dict)
-            ) if top_rows else ""
-            dex_extra = (
-                "<details class='pulse-provider-detail'>"
-                f"<summary>Top DEXs by trade-leg volume · {html.escape(str(dex_day))}</summary>"
-                f"{top_lines}"
-                "<p class='pulse-provider-note'>Trade-leg volume sums each swap leg; "
-                "it is not unique-user volume. Source query: "
-                + html.escape(str(dune_record.get("query_url") or dune_section.get("query_url") or "https://dune.com"))
-                + "</p></details>"
-            )
-            dex_card = card(
-                "DEX volume (Dune, trade-leg)",
-                f"${fmt(dex_total)}",
-                f"Dune query {dune_record.get('query_id') or dune_section.get('query_id')} · {dune_state} · {dex_day} · "
-                f"{day_basis} · trade-leg basis",
-                extra=dex_extra,
-                attributes=binding("dune_daily_dex_volume_usd"),
-            )
-        else:
-            dex_card = card(
-                "DEX volume (Dune, trade-leg)", "Unavailable",
-                "provider-reported · no daily total in the latest query result",
-            )
-    elif dune_section.get("available") is not True:
-        reason = str(dune_section.get("reason") or "Dune query not collected this run.")
-        dex_card = card(
-            "DEX volume (Dune, trade-leg)", "Unavailable",
-            f"provider-reported · {reason}",
-        )
-    else:
-        dex_card = None
-
-    xstock_volume = dune_aggregates.get("xstocks_dex_volume_latest_usd")
-    xstock_legs = dune_aggregates.get("xstocks_dex_trade_legs")
-    xstock_priced = dune_aggregates.get("xstocks_dex_priced_trade_legs")
-    xstock_day = dune_aggregates.get("xstocks_dex_day") or "date unavailable"
-    xstock_complete = (
-        dune_aggregates.get("xstocks_dex_volume_available") is True
-        and is_number(xstock_volume) and is_number(xstock_legs) and is_number(xstock_priced)
-        and float(xstock_legs) == float(xstock_priced)
-    )
-    xstock_coverage = (
-        f"{fmt(xstock_priced)} of {fmt(xstock_legs)} scoped trade legs priced"
-        if is_number(xstock_legs) and is_number(xstock_priced) else "trade-leg coverage unavailable"
-    )
-    xstock_reason = str(
-        dune_aggregates.get("xstocks_dex_volume_reason")
-        or (f"USD volume withheld because pricing covers {fmt(xstock_priced)} of {fmt(xstock_legs)} scoped trade legs"
-            if is_number(xstock_legs) and is_number(xstock_priced)
-            and float(xstock_legs) != float(xstock_priced)
-            else "registered query result did not contain pinned xStock coverage rows")
-    )
-    xstock_card = card(
-        "Covered xStocks DEX trade-leg volume",
-        f"${fmt(xstock_volume)}" if xstock_complete else "Unavailable",
-        f"Dune · {dune_state} · {xstock_day} · {day_description(xstock_day)} · {xstock_coverage} · "
-        + ("OR-matched scoped rows counted once; not all equity or unique-user volume"
-           if xstock_complete else xstock_reason),
-        attributes=binding(
-            "dune_daily_xstocks_dex_volume_usd", "dune_daily_xstocks_dex_trade_legs",
-            "dune_daily_xstocks_dex_priced_trade_legs",
-        ),
-    ) if dune_aggregates else None
-
-    transaction_fees = dune_aggregates.get("transaction_fees_latest_sol")
-    transaction_fee_day = dune_aggregates.get("transaction_fees_day") or "date unavailable"
-    transaction_fee_card = card(
-        "Daily all-transaction fees",
-        f"{fmt(transaction_fees)} SOL" if is_number(transaction_fees) else "Unavailable",
-        f"Dune · {dune_state} · {transaction_fee_day} · {day_description(transaction_fee_day)} · "
-        + str(dune_aggregates.get("transaction_fees_basis")
-              or "all transaction fees unavailable; not protocol REV or Jito tips"),
-        attributes=binding("dune_daily_transaction_fees_sol"),
-    ) if dune_aggregates else None
-
-    daily_median = dune_aggregates.get("non_vote_median_fee_latest_lamports")
-    median_day = dune_aggregates.get("non_vote_median_fee_day") or "date unavailable"
-    median_count = dune_aggregates.get("non_vote_median_fee_transaction_count")
-    median_card = card(
-        "Daily median fee · non-vote",
-        f"{fmt(daily_median)} lamports" if is_number(daily_median) else "Unavailable",
-        (f"Dune · {dune_state} · {median_day} · {day_description(median_day)} · "
-         f"{fmt(median_count)} indexed transactions, including failed transactions · "
-         "exact median; the retained block-sample median is a separate observation"
-         if is_number(daily_median) else
-         "No completed-day median was recorded in this query result; the block-sample median remains separately labelled."),
-        attributes=binding("dune_daily_non_vote_median_fee_lamports"),
-    ) if dune_aggregates else None
-
     pulse_cards = [sol_card, addresses_card, fee_payers_card, app_revenue_card,
                    rev_card, supply_card]
-    if dex_card is not None:
-        pulse_cards.append(dex_card)
-    if xstock_card is not None:
-        pulse_cards.append(xstock_card)
-    if transaction_fee_card is not None:
-        pulse_cards.append(transaction_fee_card)
-    if median_card is not None:
-        pulse_cards.append(median_card)
+    pulse_cards.extend(render_daily_dune_cards(snapshot, observation_indexes))
 
     return (
         "<h2>Ecosystem Pulse <span class='keyless'>assembled from recorded snapshot data</span></h2>"
@@ -21610,6 +21637,7 @@ def render_mobile_data(
         f"{render_validator_workbench(snapshot, 'mobile', observation_indexes, history)}"
         f"{render_cluster_software(snapshot, 'mobile', observation_indexes)}"
         f"{render_growth_workbench(snapshot, 'mobile', observation_indexes)}"
+        f"{render_daily_dune_html(snapshot, observation_indexes)}"
         "<details class='chart-disclosure mobile-activity-evidence'><summary>Inspect sampled fees and address activity</summary>"
         f"{render_activity_html(snapshot, observation_indexes)}</details>"
         "<section id='mobile-data-sources' class='mobile-source-section' aria-labelledby='mobile-source-section-title'>"

@@ -7598,6 +7598,78 @@ class TestPythonCompatibility(unittest.TestCase):
 
 
 class TestSeptemberRendererRecovery(unittest.TestCase):
+    def test_all_daily_dune_readers_share_scoped_values_and_individual_bindings(self):
+        snapshot = load_fixture()
+        snapshot['schema_version'] = 9
+        snapshot['validators'] = {}
+        snapshot['activity'] = {'available': False}
+        snapshot['dune'] = {
+            'available': True, 'query_id': '8590950',
+            'aggregation_contract': 'completed-utc-days-v1',
+            'execution_ended_at': '2026-09-06T03:00:00Z',
+            'aggregates': {
+                'fee_payers_latest': 2030935, 'fee_payers_day': '2026-09-05',
+                'dex_volume_total_latest_usd': 123456.75, 'dex_volume_total_day': '2026-09-04',
+                'dex_volume_by_project_day': '2026-09-04',
+                'dex_volume_by_project_top': [{'dimension': 'Raydium', 'value': 74000.5},
+                                              {'dimension': 'Orca', 'value': 49456.25}],
+                'xstocks_dex_volume_latest_usd': None, 'xstocks_dex_day': '2026-09-03',
+                'xstocks_dex_trade_legs': 15296, 'xstocks_dex_priced_trade_legs': 15000,
+                'xstocks_dex_volume_available': False,
+                'xstocks_dex_volume_reason': 'USD volume withheld because one or more scoped trade legs lacked valid pricing',
+                'transaction_fees_latest_sol': 789.25, 'transaction_fees_day': '2026-09-02',
+                'non_vote_median_fee_latest_lamports': 5000.5, 'non_vote_median_fee_day': '2026-09-01',
+                'non_vote_median_fee_transaction_count': 240,
+            },
+        }
+        original = deepcopy(snapshot)
+        for state in ('current', 'retained', 'stale'):
+            with self.subTest(state=state):
+                candidate = deepcopy(snapshot)
+                if state == 'retained':
+                    candidate['dune'] = {'available': False, 'last_known_good': candidate['dune']}
+                elif state == 'stale':
+                    candidate['dune']['freshness'] = 'stale'
+                records = render.facts_module.public_observation_records(candidate)
+                records += render.build_derived_observation_records([candidate], records)
+                indexes = render.public_observation_indexes(records)
+                mobile = render.render_mobile_data(candidate, observation_indexes=indexes)
+                daily = mobile.split("class='chart-disclosure mobile-daily-dune mobile-activity-evidence'", 1)[1].split('Inspect sampled fees and address activity', 1)[0]
+                markdown = '\n'.join(render.render_activity_markdown(candidate, indexes))
+                pulse = render.render_ecosystem_pulse(candidate, indexes)
+                cards = render.render_daily_dune_cards(candidate, indexes)
+                rows = render.dune_daily_presentations(candidate)
+                self.assertEqual(len(cards), 5)
+                self.assertEqual(sum(len(row[3]) for row in rows), 7)
+                for (label, value, detail, metrics), rendered_card in zip(rows, cards):
+                    md_row = markdown.split('#### ' + label, 1)[1].split('#### ', 1)[0]
+                    for output in (rendered_card, daily, md_row, pulse):
+                        self.assertIn(value, output)
+                    for metric in metrics:
+                        observation_id = indexes['summary'][(metric, candidate['collected_at'])]['observation_id']
+                        self.assertIn(observation_id, rendered_card)
+                        self.assertIn(observation_id, md_row)
+                for output in (daily, markdown, pulse):
+                    for text in ('2,030,935 fee payers', '$123,456.75', '789.25 SOL', '5,000.50 lamports',
+                                 '15,000 of 15,296 scoped trade legs priced', 'USD volume withheld',
+                                 'not people', 'multi-hop legs remain separate', 'not protocol REV or Jito tips',
+                                 'including failed transactions'):
+                        self.assertIn(text, output)
+                    for day in ('2026-09-05', '2026-09-04', '2026-09-03', '2026-09-02', '2026-09-01'):
+                        self.assertIn(day, output)
+                    if state != 'current':
+                        self.assertIn('stale retained result', output)
+                xstock = cards[2]
+                self.assertIn('Unavailable', xstock)
+                self.assertNotIn('$0', xstock)
+                self.assertIn("<details class='pulse-provider-detail'>", cards[1])
+                self.assertIn("href='https://dune.com/queries/8590950'", cards[1])
+                self.assertIn('| Raydium | $74,000.50 |', markdown)
+                self.assertIn('[Source query](https://dune.com/queries/8590950)', markdown)
+                self.assertLess(markdown.index('#### Daily median fee'), markdown.index('### Sampled block fees, REV and activity'))
+        self.assertEqual(snapshot, original)
+        self.assertIn('.mobile-daily-dune .grid { grid-template-columns:minmax(0,1fr); }', render.CSS)
+
     def test_daily_median_preserves_half_lamports_population_and_separate_sample(self):
         snapshot = load_fixture()
         snapshot['schema_version'] = 9
@@ -7632,10 +7704,56 @@ class TestSeptemberRendererRecovery(unittest.TestCase):
                 metric = indexes['summary'][('dune_daily_non_vote_median_fee_lamports', candidate['collected_at'])]
                 self.assertIn(metric['observation_id'], pulse)
                 self.assertIn(metric['observation_id'], row)
+                mobile = render.render_mobile_data(candidate)
+                bound_daily = render.render_daily_dune_html(candidate, indexes)
+                daily = bound_daily
+                markdown = '\n'.join(render.render_activity_markdown(candidate, indexes))
+                for output in (daily, markdown):
+                    self.assertIn('Daily median fee · non-vote', output)
+                    self.assertIn('5,000.50 lamports', output)
+                    self.assertIn('completed UTC day 2026-09-01', output)
+                    self.assertIn('240 indexed transactions, including failed transactions', output)
+                    self.assertIn('stale retained result' if stale else 'recorded', output)
+                    self.assertIn(metric['observation_id'], output)
+                self.assertLess(mobile.index('mobile-daily-dune'), mobile.index('Inspect sampled fees and address activity'))
+                self.assertIn('block-sample median is a separate observation', markdown)
         del aggregates['non_vote_median_fee_latest_lamports']
         pulse = render.render_ecosystem_pulse(snapshot)
         self.assertIn('No completed-day median was recorded', pulse)
         self.assertNotIn('5,000.50 lamports', pulse)
+
+    def test_daily_median_reader_access_preserves_missing_zero_and_half_lamport_precision(self):
+        snapshot = load_fixture()
+        snapshot['schema_version'] = 9
+        snapshot['activity'] = {'available': False}
+        snapshot['dune'] = {
+            'available': True, 'query_id': 8590950,
+            'execution_ended_at': '2026-09-02T01:00:00Z',
+            'aggregates': {},
+        }
+        for value, expected in ((None, 'Unavailable'), (0, '0 lamports'),
+                                (4503599627370494.5, '4,503,599,627,370,494.50 lamports')):
+            with self.subTest(value=value):
+                aggregates = snapshot['dune']['aggregates']
+                if value is not None:
+                    aggregates.update(
+                        non_vote_median_fee_latest_lamports=value,
+                        non_vote_median_fee_day='2026-09-01',
+                        non_vote_median_fee_transaction_count=240,
+                    )
+                indexes = render.public_observation_indexes(render.facts_module.public_observation_records(snapshot))
+                metric = indexes['summary'][('dune_daily_non_vote_median_fee_lamports', snapshot['collected_at'])]
+                mobile = render.render_daily_dune_html(snapshot, indexes)
+                markdown = '\n'.join(render.render_activity_markdown(snapshot, indexes))
+                for output in (mobile, markdown):
+                    self.assertIn(expected, output)
+                    self.assertIn(metric['observation_id'], output)
+                    if value is None:
+                        self.assertIn('No completed-day median was recorded', output)
+                        self.assertNotIn('0 lamports', output)
+                self.assertIn('Block sampling unavailable', markdown)
+        snapshot['dune']['freshness'] = 'stale'
+        self.assertIn('stale retained result', render.render_daily_dune_html(snapshot))
 
     def test_provider_detail_uses_the_same_complete_date_as_its_headline(self):
         source = {
