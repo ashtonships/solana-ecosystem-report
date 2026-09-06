@@ -8019,6 +8019,51 @@ class TestSeptemberRendererRecovery(unittest.TestCase):
         self.assertIn('option.disabled = Number(option.value) <= a', render.MOBILE_CONTROLLER)
         self.assertIn('Older observations remain in report.json', workspace)
 
+    def test_desktop_alternate_history_ledger_uses_selected_pair_observations(self):
+        history, _, _ = TestPublicObservationBindings.observation_fixture(count=5)
+        for index, snapshot in enumerate(history):
+            snapshot['validators'] = deepcopy(load_fixture()['validators'])
+            snapshot['validators']['delinquent_pct'] = 1.0 + index * 0.25
+        direct = render.facts_module.public_observation_records(history[-1], history=history)
+        observations = [*direct, *render.build_derived_observation_records(history, direct)]
+        indexes = render.public_observation_indexes(observations)
+        comparison = render.bind_public_comparison(pipeline.recheck(history), indexes)
+        workspace = render.render_history_workspace(history, None, comparison, indexes)
+        for a, b in ((0, 1), (0, 4), (2, 3)):
+            with self.subTest(pair=(a, b)):
+                panel = workspace.split(f"data-desktop-history-panel='{a}:{b}' hidden>", 1)[1].split(
+                    '<div data-desktop-history-panel=', 1,
+                )[0]
+                ledger = panel.split("class='desktop-history-ledger'", 1)[1].split('</table>', 1)[0]
+                self.assertEqual(ledger.count("scope='row'"), 4)
+                subject = f"{history[a]['collected_at']}->{history[b]['collected_at']}"
+                for key in ('latest_tps', 'mean_slot_time_secs', 'median_fee_lamports', 'delinquent_pct'):
+                    for snapshot in (history[a], history[b]):
+                        self.assertIn(indexes['summary'][(key, snapshot['collected_at'])]['observation_id'], ledger)
+                    record = indexes['derived'][(f'delta_{key}_absolute_change', subject)]
+                    self.assertIn(f"data-delta-observation-id='{record['observation_id']}'", ledger)
+                self.assertIn(f'>{4000 + a * 10:,.2f}</td>', ledger)
+                self.assertIn(f'>{4000 + b * 10:,.2f}</td>', ledger)
+                self.assertIn(f'>+{(b - a) * 10:,.2f}</td>', ledger)
+                self.assertIn(f'>+{(b - a) * 0.25:.2f} pp</td>', ledger)
+                self.assertNotIn('crossed a declared threshold', panel)
+                self.assertNotIn('Anomaly baseline', panel)
+                self.assertIn('latest comparison only', panel)
+
+    def test_desktop_alternate_history_ledger_preserves_missingness_and_refusal(self):
+        history, _, indexes = TestPublicObservationBindings.observation_fixture(count=3)
+        pair = render.bind_public_comparison(render.delta_module.compare(history[0], history[1]), indexes)
+        markup = render.render_selected_history_ledger(pair)
+        row = markup.split("scope='row'>Delinquency", 1)[1].split('</tr>', 1)[0]
+        self.assertIn('validators marked unavailable', row)
+        self.assertEqual(row.count('<td>Unavailable</td>'), 3)
+        self.assertNotIn('<td>0', row)
+        refused = render.delta_module.compare(history[1], history[0])
+        refused_markup = render.render_selected_history_ledger(refused)
+        self.assertIn('Comparison unavailable.', refused_markup)
+        self.assertIn(render.html.escape(refused['message']), refused_markup)
+        self.assertNotIn('<table', refused_markup)
+
     def test_chronology_years_source_date_and_utc_are_unambiguous(self):
         snapshot = editorial_fixture()
         snapshot['news']['sources'] = {'x_announcements': {

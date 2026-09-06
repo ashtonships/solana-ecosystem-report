@@ -26,7 +26,8 @@ const out=process.argv[3];
  const track=page.locator('.mobile-network-pulse [data-pulse-track]').first();
  await chart.scrollIntoViewIfNeeded();
  let box=await chart.boundingBox();let start=await track.evaluate(e=>e.scrollLeft);
- await swipe(box.x+box.width*.85,box.y+box.height*.5,-box.width*.65,0);
+ // Cross the slide midpoint after touch slop, even when slow dispatch removes fling velocity.
+ await swipe(box.x+box.width*.85,box.y+box.height*.5,-box.width*.8,0);
  assert((await track.evaluate(e=>e.scrollLeft))>start+50,'Swipe starting on chart must move carousel');
  assert(await page.locator('.mobile-network-pulse [data-overview-chart-inspector]').first().isHidden(),'Swipe must not pin tooltip');
  await page.reload(); await chart.scrollIntoViewIfNeeded();
