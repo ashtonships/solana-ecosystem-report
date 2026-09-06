@@ -18,7 +18,7 @@ def load_fixture():
 
 
 def pulse_snapshot():
-    """Live-shaped fixture: schema 9 with all pulse inputs available."""
+    """Live-shaped fixture with original pulse inputs available and no Dune result."""
     snapshot = load_fixture()
     snapshot["schema_version"] = 9
     snapshot["economics"] = {
@@ -87,12 +87,29 @@ class EcosystemPulseTests(unittest.TestCase):
         # all-available fixture shows its explicit pending state.
         self.assertIn("Application revenue", html)
         self.assertIn("provider range pending Solana Data adoption", html)
-        # The Pulse's Dune card is excluded: the fixture has no dune section,
-        # and the sixth card here is the tokenized-equities supply card.
-        self.assertNotIn(">Unavailable</div>", html.split("DEX volume")[0])
+        # The six original cards retain their values; absent Dune metrics
+        # following them have their own explicit unavailable state.
+        original_cards = html.split('<div class="card"')[1:7]
+        self.assertEqual(len(original_cards), 6)
+        for original_card in original_cards:
+            self.assertNotIn(">Unavailable</div>", original_card)
         # Never a zero value and never a bare dash.
         self.assertNotIn("value\">0</div>", html)
         self.assertNotIn("value\">—</div>", html)
+
+    def test_missing_dune_headlines_remain_unavailable_without_replacing_provider_ranges(self):
+        snapshot = pulse_snapshot()
+        self.assertNotIn("dune", snapshot)
+        cards = render.render_daily_dune_cards(snapshot)
+        self.assertEqual(len(cards), 5)
+        for daily_card in cards:
+            self.assertIn('<div class="value">Unavailable</div>', daily_card)
+            self.assertNotIn('<div class="value">0', daily_card)
+        self.assertIn("Daily non-vote fee payers", cards[0])
+        self.assertIn("not people or a provider activity range", cards[0])
+        pulse = render.render_ecosystem_pulse(snapshot)
+        self.assertIn("1,200,000–2,400,000", pulse)
+        self.assertIn("Daily non-vote fee payers", pulse)
 
     def test_unavailable_sections_render_explicit_states_without_raising(self):
         snapshot = pulse_snapshot()
