@@ -28,7 +28,9 @@ No key is a spending authorization. Query execution and X search have separate, 
 Dune result retrieval consumes credits, so `--with-dune`, a key and query ID are
 not sufficient. Reads additionally require `DUNE_PAID_READS_ENABLED=true` and an
 owner-created `.github/dune-result-read-budget.json`. The dated 2026-09-06 trial
-allows two reads total and expires at 2026-09-07T00:00:00Z. A durable receipt bounds total/daily reads and at most 500
+reserved its two reads and one execution in run `34010172983`; that allowance
+is exhausted and expires at 2026-09-07T00:00:00Z. A durable receipt bounds
+total/daily reads and at most 500
 rows across the six contracted columns. Paid reads have no automatic retry. To
 allow a refresh, the workflow also needs `DUNE_EXECUTION_ENABLED=true` and the
 tracked `.github/dune-execution-ledger.json`. That ledger records at most one
@@ -37,8 +39,10 @@ consumes the read/attempt reservation. Confirm credits and hard account caps
 before enabling; the code does not purchase credits or raise a cap. See the
 [query contract](dune/query-registry.md).
 
-For the approved one-time trial, dispatch `update.yml` on `main` with `mode=update`
-and `dune_refresh_once=true`. Keep both repository paid-source flags disabled;
+The completed trial used `update.yml` on `main` with `mode=update` and
+`dune_refresh_once=true`. Do not repeat that trial or reset its ledger. Any
+future paid collection needs a newly approved finite allowance and verified
+account limits. Keep both repository paid-source flags disabled;
 manual activation is scoped to that dispatch. A cadence override is accepted
 only with matching, unconsumed read and execution receipts for the current run
 and UTC day. Scheduled runs do not inherit this manual permission. Spent or

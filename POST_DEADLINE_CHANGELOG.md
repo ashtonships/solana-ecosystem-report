@@ -2,8 +2,9 @@
 
 Everything below lands after the preserved pre-deadline revision
 (`submission-2026-09-01` = `0e42bb8`). This file itemizes later work.
-The tag is unchanged; portal contents and judging treatment of later changes
-remain unverified. See `SUBMISSION_FREEZE.md`.
+The tag is unchanged. The submitted repository URL is now verified; the exact
+portal timestamp/revision and judging treatment of later changes remain unknown.
+See `SUBMISSION_FREEZE.md`.
 
 ## 2026-09-01 (post-deadline, same day)
 
@@ -192,3 +193,33 @@ reliable fifteen-minute delivery or three cycles for subsequent UI releases.
 
 These code and deployment records do not establish a submission receipt,
 post-deadline judging eligibility, or an award.
+
+## 2026-09-06 — final integration and bounded Dune trial
+
+- **PR #59**, merged as `9f6b758feb8fb111df8c1b19d57701d308dde0dc`:
+  completed the alternate desktop History comparison ledger, fixed clipped chart
+  inspection buttons and tablet wordmark/navigation overlap, and corrected
+  release-history evidence. The original dirty redesign checkout was preserved.
+- **PR #60**, merged as `ee32a1c26e378ffc3c907fb58dadb7caa078f082`:
+  added a manual-only Dune refresh bound to persisted read/execution receipts,
+  with UTC expiry and safe execution-ID/credit audit records. Scheduled jobs
+  cannot consume the trial while repository-wide spending flags remain disabled.
+- Query 8590950 was saved through the owner's signed-in editor and independently
+  reopened; its full SQL matched `docs/dune/solana-activity.sql` exactly.
+- [Production run 34010172983](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/34010172983)
+  passed 1,116 tests, collected one successful Dune execution, verified the
+  publication package, deployed it, and passed the hosted release smoke check.
+  An independent review also passed 137 focused tests.
+- The execution used 4.627115385 credits, with $0 extra spending observed in the
+  account. Its allowance is spent. Continuing paid refreshes requires a new
+  bounded allowance; this entry is not ongoing spending authorization.
+- September 5 DEX trade-leg volume is now recorded. Complete scoped xStock USD
+  volume remains unavailable because 296 of 15,296 trade legs lacked valid
+  pricing. See the [query outcome](docs/dune/query-registry.md#verified-trial-outcome--2026-09-06).
+- Clean renderer `b58fbb08ff7f8fd0fdcbe70f790b36f5ddcf57da` generated release
+  `470d88b83d5a9a12c5033c0c0c534289273e65145fda2de700eeca3a7f83df90`
+  at 2026-09-06T03:58:14Z. Hosted HTML, Markdown and JSON were byte-matched to
+  the Pages artifact; port 3000 and the existing phone URL matched those files.
+- The signed-in Superteam profile confirms this bounty's submission links to
+  the canonical GitHub repository. Exact portal time, frozen commit, acceptance
+  of later changes, and an award remain unverified.

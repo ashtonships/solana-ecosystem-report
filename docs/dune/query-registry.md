@@ -139,8 +139,8 @@ ceiling at 25 credits. The owner authorized one execution and at most two result
 reads of 500 rows each on 2026-09-06; no subscription change or extra spending.
 Result-read credits are separate from the execution ceiling.
 
-Use the explicit `dune_refresh_once` manual workflow input while keeping both
-repository enable flags false. It requests the same durable allowance and can
+The completed trial used the explicit `dune_refresh_once` manual workflow input, keeping both
+repository enable flags false. This input requests a durable allowance and can
 bypass the ordinary collection cadence only with matching current-run receipts.
 Expired, spent or invalid accounting prevents paid requests. Do not refund a
 reservation or execute again after a failed trial.
@@ -151,6 +151,39 @@ family is correctly absent when pricing is incomplete. An account cost cap is
 a provider stop condition; the 120-second client deadline does not prove that
 server-side computation stopped. Inspect the retained execution ID and account
 usage after success or failure before reporting the trial's final outcome.
+
+## Verified trial outcome — 2026-09-06
+
+[Run 34010172983](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/34010172983)
+completed one execution, `01M1TDTS0G45E5EY0SEDDGV33G`, at
+2026-09-06T03:57:58.943975Z. The production audit reported
+**4.627115385 execution credits**, below the saved 25-credit cap. The account
+usage page showed $0 additional spending. The finite two-read allowance is
+exhausted; this success does not authorize another run or continuing Dune refreshes.
+
+The [published snapshot](https://github.com/ashtonships/solana-ecosystem-report/blob/b58fbb08ff7f8fd0fdcbe70f790b36f5ddcf57da/snapshots/latest.json)
+records 194 returned rows and the following September 5 completed-day aggregates:
+
+| Metric | Recorded result |
+| --- | ---: |
+| Non-vote fee payers | 2,030,935 |
+| DEX trade-leg volume | $1,077,657,706.86 |
+| All-transaction fees | 2,759.23552078 SOL |
+| Scoped xStock trade legs | 15,296 |
+| Priced scoped xStock trade legs | 15,000 |
+| Complete scoped xStock USD volume | Unavailable |
+
+The 296 unpriced trade legs prevent a complete xStock USD total. The USD family
+is withheld rather than assigning zero or extrapolating prices. Fee payers are
+not a network-wide unique-user count, and transaction fees are not total REV.
+The source SQL has seven families; this result does not establish seven available
+latest values. Published aggregates and execution provenance are retained; raw
+result rows are not part of the public snapshot.
+
+In the HTML report, open **Data → Full recorded data appendix** for the DEX,
+xStock price-coverage, and transaction-fee cards. Full precision and provenance
+remain in JSON. Carried evidence retains its original observation date; ordinary
+core updates do not authorize additional paid Dune reads.
 
 ## Offline verification
 
