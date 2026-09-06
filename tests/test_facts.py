@@ -1836,5 +1836,48 @@ class TestFactContract(unittest.TestCase):
         self.assertEqual(len(facts.dedupe_facts([first, changed])), 2)
 
 
+class TestSupplyEvaluationClock(unittest.TestCase):
+    def test_recalculated_coverage_appends_without_changing_source_fact_identity(self):
+        from tests.test_pipeline import semantic_candidate
+        import copy
+        import growth
+
+        old = semantic_candidate()
+        stamp = old["collected_at"]
+        old["collection_schedule"] = {"growth_tokens": {
+            "last_success_at": stamp, "last_attempt_at": stamp, "state": "reused",
+        }}
+        new = copy.deepcopy(old)
+        new["collected_at"] = "2026-09-06T12:00:00+00:00"
+        new["growth"] = growth.evaluate_supply_freshness(
+            old["growth"], new["collected_at"], reused_this_run=True,
+        )
+        equities = new["growth"]["tokenized_equities"]
+        for metric in ("xstock_fresh_supply_asset_count", "xstock_supply_queried_this_run"):
+            before = facts.fact_from_snapshot(old, metric)
+            after = facts.fact_from_snapshot(new, metric)
+            self.assertEqual(before["collected_at"], stamp)
+            self.assertEqual(after["collected_at"], new["collected_at"])
+            self.assertEqual(len(facts.dedupe_facts([before, after])), 2)
+        self.assertEqual(
+            facts.fact_from_snapshot(old, "xstock_registry_asset_count"),
+            facts.fact_from_snapshot(new, "xstock_registry_asset_count"),
+        )
+        records = facts.public_observation_records(new)
+        fresh = next(record for record in records if
+                     record["metric_id"] == "xstock_fresh_supply_asset_count")
+        self.assertEqual(fresh["collected_at"], new["collected_at"])
+        self.assertEqual(fresh["value"], 0)
+        self.assertEqual(
+            facts.xstock_labelled_mint_supply_facts(old),
+            facts.xstock_labelled_mint_supply_facts(new),
+        )
+        # Historical snapshots without the new evaluation contract retain their clocks.
+        del equities["supply_evaluated_at"]
+        self.assertEqual(facts.fact_from_snapshot(
+            new, "xstock_fresh_supply_asset_count",
+        )["collected_at"], stamp)
+
+
 if __name__ == "__main__":
     unittest.main()

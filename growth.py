@@ -1396,6 +1396,82 @@ def _growth_available(report: dict[str, Any]) -> bool:
     ))
 
 
+def evaluate_supply_freshness(
+    previous_growth: Any, collected_at: str, *, reused_this_run: bool,
+) -> Any:
+    """Project supply freshness at report time, retaining original source evidence."""
+    report = copy.deepcopy(previous_growth)
+    equities = report.get("tokenized_equities") if isinstance(report, dict) else None
+    assets = equities.get("all_assets") if isinstance(equities, dict) else None
+    if not isinstance(assets, list):
+        return report
+    observed_at_unix = int(datetime.fromisoformat(collected_at).timestamp())
+    products = []
+    observations = {}
+    for asset in assets:
+        if not isinstance(asset, dict) or not isinstance(asset.get("mint"), str):
+            continue
+        mint = asset["mint"]
+        products.append({
+            "solana_mint": mint, "symbol": asset.get("symbol"),
+            "name": asset.get("name"), "slug": asset.get("slug"),
+        })
+        observation = {
+            key: asset.get(source_key) for key, source_key in (
+                ("raw_amount", "supply_raw_amount"), ("decimals", "supply_decimals"),
+                ("ui_amount", "supply_rpc_ui_amount"),
+                ("ui_amount_string", "supply_rpc_ui_amount_string"),
+                ("rpc_context_slot", "supply_context_slot"),
+                ("rpc_api_version", "supply_rpc_api_version"),
+                ("collected_at", "supply_collected_at"),
+            )
+        }
+        for key in ("multiplier_provenance", "account_provenance"):
+            if f"supply_{key}" in asset:
+                observation[key] = asset[f"supply_{key}"]
+        observations[mint] = observation
+    refreshed = build_tokenized_equities(
+        products, observations, limit=DISPLAY_ASSET_LIMIT,
+        observed_at_unix=observed_at_unix,
+    )
+    for key in ("assets", "all_assets", "available", "observed_at_unix",
+                "supply_observed_asset_count", "fresh_supply_asset_count",
+                "stale_supply_asset_count"):
+        equities[key] = refreshed[key]
+    previous_coverage = equities.get("supply_coverage")
+    registry_complete = (
+        isinstance(previous_coverage, dict)
+        and previous_coverage.get("registry_complete") is True
+    )
+    coverage = summarize_supply_coverage(
+        registry_asset_count=equities.get("registry_asset_count", len(products)),
+        eligible_mints=list(observations), state={"observations": observations},
+        observed_at_unix=observed_at_unix,
+        queried_this_run_asset_count=(
+            0 if reused_this_run else equities.get("supply_queried_this_run_asset_count", 0)
+        ),
+        successful_this_run_asset_count=(
+            0 if reused_this_run else equities.get("supply_successful_this_run_asset_count", 0)
+        ),
+        registry_complete=registry_complete,
+    )
+    equities["supply_coverage"] = coverage
+    equities["supply_evaluated_at"] = collected_at
+    equities["supply_reused_this_run"] = reused_this_run
+    if reused_this_run:
+        for key in ("queried", "successful", "failed"):
+            equities[f"supply_{key}_this_run_asset_count"] = 0
+        equities["supply_deadline_exhausted"] = False
+    sources = report.get("sources")
+    supply_source = sources.get("supply") if isinstance(sources, dict) else None
+    if isinstance(supply_source, dict):
+        supply_source.update(coverage)
+        supply_source["available"] = refreshed["available"]
+        if reused_this_run:
+            supply_source["deadline_exhausted"] = False
+    return report
+
+
 def refresh_growth_providers(previous_growth: Any, timeout: int = 12) -> dict[str, Any]:
     """Replace only provider observations; retain token evidence byte-for-byte."""
     report = copy.deepcopy(previous_growth) if isinstance(previous_growth, dict) else {

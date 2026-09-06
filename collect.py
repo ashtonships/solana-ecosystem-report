@@ -1141,6 +1141,11 @@ def sources(
                    and dune_data.get("available") is True),
     )
     collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    if with_growth:
+        # Derive age at this snapshot's final time, after other source requests.
+        growth_data = growth_module.evaluate_supply_freshness(
+            growth_data, collected_at, reused_this_run=not token_due,
+        )
     return {
         "indexed": indexed,
         "collected_at": collected_at,

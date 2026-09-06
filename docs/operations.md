@@ -87,6 +87,8 @@ The reservation commit may exist without a later snapshot commit. That is intent
 
 A failed optional adapter records its reason. Dune may expose a dated last-known-good result. A failed X read stays unavailable; previously recorded posts may appear only in the archived chronology with their original observation and publication times. A current timestamp must never be assigned to carried evidence.
 
+xStock supply ages and six-hour/72-hour coverage are evaluated at the final report collection time, including when the daily token source is reused. `supply_evaluated_at` identifies that calculation time; `supply_reused_this_run` distinguishes reuse from a new query pass. Reuse reports zero current-run query/success/failure counts and no current-run deadline exhaustion. Original per-mint values, RPC slots and observation timestamps remain unchanged. Evaluation summary facts use the report clock, while source facts retain their original identities. Historical snapshots without these additive fields retain their original replay contract.
+
 RPC transport retries only eligible transient failures within its existing time budget. Logs contain the method and status class, never a custom endpoint, request body or provider error message. Check method failures, actual sample block times and coverage before treating a green run as recovered data.
 
 If publication fails, use the workflow's failing step and run URL. Confirm the previous hosted release is still intact. Repair and test the source or gate, then run `update`; do not weaken validation, rewrite old snapshots or substitute zeros. A rollback publishes the previously verified package and preserves its original release ID/timestamp; it must not be presented as a fresh collection.
