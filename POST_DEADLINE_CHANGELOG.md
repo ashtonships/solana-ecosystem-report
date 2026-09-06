@@ -223,3 +223,31 @@ post-deadline judging eligibility, or an award.
 - The signed-in Superteam profile confirms this bounty's submission links to
   the canonical GitHub repository. Exact portal time, frozen commit, acceptance
   of later changes, and an award remain unverified.
+
+### Approved included-credit window and supply freshness
+
+- **PR #62** (`d04cddd` merge): the owner approved up to eight additional daily
+  Dune executions and sixteen result reads using included credits only. The
+  finite allowance expires September 15 at 00:00 UTC; spent trial reservations
+  remain unchanged. Both enable flags are active with normal daily cadence.
+  This supersedes the pending continuation decision above; no subscription
+  change or extra spending was approved.
+- **PR #63** (`9c0052a` merge): evaluate xStock supply ages, six-hour freshness
+  and 72-hour coverage at final report time. Reuse reports zero current-run
+  requests and preserves the original values, slots and observation timestamps.
+  Evaluation summary facts use the report clock; historical source identities
+  and snapshots remain unchanged.
+- All 1,123 offline tests passed, followed by PR and main verification. The
+  [publication run 34017048726](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/34017048726)
+  passed collection, package validation, deployment and the live smoke check.
+  Renderer `daf5aaf316476f1a5a9a7b0b8f3cc4f81a3ceb60` generated release
+  `0b5c3f311250c1bb00d3f9262e8eadaf76016ef14f9ddcf849bf354cf4c6aa8b`
+  at 2026-09-06T06:42:19Z. HTML, Markdown and JSON matched the Pages artifact,
+  public site, port 3000 and phone URL.
+- The published report retains 107/107 supplies within 72 hours, correctly
+  records zero within six hours, and preserves all 107 per-mint facts. Both
+  Dune ledgers remained byte-identical; no new query execution was required.
+- The local preview server now sends no-store/no-cache headers after a browser
+  retained an earlier page. A fresh browser load verified the current release
+  and corrected labels. The next daily Dune execution and future judging
+  outcome remain separate, unverified events.
