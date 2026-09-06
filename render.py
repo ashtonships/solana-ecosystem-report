@@ -5642,7 +5642,7 @@ CSS = r"""
       margin:0;
       padding:16px 16px 0;
     }
-    .prototype-page--data .growth-table-panel > p {
+    .prototype-page--data .validator-table-panel > p {
       margin:0;
       padding:12px 16px;
     }
@@ -13976,7 +13976,7 @@ CSS = r"""
       .mobile-data-workbench .validator-bars li:nth-child(n+7) { display:none; }
       .mobile-data-workbench .validator-table-panel { border-radius:12px; }
       .prototype-page--data .mobile-data-workbench .growth-table-panel > h3 { padding:14px 14px 0; }
-      .prototype-page--data .mobile-data-workbench .growth-table-panel > p { padding:12px 14px; }
+      .prototype-page--data .mobile-data-workbench .validator-table-panel > p { padding:12px 14px; }
       .mobile-data-workbench .validator-table-tools { display:block; min-height:0; padding:14px; }
       .mobile-data-workbench .validator-table-tools label { width:100%; }
       .mobile-data-workbench .validator-table-tools input { min-height:46px; font-size:13px; }
