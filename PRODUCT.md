@@ -29,12 +29,13 @@ The report is generated from append-only snapshots and preserves evidence limits
 - `render.py` produces `index.html`, `report.md`, and `report.json` from one selected snapshot and compatible history, with shared release provenance.
 - The five report views are Overview, Data, Methods, History, and Project.
 - Normal output uses recorded data. Deterministic loading, empty, and error previews exist only for UI testing and are labelled as test states.
-- The rights-safe path is configured every six hours but remains disabled until the repository variable `REPORT_AUTOMATION_ENABLED=true`; it stops before push/deploy when collection, publication validation, or rendering fails.
+- The production workflow requests updates at minutes 7, 22, 37 and 52 of each UTC hour. Automation is enabled as verified on September 6, 2026; GitHub can delay runs, so actual collection and source timestamps define freshness. Source refresh tiers are documented in [operations](docs/operations.md). Failed collection, publication validation or rendering stops that candidate before deployment.
 
 ## Capabilities and Constraints
 
 - Python 3.10+ standard library only; no framework, package install, API key, account, or build step for the default path.
-- Public Solana JSON-RPC supplies the rights-safe core. The bounded growth path may add a fixed MIT-licensed xStock mint registry, finalized per-mint supply, and selected four-mint stablecoin supply. DEX Screener, economic, activity-provider, xStocks API, Solana News, curated-upgrade, and SIMD sources remain disabled or held unless their source decision permits public retention and redistribution.
+- Public Solana JSON-RPC supplies the keyless core. The adopted growth path adds a fixed MIT-licensed xStock mint registry, finalized per-mint supply, selected four-mint stablecoin supply and scoped Solana Data Active Addresses provider rows. Agave and Firedancer releases, Solana Status and watched SIMD frontmatter provide factual metadata and links. Approved CoinGecko Demo price and the registered Dune query are separate keyed adapters. DEX Screener, DeFiLlama, xStocks API, Solana News, curated-upgrade archives and uncleared provider rows remain held under the [source decisions](README.md#optional-ecosystem-sources-and-release-holds).
+- The approved Dune window uses included credits only, with a finite allowance through September 14 UTC and no extra spending. Account caps, source cadence and durable reservations remain separate controls; expiry prevents further requests. See [operations](docs/operations.md#paid-sources) for the exact limits and retained trial accounting.
 - Optional sources fail independently and render as unavailable rather than becoming zero or blocking unrelated evidence.
 - The HTML artifact is self-contained and performs no runtime network request.
 - Mobile web is designed first; desktop must remain equally complete and coherent.
@@ -45,7 +46,7 @@ The report is generated from append-only snapshots and preserves evidence limits
 - Network-wide daily active addresses and exact cross-venue tokenized-asset volume remain unavailable unless a truthful, permitted method is added.
 - Selected stablecoin total supply is published only with exact N/4 coverage and is never presented as circulating supply, value, liquidity, depth, or ecosystem-wide composition.
 - First visit defaults to System; complete theme choices are Light, Dark, and System.
-- Public deployment, submission, accounts, KYC, payout, and credential handling are outside the local product build.
+- Public deployment and the submitted repository URL have separate verification records in [the submission record](SUBMISSION_FREEZE.md) and [post-deadline changelog](POST_DEADLINE_CHANGELOG.md). Local build success does not establish portal timing, acceptance of later changes, an award, KYC or payout.
 
 ## Brand Commitments
 

@@ -51,6 +51,11 @@ delays may produce fewer than eight refreshes; eight is the maximum additional
 execution allowance, not a delivery promise. Result-read credits are separate
 from the execution ceiling. No subscription change or extra spending is approved.
 
+Both enable flags and `REPORT_AUTOMATION_ENABLED` were verified as `true` on
+September 6, 2026. Publication run `34017048726` used ordinary cadence, retained
+execution `01M1TDTS0G45E5EY0SEDDGV33G`, and left both Dune ledgers unchanged.
+This verifies activation and reuse, not the next scheduled daily execution.
+
 Disable both repository enable flags when the allowance is spent or the window
 ends. Expired or exhausted accounting independently prevents paid requests even
 if flags remain enabled. Spent reservations are not refunded, deleted or reset;
