@@ -6564,29 +6564,69 @@ CSS = r"""
     .mobile-view .chart-disclosure > summary:focus-visible { outline:2px solid var(--prototype-violet); outline-offset:2px; }
 
     .prototype-page--data .data-domain-rail {
+      margin: 0 0 20px;
+    }
+
+    .prototype-page--data .data-domain-rail__title {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 650;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .prototype-page--data .data-domain-rail ol {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 8px;
-      margin: 0 0 18px;
+      gap: 0;
+      margin: 0;
+      padding: 0;
+      border-block: 1px solid var(--rule-strong);
+      list-style: none;
+    }
+
+    .prototype-page--data .data-domain-rail li {
+      min-width: 0;
+      border-left: 1px solid var(--rule);
+    }
+
+    .prototype-page--data .data-domain-rail li:first-child {
+      border-left: 0;
     }
 
     .prototype-page--data .data-domain-rail a {
       display: grid;
+      position: relative;
       min-width: 0;
-      min-height: 94px;
-      align-content: space-between;
-      gap: 4px;
-      padding: 13px 14px;
-      border: 1px solid var(--rule-strong);
-      border-radius: 8px;
-      background: var(--prototype-paper);
+      height: 100%;
+      min-height: 104px;
+      align-content: start;
+      gap: 7px;
+      padding: 16px 24px 16px 14px;
       color: var(--prototype-body);
       text-decoration: none;
     }
 
     .prototype-page--data .data-domain-rail a:hover {
-      border-color: var(--violet);
       background: var(--violet-soft);
+    }
+
+    .prototype-page--data .data-domain-rail a:focus-visible {
+      z-index: 1;
+      outline: 2px solid var(--prototype-violet);
+      outline-offset: -2px;
+      background: var(--violet-soft);
+    }
+
+    .prototype-page--data .data-domain-rail a::after {
+      position: absolute;
+      top: 15px;
+      right: 10px;
+      content: '›';
+      color: var(--prototype-violet);
+      font-size: 18px;
+      line-height: 1;
     }
 
     .prototype-page--data .data-domain-rail span {
@@ -6600,15 +6640,46 @@ CSS = r"""
     .prototype-page--data .data-domain-rail strong {
       color: var(--ink);
       font-size: 14px;
-      line-height: 1.2;
+      line-height: 1.35;
     }
 
     .prototype-page--data .data-domain-rail small {
-      overflow: hidden;
       color: var(--muted);
-      font-size: 9px;
-      line-height: 1.35;
-      text-overflow: ellipsis;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .prototype-page--data .data-domain-rail + .report-coverage,
+    .prototype-page--data .data-domain-rail + .report-coverage + .feature-activation {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-bottom: 1px solid var(--rule);
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .prototype-page--data .data-domain-rail + .report-coverage > summary,
+    .prototype-page--data .data-domain-rail + .report-coverage + .feature-activation > summary {
+      min-height: 48px;
+      padding: 14px 0;
+      color: var(--prototype-body);
+      font-size: 13px;
+      font-weight: 550;
+    }
+
+    .prototype-page--data .data-domain-rail + .report-coverage > summary:focus-visible,
+    .prototype-page--data .data-domain-rail + .report-coverage + .feature-activation > summary:focus-visible {
+      outline: 2px solid var(--prototype-violet);
+      outline-offset: 2px;
+    }
+
+    @media (min-width:701px) and (max-width:1100px) {
+      .prototype-page--data .data-domain-rail ol { grid-template-columns:1fr; }
+      .prototype-page--data .data-domain-rail li { border-left:0; border-top:1px solid var(--rule); }
+      .prototype-page--data .data-domain-rail li:first-child { border-top:0; }
+      .prototype-page--data .data-domain-rail a { grid-template-columns:80px 160px minmax(0,1fr); align-items:baseline; min-height:48px; padding:14px 26px 14px 0; gap:16px; }
+      .prototype-page--data .data-domain-rail a::after { top:50%; transform:translateY(-50%); }
     }
 
     .prototype-page--data .source-copy {
@@ -13301,14 +13372,16 @@ CSS = r"""
       /* Mobile Data: touch-first evidence catalog and native export sheet. */
       .mobile-data-workbench { padding-top:24px; padding-bottom:34px; }
       .mobile-data-workbench .data-domain-rail {
-        grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:8px;
-        margin:16px 0 20px;
+        margin:24px 0 12px;
       }
-      .mobile-data-workbench .data-domain-rail a { min-height:92px; padding:12px; }
-      .mobile-data-workbench .data-domain-rail a:last-child { grid-column:1 / -1; min-height:76px; }
-      .mobile-data-workbench .data-domain-rail strong { font-size:15px; }
-      .mobile-data-workbench .data-domain-rail small { white-space:normal; }
+      .mobile-data-workbench .data-domain-rail ol { grid-template-columns:1fr; }
+      .mobile-data-workbench .data-domain-rail li { border-left:0; border-top:1px solid var(--prototype-rule); }
+      .mobile-data-workbench .data-domain-rail li:first-child { border-top:0; }
+      .mobile-data-workbench .data-domain-rail a { grid-template-columns:76px minmax(0,1fr); min-height:48px; align-content:center; align-items:baseline; gap:12px; padding:13px 22px 13px 0; }
+      .mobile-data-workbench .data-domain-rail a::after { top:50%; right:2px; transform:translateY(-50%); }
+      .mobile-data-workbench .data-domain-rail span { font-size:9px; }
+      .mobile-data-workbench .data-domain-rail strong { font-size:14px; font-weight:600; }
+      .mobile-data-workbench .data-domain-rail small { display:none; }
       .mobile-data-section-index { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:16px 0 14px; border-top:1px solid var(--prototype-rule-strong); border-bottom:1px solid var(--prototype-rule-strong); }
       .mobile-data-section-index a { display:flex; min-height:46px; align-items:center; justify-content:center; padding:7px 5px; border-left:1px solid var(--prototype-rule-strong); color:var(--prototype-violet); font-size:11px; font-weight:650; text-align:center; text-decoration:none; }
       .mobile-data-section-index a:first-child { border-left:0; }
@@ -14414,9 +14487,9 @@ CSS = r"""
       .theme-menu--mobile { display:inline-flex; flex:0 0 auto; }
       .theme-menu--mobile .theme-menu__trigger { min-width:96px; padding-inline:10px; }
       .theme-menu--mobile .theme-menu__panel { right:0; width:172px; }
-      .report-footer { flex-wrap: nowrap; gap: 12px; min-height: 60px; padding: 12px 16px 14px; }
+      .report-footer { flex-wrap: wrap; gap: 0 12px; min-height: 60px; padding: 12px 16px 14px; }
       .report-footer__nav { display: none; }
-      .report-footer__brand { min-height: 44px; font-size: 12px; }
+      .report-footer__brand { flex-shrink: 0; min-height: 44px; font-size: 12px; }
       .report-footer__meta { font-size: 11px; }
     }
 
@@ -14636,7 +14709,13 @@ CSS = r"""
       .mobile-history-header h1 { margin:0; font-size:34px; font-weight:650; letter-spacing:-.045em; }
       .mobile-history-window { margin:9px 0 0; color:var(--zinc-500); font-size:15px; font-weight:400; }
       #mobile-history-comparison { padding:4px 0 0; }
-      .mobile-history-pair-surface { position:relative; display:grid; grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr); align-items:center; gap:8px; overflow:visible; margin:0 0 14px; border:0; background:transparent; box-shadow:none; }
+      .mobile-history-comparison-card { min-width:0; border:1px solid var(--prototype-rule-strong); border-radius:12px; background:var(--prototype-paper); box-shadow:var(--shadow-rest); }
+      .mobile-history-chart-panel[hidden] { display:none; }
+      .mobile-history-pair-surface { position:relative; display:grid; grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr); align-items:center; gap:8px; overflow:visible; margin:0; padding:14px 12px; border:0; border-bottom:1px solid var(--prototype-rule); border-radius:12px 12px 0 0; background:var(--prototype-subtle); box-shadow:none; }
+      @media (max-width:340px) {
+        .mobile-history-pair-surface { grid-template-columns:minmax(0,1fr) 14px minmax(0,1fr); gap:5px; padding:12px 8px; }
+        .mobile-history-picker-row .mobile-history-picker-trigger { column-gap:5px; }
+      }
       .mobile-history-picker-row { display:block; min-width:0; padding:0; }
       .mobile-history-versus { justify-self:center; color:var(--zinc-500); font-size:11px; font-style:normal; }
       .mobile-history-picker-row .mobile-history-picker-trigger { display:grid; grid-template-columns:22px minmax(0,1fr) 16px; width:100%; min-height:44px; align-items:center; gap:8px; margin:0; padding:6px 10px; border:1px solid var(--zinc-300); border-radius:9px; background:var(--prototype-paper); color:var(--zinc-900); box-shadow:0 1px 2px rgba(24,24,27,.04); font-size:12px; font-weight:500; }
@@ -14658,7 +14737,7 @@ CSS = r"""
       .mobile-history-picker-option[aria-selected='true'] small { color:var(--super-purple); }
       .mobile-history-picker-selected { width:18px; height:18px; fill:none; stroke:var(--super-purple); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
       .mobile-history-picker-footer { display:block; min-height:44px; padding:12px 10px 7px; color:var(--super-purple); font-size:11px; font-weight:650; text-align:center; text-decoration:none; }
-      .mobile-history-chart-card { margin:0; overflow:hidden; border:1px solid color-mix(in srgb,var(--super-purple) 12%,var(--zinc-200)); border-radius:12px; background:var(--prototype-paper); box-shadow:var(--shadow-rest); }
+      .mobile-history-chart-card { margin:0; overflow:hidden; border:0; border-radius:0 0 12px 12px; background:transparent; box-shadow:none; }
       .mobile-history-chart-card>h2 { margin:0; padding:16px 16px 0; color:var(--zinc-900); font-size:13px; font-weight:550; text-align:right; }
       .mobile-history-trend { padding:0 4px; background:transparent; }
       .mobile-history-trend .chart-wrap { height:250px; }
@@ -15095,6 +15174,26 @@ CSS = r"""
       .prototype-page--about .development-stream .development-more-filters > div { display:grid; grid-template-columns:1fr; }
     }
 
+
+    /* Explicit metric inspection preserves the carousel's native touch scrolling. */
+    [data-validator-metric-card], [data-growth-metric-card] { position:relative; }
+    .validator-metric-component .metric-inspector { margin:16px 0 0; border-top:1px solid var(--prototype-rule-strong); }
+    .validator-metric-component .metric-inspector > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; padding:6px 0 0; list-style:none; font-size:12px; font-weight:600; color:var(--prototype-violet,var(--violet)); cursor:pointer; }
+    .validator-metric-component .metric-inspector > summary::-webkit-details-marker { display:none; }
+    .validator-metric-component .metric-inspector[open] > summary > span:last-child { transform:rotate(45deg); }
+    .validator-metric-component .metric-inspector-panel { position:absolute; inset:auto 10px 64px; z-index:5; max-height:calc(100% - 84px); overflow:auto; overscroll-behavior:contain; padding:16px; border:1px solid var(--prototype-rule-strong); border-radius:10px; background:var(--prototype-paper); color:var(--prototype-ink); box-shadow:0 8px 28px #0003; font-size:12px; line-height:1.55; }
+    .validator-metric-component .metric-inspector-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .validator-metric-component .metric-inspector-heading strong { padding-top:10px; font-size:14px; }
+    .validator-metric-component .metric-inspector-heading button { flex:none; min-height:44px; padding:0 8px; border:0; background:transparent; color:var(--prototype-violet,var(--violet)); font:inherit; cursor:pointer; }
+    .validator-metric-component .metric-inspector-panel p { margin:8px 0 0; font-size:12px; line-height:1.6; color:var(--prototype-body); }
+    .validator-metric-component .metric-inspector-reading { margin-top:14px; padding-top:12px; border-top:1px solid var(--prototype-rule-strong); }
+    .validator-metric-component .metric-inspector-reading label { display:block; margin-bottom:6px; font-size:11px; font-weight:650; }
+    .validator-metric-component .metric-inspector-reading select { display:block; min-width:0; width:100%; max-width:100%; min-height:44px; padding:8px; border:1px solid var(--prototype-rule-strong); border-radius:6px; background:var(--prototype-paper); color:var(--prototype-ink); font:inherit; text-overflow:ellipsis; }
+    .validator-metric-component .metric-inspector-reading output { display:block; margin-top:10px; overflow-wrap:anywhere; font-size:12px; font-variant-numeric:tabular-nums; }
+    .validator-metric-component .metric-inspector [hidden] { display:none; }
+    .validator-metric-component :is([data-metric-tap], [data-metric-chart]) { cursor:pointer; }
+    .validator-metric-component :is([data-metric-tap], [data-metric-chart], .metric-inspector summary, .metric-inspector button, .metric-inspector select):focus-visible { outline:2px solid var(--prototype-violet,var(--violet)); outline-offset:3px; }
+    .validator-metric-component [data-metric-chart] [data-metric-selected] { stroke:var(--prototype-violet,var(--violet)); stroke-width:3; fill:var(--prototype-paper); }
 """
 
 
@@ -17112,6 +17211,94 @@ def subject_observation_attribute(
     return observation_ids_attribute([record["observation_id"] for record in records])
 
 
+METRIC_INSPECTOR_COPY = {
+    "validator-participation": (
+        "Validator participation",
+        "Current and delinquent counts describe vote accounts in the recorded RPC response. "
+        "The bar shows each count as a share of their combined set; it is not a count of people or independent operators.",
+    ),
+    "validator-stake-concentration": (
+        "Stake concentration",
+        "The curve adds activated stake from the largest retained validators downward. "
+        "The one-third threshold and top-ten share describe concentration of stake, not ownership or an observed attack. "
+        "A crossing outside the retained ranks is stated explicitly.",
+    ),
+    "validator-commission-distribution": (
+        "Commission distribution",
+        "Commission is the percentage of staking rewards a validator keeps. Each bucket counts current vote accounts, "
+        "with one account counted once; the median is not weighted by stake. A distribution requires the complete retained population.",
+    ),
+    "validator-epoch-production": (
+        "Completed-epoch production",
+        "Produced and skipped slots cover the stated finalized epoch window. Production rate is produced slots divided by scheduled leader slots. "
+        "Identity-join coverage shows how much production evidence can be matched to vote accounts. Reused evidence is not a new observation.",
+    ),
+    "validator-skip-distribution": (
+        "Skip-rate distribution",
+        "Each bucket counts production identities in the recorded completed epoch, not vote accounts. "
+        "Zero skips are shown separately. Positive bins include their upper bound; identities with no scheduled leader slots are excluded.",
+    ),
+    "validator-stake-history": (
+        "Active-stake history",
+        "Each reading is recorded activated stake in SOL. The chart follows the observed range, so its vertical axis does not necessarily start at zero. "
+        "Missing or ineligible observations break the line and are never filled in.",
+    ),
+    "validator-commission-stake": (
+        "Commission and stake",
+        "Each point pairs a current vote account's recorded commission with its activated stake. Positive stake uses a logarithmic scale; "
+        "zero stake has its own rail. Overlapping points are separate accounts, and missing pairs are excluded.",
+    ),
+    "Supply coverage": (
+        "Supply coverage",
+        "Coverage counts registry assets with finalized supply observations in the stated collection scope. "
+        "Fresh coverage uses a six-hour window. Registry size, observed coverage and freshness are separate measures; token units are not a dollar valuation.",
+    ),
+    "Current supply run": (
+        "Current supply run",
+        "The success rate is successful supply queries divided by assets queried in this collection run. "
+        "It does not describe the entire registry. Retained observations can remain available even when a current query fails.",
+    ),
+    "Market evidence": (
+        "Market evidence",
+        "Volume covers the indexed DEX pools returned by the stated transport and time window. Pool and asset coverage show its limits. "
+        "Partial indexed volume is not total market activity, and it does not supply a USD valuation of the registry.",
+    ),
+    "Selected stablecoin supply": (
+        "Selected stablecoin supply",
+        "Composition compares nominal token supply only within the selected mint list. It is not a complete stablecoin market total or a measure of USD reserves. "
+        "Combined totals and shares are withheld when the required mint observations are missing.",
+    ),
+    "Provider benchmarks": (
+        "Provider benchmarks",
+        "Each range compares provider-scoped observations under their own measurement rules. Addresses and transaction initiators are not unique people. "
+        "Ranges are not added together, and a network-wide unique-user count remains unavailable.",
+    ),
+}
+
+
+def add_metric_inspector(markup: str, metric_key: str, prefix: str) -> str:
+    """Attach a native, accessible explanation without making the card a button."""
+    title, explanation = METRIC_INSPECTOR_COPY[metric_key]
+    key = re.sub(r"[^a-z0-9]+", "-", metric_key.lower()).strip("-")
+    panel_id = f"{prefix}-metric-inspector-{key}"
+    inspector = (
+        f"<details class='metric-inspector' data-metric-inspector>"
+        f"<summary aria-controls='{panel_id}' aria-label='About {html.escape(title, quote=True)}'>"
+        "<span>About this metric</span><span aria-hidden='true'>+</span></summary>"
+        f"<div class='metric-inspector-panel' id='{panel_id}' role='region' "
+        f"aria-label='{html.escape(title, quote=True)} explanation'>"
+        f"<div class='metric-inspector-heading'><strong>{html.escape(title)}</strong>"
+        "<button type='button' data-metric-inspector-close aria-label='Close metric explanation' hidden>Close</button></div>"
+        f"<p>{html.escape(explanation)}</p>"
+        "<div class='metric-inspector-reading' data-metric-inspector-reading hidden>"
+        f"<label for='{panel_id}-reading'>Recorded reading</label>"
+        f"<select id='{panel_id}-reading' data-metric-inspector-picker aria-label='Choose a recorded reading'></select>"
+        "<output data-metric-inspector-value aria-live='polite'></output></div>"
+        "</div></details>"
+    )
+    return markup.replace("</article>", inspector + "</article>", 1)
+
+
 def render_growth_workbench(
     snapshot: dict[str, Any], context: str,
     observation_indexes: dict[str, dict[tuple[Any, ...], dict[str, Any]]] | None = None,
@@ -17435,7 +17622,7 @@ def render_growth_workbench(
 
         growth_total = len(growth_slides)
         growth_cards = "".join(
-            body.replace(
+            add_metric_inspector(body, title, prefix).replace(
                 "aria-roledescription='slide'",
                 f"aria-roledescription='slide' aria-label='{index} of {growth_total}: {html.escape(title, quote=True)}' "
                 f"data-growth-metric-ids='{html.escape(metric_ids, quote=True)}'",
@@ -17706,7 +17893,7 @@ def render_validator_evidence_cards(
                 continue
             height = 100 * count / (max(counts[1:], default=0) or 1)
             bars.append(
-                f"<li{binding}><strong>{count:,}</strong><span class='validator-commission-bar'>"
+                f"<li{binding} aria-label='{html.escape(label, quote=True)} skip rate: {count:,} production identities'><strong>{count:,}</strong><span class='validator-commission-bar'>"
                 f"<i style='--bucket-height:{height:.2f}%;display:{'block' if count else 'none'}'></i></span>"
                 f"<small>{label}</small></li>"
             )
@@ -17752,6 +17939,11 @@ def render_validator_evidence_cards(
                 runs.append(f"<path data-stake-history-run{binding} d='{path}' class='validator-evidence-line'/>")
             else:
                 runs.append(f"<circle{binding} cx='{history_x(run[0]):.2f}' cy='{history_y(run[0]):.2f}' r='3' class='validator-evidence-point'/>")
+        sample_targets = "".join(
+            f"<circle data-metric-sample{summary_observation_attribute(observation_indexes, point['at'], ('active_stake_sol',))} cx='{history_x(point):.2f}' cy='{history_y(point):.2f}' "
+            f"r='4' fill='transparent'><title>{html.escape(point['at'])}: {point['value']:,} SOL</title></circle>"
+            for point in present
+        )
         table_rows = []
         for point in points:
             binding = summary_observation_attribute(observation_indexes, point["at"], ("active_stake_sol",))
@@ -17759,7 +17951,7 @@ def render_validator_evidence_cards(
             table_rows.append(f"<tr{binding}><th scope='row'>{html.escape(point['at'])}</th><td>{value}</td></tr>")
         history_markup = (
             "<svg class='validator-evidence-chart' viewBox='0 0 420 215' role='img' aria-label='Recorded active stake over time; gaps indicate missing or ineligible observations'>"
-            f"{grid}{''.join(runs)}<text x='66' y='206'>{html.escape(charts_module.fmt_time(start))}</text>"
+            f"{grid}{''.join(runs)}{sample_targets}<text x='66' y='206'>{html.escape(charts_module.fmt_time(start))}</text>"
             f"<text x='404' y='206' text-anchor='end'>{html.escape(charts_module.fmt_time(end))} UTC</text></svg>"
             "<p class='validator-component-note'>Recorded activated stake in SOL. The vertical axis follows the observed range. "
             "Missing and ineligible source observations break the line; no interpolation across collection gaps.</p>"
@@ -18188,6 +18380,14 @@ def render_validator_workbench(
             f"<div class='pulse-dots' data-pulse-dots hidden role='group' "
             f"aria-label='Choose a validator metric'>{metric_dots}</div></div>"
         )
+
+    # Keep all validator card variants on the same explicit interaction contract.
+    metric_components = re.sub(
+        r"<article\b[^>]*data-validator-component='([^']+)'[^>]*>.*?</article>",
+        lambda match: add_metric_inspector(match.group(0), match.group(1), prefix),
+        metric_components,
+        flags=re.DOTALL,
+    )
 
     max_share = max(
         (float(row.get("share_pct") or 0.0) for row in rows[:10] if is_number(row.get("share_pct"))),
@@ -18850,7 +19050,7 @@ def render_report_coverage(snapshot, analysis, comparison, context, observation_
 
 
 def render_data_domain_rail(snapshot, context, observation_indexes=None) -> str:
-    """Put the report's five evidence domains at the top of Data."""
+    """Offer a compact contents index for the report's five evidence domains."""
     prefix = "mobile" if context == "mobile" else "desktop"
     cards = (
         ("Network", "Throughput", "RPC activity and epoch progress", "#overview"),
@@ -18860,13 +19060,16 @@ def render_data_domain_rail(snapshot, context, observation_indexes=None) -> str:
         ("Sources", "Inspect evidence", "Source catalog, coverage and downloads", f"#{prefix}-data-sources"),
     )
     links = "".join(
-        f"<a href='{href}'><span>{html.escape(label)}</span>"
-        f"<strong>{html.escape(title)}</strong><small>{html.escape(detail)}</small></a>"
-        for label, title, detail, href in cards
+        f"<li><a href='{href}' aria-describedby='{prefix}-data-domain-{index}-detail'>"
+        f"<span>{html.escape(label)}</span><strong>{html.escape(title)}</strong>"
+        f"<small id='{prefix}-data-domain-{index}-detail'>{html.escape(detail)}</small></a></li>"
+        for index, (label, title, detail, href) in enumerate(cards, 1)
     )
     return (
         f"<nav class='data-domain-rail data-domain-rail--{prefix}' "
-        f"aria-label='Explore data domains'>{links}</nav>"
+        "aria-label='Explore data domains'>"
+        "<p class='data-domain-rail__title'>In this report</p>"
+        f"<ol>{links}</ol></nav>"
     )
 
 
@@ -21430,6 +21633,7 @@ def render_mobile_history(
     options_a: list[str] = []
     options_b: list[str] = []
     panels: list[str] = []
+    chart_panels: list[str] = []
     fallback_items: list[str] = []
 
     for index, item in enumerate(snapshots):
@@ -21553,14 +21757,18 @@ def render_mobile_history(
                 detail += render_history_summary(pair)
             else:
                 detail += "<p>Threshold totals are published for the latest comparison. These readings belong to the selected snapshot pair.</p>"
-            panels.append(
-                f"<section class='mobile-history-panel' data-history-panel data-history-pair='{pair_key}'{hidden}>"
+            chart_panels.append(
+                f"<div class='mobile-history-chart-panel' data-history-chart-panel data-history-chart-pair='{pair_key}'{hidden}>"
                 "<div class='mobile-history-chart-card' data-history-comparison>"
                 "<h2>TPS (Transactions Per Second)</h2>"
                 f"<div class='mobile-history-trend'>{chart}</div>"
                 "<div class='mobile-history-legend' aria-label='Comparison series'>"
                 f"<span class='mobile-history-legend__a'><b>A</b>{html.escape(a_label)}</span>"
-                f"<span class='mobile-history-legend__b'><b>B</b>{html.escape(b_label)}</span></div></div>{timeline}"
+                f"<span class='mobile-history-legend__b'><b>B</b>{html.escape(b_label)}</span></div></div></div>"
+            )
+            panels.append(
+                f"<section class='mobile-history-panel' data-history-panel data-history-pair='{pair_key}'{hidden}>"
+                f"{timeline}"
                 f"<section class='mobile-history-ledger' aria-labelledby='mobile-history-ledger-title-{previous_index}-{current_index}'>"
                 f"<h2 id='mobile-history-ledger-title-{previous_index}-{current_index}'>Snapshot comparison</h2>"
                 "<div class='mobile-history-table-wrap'><table><thead><tr><th scope='col'>Metric</th>"
@@ -21600,6 +21808,7 @@ def render_mobile_history(
         "<header class='mobile-history-header'><h1 id='mobile-history-title' tabindex='-1'>History</h1>"
         "<p class='mobile-history-window'>Compare two recorded snapshots.</p></header>"
         "<section id='mobile-history-comparison' aria-label='Snapshot comparison'>"
+        "<div class='mobile-history-comparison-card' role='group' aria-label='Snapshot selectors and TPS comparison'>"
         "<div class='mobile-history-pair-surface' id='mobile-history-selector' aria-label='Choose snapshots to compare'>"
         "<div class='mobile-history-picker-row'><span class='visually-hidden'>Previous snapshot</span>"
         f"<select class='visually-hidden' tabindex='-1' aria-hidden='true' aria-label='Previous snapshot A' data-history-select-a>{''.join(options_a)}</select>"
@@ -21610,7 +21819,7 @@ def render_mobile_history(
         f"<button class='mobile-history-picker-trigger' type='button' data-history-picker-trigger='b' aria-label='Current snapshot B: {html.escape(compact_snapshot_label(snapshots[-1].get('collected_at'))) if snapshots else 'No recorded snapshots'}' aria-haspopup='listbox' aria-expanded='false' aria-controls='mobile-history-picker-listbox'><b>B</b><span>{html.escape(compact_snapshot_label(snapshots[-1].get('collected_at'))) if snapshots else 'No recorded snapshots'}</span>{picker_icon}</button></div>"
         "<div class='mobile-history-picker-popover' id='mobile-history-picker-listbox' role='listbox' tabindex='-1' aria-label='Choose a recorded snapshot' hidden></div>"
         f"<p class='mobile-live-summary' role='status' aria-live='polite' data-history-summary>Comparing A {html.escape(previous_summary)} with B {html.escape(latest_summary)}.</p></div>"
-        f"{''.join(panels)}</section>"
+        f"{''.join(chart_panels)}</div>{''.join(panels)}</section>"
         "<noscript><style>#mobile-history-selector { display: none !important; }</style>"
         "<section class='mobile-noscript-history' aria-labelledby='mobile-noscript-history-title'>"
         "<h2 id='mobile-noscript-history-title'>Recorded snapshot index</h2>"
@@ -21661,9 +21870,177 @@ def render_mobile_project(snapshot: dict[str, Any]) -> str:
     )
 
 
+
+CSS += r"""
+    [data-overview-chart] { touch-action: auto; }
+    .chart-card > .chart-expand-button {
+      display: block; align-self: flex-end; min-height: 44px; margin: 8px 0 -6px;
+      padding: 8px 0 8px 16px; border: 0; background: none; color: var(--prototype-violet);
+      font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .chart-expand-button:hover { text-decoration: underline; text-underline-offset: 3px; }
+    .chart-expand-button:focus-visible { outline: 2px solid var(--prototype-violet); outline-offset: 3px; }
+    dialog.chart-explorer {
+      position: fixed; inset: 0; width: min(960px, calc(100% - 32px)); max-width: none;
+      max-height: calc(100dvh - 40px); margin: auto; padding: 16px; overflow: auto;
+      border: 1px solid var(--prototype-rule-strong); border-radius: 12px;
+      color: var(--prototype-ink); background: var(--prototype-paper);
+    }
+    dialog.chart-explorer::backdrop { background: rgb(0 0 0 / .65); }
+    .chart-explorer-toolbar { display: flex; align-items: center; gap: 20px; padding: 0 0 16px; border-bottom: 1px solid var(--prototype-rule); }
+    .chart-explorer-toolbar p { flex: 1; margin: 0; font-size: 13px; line-height: 1.5; color: var(--prototype-secondary); }
+    .chart-explorer-toolbar button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--prototype-rule-strong); border-radius: 6px; color: var(--prototype-ink); background: var(--prototype-paper); font: inherit; cursor: pointer; }
+    .prototype-page--report .chart-explorer .chart-card {
+      width: 100%; min-width: 0; max-width: none; height: auto; min-height: 380px;
+      aspect-ratio: auto; margin: 0; padding: 20px 0 0; border: 0; box-shadow: none;
+    }
+    .prototype-page--report .chart-explorer .plot { min-height: 240px; height: min(45dvh, 400px); flex: none; }
+    .prototype-page--report .chart-explorer [data-overview-chart] { touch-action: pan-y; }
+    .chart-explorer .chart-expand-button { display: none; }
+    @media (max-width: 700px) {
+      dialog.chart-explorer { width: calc(100% - 24px); padding: 14px; }
+      .chart-explorer-toolbar { gap: 12px; }
+      .prototype-page--report .chart-explorer .plot { height: min(42dvh, 330px); min-height: 180px; }
+    }
+"""
+
 MOBILE_CONTROLLER = r"""
 (() => {
   'use strict';
+
+  // Native disclosures supply a no-script fallback; enhancement adds actual reading inspection.
+  const metricInspectors = Array.from(document.querySelectorAll('[data-metric-inspector]'));
+  const closeMetricInspector = (inspector, restoreFocus = false) => {
+    inspector.open = false;
+    inspector.closest('article').querySelectorAll('[data-metric-selected]').forEach((point) => point.removeAttribute('data-metric-selected'));
+    if (restoreFocus) (inspector.metricReturnFocus || inspector.querySelector('summary')).focus({preventScroll:true});
+  };
+  metricInspectors.forEach((inspector) => {
+    const card = inspector.closest('article');
+    const picker = inspector.querySelector('[data-metric-inspector-picker]');
+    const output = inspector.querySelector('[data-metric-inspector-value]');
+    const readings = [];
+    const cleanText = (element) => element.textContent.replace(/\s+/g, ' ').trim();
+    const addReading = (label, element) => {
+      if (!label) return -1;
+      const index = readings.length;
+      readings.push({label, element});
+      picker.add(new Option(label, String(index)));
+      return index;
+    };
+    const selectReading = (index) => {
+      if (!readings[index]) return;
+      picker.value = String(index);
+      output.textContent = readings[index].label;
+      card.querySelectorAll('[data-metric-selected]').forEach((point) => point.removeAttribute('data-metric-selected'));
+      readings[index].element?.setAttribute('data-metric-selected', '');
+    };
+    const openReading = (index, trigger, keyboard = false) => {
+      metricInspectors.forEach((other) => { if (other !== inspector && other.open) closeMetricInspector(other); });
+      inspector.metricReturnFocus = trigger;
+      selectReading(index);
+      inspector.open = true;
+      if (keyboard) picker.focus({preventScroll:true});
+    };
+    const bindReading = (element, label) => {
+      const index = addReading(label, element);
+      if (index < 0) return;
+      element.dataset.metricTap = '';
+      element.tabIndex = 0;
+      element.setAttribute('role', 'button');
+      element.setAttribute('aria-label', `Inspect: ${label}`);
+      element.addEventListener('click', () => openReading(index, element));
+      element.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        event.stopPropagation();
+        openReading(index, element, true);
+      });
+    };
+    card.querySelectorAll('.validator-commission-bars li, .growth-composition-legend li, .validator-participation-values p, .validator-stake-facts p, .validator-production-counts p, .growth-provider-facts p, progress').forEach((element) => {
+      // Keep separators between value and unit/label when markup has adjacent inline nodes.
+      const label = element.getAttribute('aria-label') || Array.from(element.children).map(cleanText).filter(Boolean).join(' · ') || cleanText(element);
+      bindReading(element, label);
+    });
+    const composition = card.querySelector('.growth-composition-track');
+    if (composition) {
+      composition.removeAttribute('role');
+      composition.querySelectorAll('i[title]').forEach((segment) => bindReading(segment, segment.title));
+    }
+    card.querySelectorAll('svg').forEach((svg) => {
+      const points = Array.from(svg.querySelectorAll('circle')).filter((point) => point.querySelector('title'));
+      if (!points.length) return;
+      const indexes = points.map((point) => addReading(cleanText(point.querySelector('title')), point));
+      let activePoint = 0;
+      svg.dataset.metricChart = '';
+      svg.tabIndex = 0;
+      svg.setAttribute('role', 'button');
+      svg.setAttribute('aria-label', `Inspect ${card.querySelector('h3').textContent}. Use left and right arrows to choose a point, then Enter.`);
+      svg.removeAttribute('aria-labelledby');
+      svg.addEventListener('click', (event) => {
+        const matrix = svg.getScreenCTM();
+        if (matrix && event.detail) {
+          const location = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
+          let nearest = Infinity;
+          points.forEach((point, index) => {
+            const distance = Math.hypot(point.cx.baseVal.value - location.x, point.cy.baseVal.value - location.y);
+            if (distance < nearest) { nearest = distance; activePoint = index; }
+          });
+        }
+        openReading(indexes[activePoint], svg);
+      });
+      svg.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', ' '].includes(event.key)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const selectedPoint = indexes.indexOf(Number(picker.value));
+        if (selectedPoint >= 0) activePoint = selectedPoint;
+        if (event.key === 'ArrowLeft') activePoint = Math.max(0, activePoint - 1);
+        if (event.key === 'ArrowRight') activePoint = Math.min(points.length - 1, activePoint + 1);
+        if (event.key === 'Home') activePoint = 0;
+        if (event.key === 'End') activePoint = points.length - 1;
+        openReading(indexes[activePoint], svg, event.key === 'Enter' || event.key === ' ');
+      });
+    });
+    // Headline-only and unavailable cards still explain exactly the displayed state.
+    if (!readings.length) {
+      const reading = card.querySelector('.validator-component-headline, .validator-component-unavailable');
+      if (reading) bindReading(reading, Array.from(reading.childNodes).map((node) => node.textContent.trim()).filter(Boolean).join(' '));
+    }
+    if (readings.length) {
+      inspector.querySelector('[data-metric-inspector-reading]').hidden = false;
+      selectReading(0);
+      card.querySelectorAll('[data-metric-selected]').forEach((point) => point.removeAttribute('data-metric-selected'));
+    }
+    picker.addEventListener('change', () => selectReading(Number(picker.value)));
+    const closeButton = inspector.querySelector('[data-metric-inspector-close]');
+    closeButton.hidden = false;
+    closeButton.addEventListener('click', () => closeMetricInspector(inspector, true));
+    inspector.querySelector('summary').addEventListener('click', () => {
+      inspector.metricReturnFocus = inspector.querySelector('summary');
+      metricInspectors.forEach((other) => { if (other !== inspector && other.open) closeMetricInspector(other); });
+    });
+    inspector.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && inspector.open) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeMetricInspector(inspector, true);
+      }
+    });
+    const track = card.closest('[data-pulse-track]');
+    track?.addEventListener('scroll', () => { if (inspector.open) closeMetricInspector(inspector); }, {passive:true});
+  });
+  document.addEventListener('click', (event) => {
+    metricInspectors.forEach((inspector) => {
+      if (inspector.open && !inspector.contains(event.target) && !(event.target.closest?.('[data-metric-tap], [data-metric-chart]') && inspector.closest('article').contains(event.target))) closeMetricInspector(inspector);
+    });
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    metricInspectors.forEach((inspector) => { if (inspector.open) closeMetricInspector(inspector, true); });
+  });
+  window.addEventListener('hashchange', () => metricInspectors.forEach((inspector) => closeMetricInspector(inspector)));
+
   const THEME_KEY = 'solana-report-theme';
   const themeValues = new Set(['light', 'dark', 'system']);
   const themeMenus = Array.from(document.querySelectorAll('[data-theme-menu]'));
@@ -21850,6 +22227,7 @@ MOBILE_CONTROLLER = r"""
       return best;
     };
     const syncPulse = (index = pulseClosestIndex()) => {
+      if (pulseCarousel.hasAttribute('data-inspecting-chart')) return;
       pulseIndex = Math.max(0, Math.min(pulseCards.length - 1, index));
       pulsePrevious.disabled = pulseIndex === 0;
       pulseNext.disabled = pulseIndex === pulseCards.length - 1;
@@ -21966,13 +22344,94 @@ MOBILE_CONTROLLER = r"""
       const distance = Math.abs(clientX - rect.left - rect.width / 2);
       return distance < best.distance ? {index, distance} : best;
     }, {index: 0, distance: Infinity}).index;
-    chart.addEventListener('pointermove', (event) => show(nearest(event.clientX)));
+    const card = chart.closest('[data-pulse-card]');
+    const carousel = chart.closest('.chart-carousel');
+    const track = chart.closest('[data-pulse-track]');
+    let touchStart = null;
+    let expanded = false;
     chart.addEventListener('pointerdown', (event) => {
-      event.preventDefault();
-      show(nearest(event.clientX));
+      if (event.pointerType === 'mouse') { show(nearest(event.clientX)); return; }
+      touchStart = {x: event.clientX, y: event.clientY};
+      if (expanded) {
+        chart.setPointerCapture(event.pointerId);
+        show(nearest(event.clientX));
+      }
     });
-    chart.addEventListener('pointerleave', rest);
-    chart.addEventListener('focus', () => show(activeIndex));
+    chart.addEventListener('pointermove', (event) => {
+      if (event.pointerType === 'mouse' || (expanded && touchStart)) show(nearest(event.clientX));
+    });
+    chart.addEventListener('pointerup', (event) => {
+      if (touchStart && Math.hypot(event.clientX - touchStart.x, event.clientY - touchStart.y) < 10) {
+        show(nearest(event.clientX));
+      }
+      touchStart = null;
+    });
+    chart.addEventListener('pointercancel', () => { touchStart = null; rest(); });
+    chart.addEventListener('pointerleave', (event) => { if (event.pointerType === 'mouse') rest(); });
+    chart.addEventListener('focus', () => { if (!touchStart) show(activeIndex); });
+    track?.addEventListener('scroll', () => { if (!expanded) rest(); }, {passive: true});
+    document.addEventListener('pointerdown', (event) => {
+      if (!card?.contains(event.target)) rest();
+    });
+    if (card && carousel && track) {
+      const expandButton = document.createElement('button');
+      expandButton.type = 'button';
+      expandButton.className = 'chart-expand-button';
+      expandButton.textContent = 'Expand chart';
+      expandButton.setAttribute('aria-haspopup', 'dialog');
+      const chartLabel = card.querySelector('.chart-title')?.textContent || 'Recorded chart';
+      expandButton.setAttribute('aria-label', `Expand ${chartLabel}`);
+      card.append(expandButton);
+      const dialog = document.createElement('dialog');
+      dialog.className = 'chart-explorer';
+      dialog.setAttribute('aria-label', `${chartLabel}: expanded inspection`);
+      const toolbar = document.createElement('div');
+      toolbar.className = 'chart-explorer-toolbar';
+      const instruction = document.createElement('p');
+      instruction.textContent = 'Drag to inspect recorded values. Use arrow keys when the chart is focused.';
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.textContent = 'Close';
+      close.setAttribute('aria-label', 'Close expanded chart');
+      toolbar.append(instruction, close);
+      dialog.append(toolbar);
+      carousel.append(dialog);
+      let placeholder = null;
+      expandButton.addEventListener('click', () => {
+        const bounds = card.getBoundingClientRect();
+        placeholder = document.createElement('div');
+        placeholder.className = card.className;
+        placeholder.setAttribute('aria-hidden', 'true');
+        placeholder.style.width = `${bounds.width}px`;
+        placeholder.style.height = `${bounds.height}px`;
+        placeholder.style.flex = `0 0 ${bounds.width}px`;
+        carousel.setAttribute('data-inspecting-chart', '');
+        card.replaceWith(placeholder);
+        dialog.append(card);
+        expanded = true;
+        dialog.showModal();
+        chart.focus({preventScroll: true});
+      });
+      close.addEventListener('click', () => dialog.close());
+      dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+      dialog.addEventListener('close', () => {
+        expanded = false;
+        touchStart = null;
+        placeholder?.replaceWith(card);
+        placeholder = null;
+        carousel.removeAttribute('data-inspecting-chart');
+        const padding = parseFloat(getComputedStyle(track).paddingLeft) || 0;
+        track.scrollLeft = Math.max(0, card.offsetLeft - padding);
+        rest();
+        requestAnimationFrame(() => {
+          const focusTarget = expandButton.getClientRects().length ? expandButton :
+            document.getElementById(routeHeadingId(routeName()));
+          focusTarget?.focus({preventScroll: true});
+        });
+      });
+      addEventListener('hashchange', () => { if (dialog.open) dialog.close(); });
+      addEventListener('resize', () => { if (dialog.open) dialog.close(); });
+    }
     chart.addEventListener('blur', rest);
     rest();
     chart.addEventListener('keydown', (event) => {
@@ -22706,6 +23165,7 @@ MOBILE_CONTROLLER = r"""
 
   const historySummary = document.querySelector('[data-history-summary]');
   const historyPanels = Array.from(document.querySelectorAll('[data-history-panel]'));
+  const historyChartPanels = Array.from(document.querySelectorAll('[data-history-chart-panel]'));
   const historyTimeline = Array.from(document.querySelectorAll('[data-history-timeline-index]'));
   const historyPicker = document.getElementById('mobile-history-picker-listbox');
   const historyPickerTriggers = Array.from(document.querySelectorAll('[data-history-picker-trigger]'));
@@ -22851,6 +23311,9 @@ MOBILE_CONTROLLER = r"""
     const pair = `${a}:${b}`;
     historyPanels.forEach((panel) => {
       panel.hidden = panel.dataset.historyPair !== pair;
+    });
+    historyChartPanels.forEach((panel) => {
+      panel.hidden = panel.dataset.historyChartPair !== pair;
     });
     historyTimeline.forEach((item) => {
       if (Number(item.dataset.historyTimelineIndex) === b) item.setAttribute('aria-current', 'true');

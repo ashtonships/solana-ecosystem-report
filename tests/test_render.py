@@ -2863,7 +2863,8 @@ class TestMobileFirstContracts(unittest.TestCase):
             ".theme-menu__orb, .theme-menu__chevron, .theme-menu__option, .theme-menu__option-mark { transition: none; }",
             render.CSS,
         )
-        self.assertIn(".report-footer__brand { min-height: 44px; font-size: 12px; }", render.CSS)
+        self.assertIn(".report-footer__brand { flex-shrink: 0; min-height: 44px; font-size: 12px; }", render.CSS)
+        self.assertIn(".report-footer { flex-wrap: wrap; gap: 0 12px;", render.CSS)
         self.assertIn(".report-footer__nav { display: none; }", page)
         self.assertIn("min-height: 60px; padding: 12px 16px 14px", render.CSS)
         self.assertIn(
@@ -3299,7 +3300,7 @@ class TestMobileFirstContracts(unittest.TestCase):
         history = self.distinct_history()
         page = self.page(history=history)
         comparison_index = page.index("id='mobile-history-comparison'")
-        newest_index = page.index("data-history-pair='1:2'", comparison_index)
+        newest_index = page.index("data-history-chart-pair='1:2'", comparison_index)
         selector_index = page.index("id='mobile-history-selector'")
         chart_index = page.index("class='mobile-history-trend'", newest_index)
         legend_index = page.index("class='mobile-history-legend'", chart_index)
