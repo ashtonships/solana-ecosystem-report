@@ -3454,6 +3454,11 @@ CSS = r"""
     .desktop-history-picker label { display:grid; gap:7px; font-size:12px; font-weight:600; }
     .desktop-history-picker select { min-width:0; min-height:44px; padding:8px 12px; color:var(--ink); background:var(--paper); border:1px solid var(--rule); border-radius:6px; }
     .desktop-history-picker p { grid-column:1 / -1; margin:0; color:var(--muted); font-size:11px; }
+    .desktop-history-ledger { width:100%; border-collapse:collapse; font-size:var(--type-data-size); font-variant-numeric:tabular-nums; }
+    .desktop-history-ledger th,.desktop-history-ledger td { padding:12px 8px; border-bottom:1px solid var(--rule); text-align:right; }
+    .desktop-history-ledger th:first-child { padding-left:0; text-align:left; }
+    .desktop-history-ledger td:last-child { padding-right:0; }
+    .desktop-history-ledger small { display:block; margin-top:4px; color:var(--muted); font-weight:400; }
 
     .report-coverage { margin:16px 0 24px; border:1px solid var(--rule); border-radius:8px; padding:0 14px; }
     .report-coverage > summary { min-height:44px; padding:12px 0; cursor:pointer; font-weight:650; }
@@ -14031,7 +14036,7 @@ CSS = r"""
 
     @media (min-width: 701px) and (max-width: 820px) {
       .prototype-header { grid-template-columns:auto minmax(0,1fr) auto; }
-      .prototype-wordmark__copy { display:none; }
+      .prototype-header .prototype-wordmark__copy { display:none; }
       .prototype-status { display:none; }
       .prototype-page--report .metric {
         grid-template-rows:minmax(24px,auto) minmax(38px,auto) auto;
@@ -20134,6 +20139,54 @@ def render_selected_history_readings(comparison: dict[str, Any]) -> str:
             + "</section></aside>")
 
 
+def render_selected_history_ledger(comparison: dict[str, Any]) -> str:
+    """Expose the four recorded A/B deltas available for every selectable pair."""
+    if comparison.get("status") != "ok":
+        return (
+            "<p class='unavailable'><strong>Comparison unavailable.</strong> "
+            f"{html.escape(comparison_refusal(comparison))}</p>"
+        )
+    unavailable = {
+        item.get("key"): item for item in comparison.get("not_comparable", [])
+    }
+    rows = []
+    for key, label, decimals, unit in (
+        ("latest_tps", "TPS (Transactions Per Second)", 2, ""),
+        ("mean_slot_time_secs", "Mean slot time", 3, " s"),
+        ("median_fee_lamports", "Median fee (lamports)", 0, ""),
+        ("delinquent_pct", "Delinquency", 2, "%"),
+    ):
+        item = comparison_item(comparison, key)
+        source = item or unavailable.get(key, {})
+        values = [
+            f"{float(source[side]):,.{decimals}f}{unit}"
+            if is_number(source.get(side)) else "Unavailable"
+            for side in ("previous", "current")
+        ]
+        change = item.get("change") if item else None
+        change_unit = " pp" if key == "delinquent_pct" else unit
+        change_text = (
+            f"{'+' if change > 0 else '−' if change < 0 else ''}"
+            f"{abs(float(change)):,.{decimals}f}{change_unit}"
+            if is_number(change) else "Unavailable"
+        )
+        reason = (
+            f"<small>{html.escape(str(source.get('reason') or 'No comparable reading.'))}</small>"
+            if item is None else ""
+        )
+        rows.append(
+            f"<tr{delta_observation_attributes(source)}><th scope='row'>{html.escape(label)}{reason}</th>"
+            f"<td>{html.escape(values[0])}</td><td>{html.escape(values[1])}</td>"
+            f"<td>{html.escape(change_text)}</td></tr>"
+        )
+    return (
+        "<table class='desktop-history-ledger' aria-label='Selected snapshot comparison'>"
+        "<thead><tr><th scope='col'>Metric</th><th scope='col'>A</th>"
+        "<th scope='col'>B</th><th scope='col'>Delta</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table>"
+    )
+
+
 def render_desktop_history_picker(history, analysis, observation_indexes, default_markup):
     """Bound desktop selection to the same five recorded inputs used by mobile."""
     snapshots = history[-5:]
@@ -20184,9 +20237,10 @@ def render_desktop_history_picker(history, analysis, observation_indexes, defaul
                 "<span class='range-window'>Independent sample windows, not a continuous series</span></div></div>"
                 f"<div class='history-chart-instrument'>{render_ab_chart(previous, current, pair, prefix, include_meta=False, observation_indexes=observation_indexes)}</div>"
                 f"{render_selected_history_readings(pair)}</section>"
-                "<section class='panel deltas'><h2 class='panel-heading'>Threshold review</h2>"
-                "<p class='unavailable'>Threshold findings are published for the latest pair only. "
-                "This selected pair keeps its recorded A and B readings visible without adding a historical-delta ledger.</p>"
+                "<section class='panel deltas'><h2 class='panel-heading'>Snapshot comparison · A → B</h2>"
+                f"{render_selected_history_ledger(pair)}"
+                "<p class='unavailable'>Deltas use the selected recorded A and B readings. "
+                "Threshold totals and anomaly findings are published for the latest comparison only.</p>"
                 "</section><div class='archive-support'>"
                 "<aside class='panel snapshot-panel'><h2 class='panel-heading'>Selected observations</h2>"
                 f"<p>A · {html.escape(timestamp_label(previous.get('collected_at')))}</p>"
@@ -21873,6 +21927,10 @@ def render_mobile_project(snapshot: dict[str, Any]) -> str:
 
 CSS += r"""
     [data-overview-chart] { touch-action: auto; }
+    /* Legends, source ages, and the inspection action all contribute to height. */
+    .prototype-page--report .chart-card:has(> .chart-expand-button) {
+      aspect-ratio: auto; height: auto; min-height: min-content;
+    }
     .chart-card > .chart-expand-button {
       display: block; align-self: flex-end; min-height: 44px; margin: 8px 0 -6px;
       padding: 8px 0 8px 16px; border: 0; background: none; color: var(--prototype-violet);

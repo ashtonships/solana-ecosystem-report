@@ -1,7 +1,9 @@
 # Post-Deadline Changelog
 
-Everything below lands AFTER the submitted revision (`submission-2026-09-01` = `0e42bb8`).
-The submission itself is unchanged; this file itemizes later work for judges and the sponsor.
+Everything below lands after the preserved pre-deadline revision
+(`submission-2026-09-01` = `0e42bb8`). This file itemizes later work.
+The tag is unchanged; portal contents and judging treatment of later changes
+remain unverified. See `SUBMISSION_FREEZE.md`.
 
 ## 2026-09-01 (post-deadline, same day)
 
@@ -123,8 +125,9 @@ The release ID is
 This is manual deployment evidence. As checked on September 5 at 00:48 UTC,
 three successful scheduled cycles after PR #53 remain unproved, and the local
 cycle monitor is paused. Dune/X paid reads, a permitted date-aligned daily Jito
-source, and native iOS interaction verification remain open. The original
-submitted revision and submission receipt are unchanged by these releases.
+source, and native iOS interaction verification remain open. The preserved
+pre-deadline revision is unchanged. No portal action was performed or verified
+by these release checks.
 
 
 ## 2026-09-05 — app-wide interaction polish
@@ -153,3 +156,39 @@ submitted revision and submission receipt are unchanged by these releases.
 - Separated inline chart tap inspection from carousel swipe navigation; added an expanded chart dialog for drag inspection with focus and route/resize recovery.
 - Wrapped the shared narrow-screen footer before its name and timestamp overlap.
 - Added touch/keyboard checks and full-page captures across five routes and four widths. See [design verification](docs/ui-qa/2026-09-05-mobile-design/README.md).
+
+
+## September 6 reconciliation of release evidence
+
+PR #54 (`ec4f96304f6462f6aaa997bd73583cfed7dd4faa`) bound release smoke
+checks to verified artifacts. PR #55
+(`68d82c65b79301c5c26ef4dc71aafc87296a8f68`) made offline reviewer setup
+immediate and added private source preflight. PR #56 completed validator
+distribution, stake-history, and commission charts.
+
+The earlier PR #53 three-cycle statement is historical. PR #56 merged as
+`600b7d3684bf85c59d57442487e1548eccae2e74`; its scheduled runs
+[33947613513](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/33947613513),
+[33957636385](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/33957636385), and
+[33967118741](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/33967118741)
+were verified in the September 5 review. Actual intervals were approximately
+2h44m, 3h43m, and 3h31m. This establishes those unattended publications, not
+reliable fifteen-minute delivery or three cycles for subsequent UI releases.
+
+- **PR #57**, merged as `c024fb69f3d2b3d20eb0000072763e5cdd6e2ead`:
+  the app-wide interaction work above. Production run
+  [33999323715](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/33999323715)
+  succeeded; clean renderer `93cd39199506cb7c06857a35c247b5ebfe1a069f`
+  produced HTML, Markdown, and JSON independently matched to its hosted artifact.
+- **PR #58**, merged as `5f067db450698b6aaed3e85b0a011fdb1debaa77`:
+  the mobile structure and inspection work above. Production run
+  [34000976440](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/34000976440)
+  succeeded; clean renderer `f1a4bdfe213692b832dbae121ab95a0b35efed16`
+  produced independently matched hosted HTML, Markdown, and JSON.
+- The September 6 live audit found no open PRs and a further successful scheduled
+  run [34003517430](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/34003517430).
+  Its renderer is `50fc5d483a0f56c02b1491b0e6db269639f6dc27`. Local port 3000
+  still served the preceding snapshot; it already contained PR #58 UI changes.
+
+These code and deployment records do not establish a submission receipt,
+post-deadline judging eligibility, or an award.
