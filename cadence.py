@@ -12,10 +12,18 @@ INTERVALS = {
     "feature_activation": 3_600,
     "news": 21_600,
     "growth_providers": 21_600,
-    "growth_tokens": 86_400,
+    "growth_tokens": 21_600,
     "dune": 86_400,
 }
 STATES = frozenset({"fresh", "reused", "failed"})
+
+
+def valid_interval(source_key: str, value: Any) -> bool:
+    """Accept registered tiers, including the historical daily token tier."""
+    return type(value) is int and (
+        value == INTERVALS.get(source_key)
+        or (source_key == "growth_tokens" and value == 86_400)
+    )
 
 
 def _utc_timestamp(value: Any) -> datetime | None:
@@ -35,8 +43,7 @@ def _valid_entry(entry: Any, source_key: str, now: datetime) -> bool:
         "last_attempt_at", "last_success_at", "interval_seconds", "state",
     }:
         return False
-    if (type(entry.get("interval_seconds")) is not int
-            or entry.get("interval_seconds") != INTERVALS.get(source_key)):
+    if not valid_interval(source_key, entry.get("interval_seconds")):
         return False
     state = entry.get("state")
     if not isinstance(state, str) or state not in STATES:
@@ -82,7 +89,7 @@ def initial_schedule() -> dict[str, dict[str, Any]]:
 def collection_schedule(
     value: Any, now: datetime | None = None,
 ) -> dict[str, dict[str, Any]]:
-    """Keep valid prior entries or bootstrap an absent legacy schedule."""
+    """Keep source clocks and apply current tiers, or bootstrap a legacy schedule."""
     schedule = initial_schedule()
     if value is None:
         return schedule
@@ -94,6 +101,10 @@ def collection_schedule(
         if not _valid_entry(entry, source_key, reference):
             raise ValueError(f"invalid collection schedule entry: {source_key}")
         schedule[source_key] = dict(entry)
+        # A tier change must not reset the evidence clock or fabricate an attempt.
+        # Archived snapshots keep their original interval; only the next run's
+        # working schedule adopts the current collection policy.
+        schedule[source_key]["interval_seconds"] = INTERVALS[source_key]
     return schedule
 
 

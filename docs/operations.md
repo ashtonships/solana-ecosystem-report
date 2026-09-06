@@ -6,8 +6,9 @@ The production workflow requests runs at minutes 7, 22, 37 and 52 of each UTC ho
 
 Core network RPC, the RPC-observed node-version census and approved price collection run on every update. Block activity,
 completed-epoch production and selected feature accounts refresh hourly. Provider
-activity and news refresh every six hours. Selected token supply and Dune refresh
-daily. Endpoint changes force new on-chain collection rather than reusing another
+activity, news and selected token supply refresh every six hours. Dune refreshes
+daily. The six-hour token tier matches the supply freshness window; archived
+snapshots retain their recorded daily tier. Endpoint changes force new on-chain collection rather than reusing another
 endpoint's observations.
 
 Each published `collection_schedule` entry retains its last attempt, last success,
@@ -92,7 +93,7 @@ The reservation commit may exist without a later snapshot commit. That is intent
 
 A failed optional adapter records its reason. Dune may expose a dated last-known-good result. A failed X read stays unavailable; previously recorded posts may appear only in the archived chronology with their original observation and publication times. A current timestamp must never be assigned to carried evidence.
 
-xStock supply ages and six-hour/72-hour coverage are evaluated at the final report collection time, including when the daily token source is reused. `supply_evaluated_at` identifies that calculation time; `supply_reused_this_run` distinguishes reuse from a new query pass. Reuse reports zero current-run query/success/failure counts and no current-run deadline exhaustion. Original per-mint values, RPC slots and observation timestamps remain unchanged. Evaluation summary facts use the report clock, while source facts retain their original identities. Historical snapshots without these additive fields retain their original replay contract.
+xStock supply ages and six-hour/72-hour coverage are evaluated at the final report collection time, including when the token source is reused. `supply_evaluated_at` identifies that calculation time; `supply_reused_this_run` distinguishes reuse from a new query pass. Reuse reports zero current-run query/success/failure counts and no current-run deadline exhaustion. Original per-mint values, RPC slots and observation timestamps remain unchanged. Evaluation summary facts use the report clock, while source facts retain their original identities. Historical snapshots without these additive fields retain their original replay contract.
 
 RPC transport retries only eligible transient failures within its existing time budget. Logs contain the method and status class, never a custom endpoint, request body or provider error message. Check method failures, actual sample block times and coverage before treating a green run as recovered data.
 

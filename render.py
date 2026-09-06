@@ -3595,9 +3595,9 @@ def render_markdown(
     schedule_rows = collection_schedule_rows(snapshot)
     if schedule_rows:
         lines += ["", "## Refresh schedule and source age", "",
-                  "Public updates are scheduled every fifteen minutes; actual scheduler delivery may be delayed. Network RPC and price refresh each run. Reused source data retains its original successful collection time. Paid-source allowance remains separate.", "",
-                  "| Source | Refresh target | State | Last successful collection |",
-                  "| --- | --- | --- | --- |"]
+                  "Public updates are scheduled every fifteen minutes; actual scheduler delivery may be delayed. Network RPC and price refresh each run. Scheduled reuse carries forward a previous successful collection until its next refresh. Status and ages are recorded at the snapshot time, not a live clock. Refresh eligibility is not a guaranteed completion time. Paid-source allowance remains separate.", "",
+                  "| Source | Refresh target | State at snapshot | Last successful collection | Next refresh eligibility |",
+                  "| --- | --- | --- | --- | --- |"]
         lines += ["| " + " | ".join(markdown_text(cell, table=True) for cell in row) + " |"
                   for row in schedule_rows]
     return "\n".join(lines)
@@ -3606,6 +3606,18 @@ def render_markdown(
 # ── HTML ─────────────────────────────────────────────────────────────────────
 
 CSS = r"""
+    [data-collection-schedule] .collection-sources { margin:20px 0 0; }
+    [data-collection-schedule] .collection-source { padding:16px 0; border-top:1px solid var(--rule); min-width:0; }
+    [data-collection-schedule] .collection-source dt { font-weight:600; line-height:1.5; }
+    [data-collection-schedule] .collection-source dt span { display:block; font-size:12px; font-weight:400; color:var(--muted); }
+    [data-collection-schedule] .collection-source dd { margin:8px 0 0; display:grid; gap:6px; font-size:12px; line-height:1.6; overflow-wrap:anywhere; }
+    [data-collection-schedule] .collection-source dd strong { font-weight:600; color:var(--text); }
+    [data-collection-schedule] .collection-as-of { font-size:12px; line-height:1.6; }
+    @media (min-width:900px) {
+      [data-collection-schedule] .collection-source { display:grid; grid-template-columns:minmax(180px,1fr) minmax(0,2fr); gap:24px; }
+      [data-collection-schedule] .collection-source dd { margin-top:0; }
+    }
+
     .validator-workbench .validator-evidence-chart { display:block; width:100%; height:auto; margin-top:12px; overflow:visible; }
     .validator-workbench .validator-evidence-chart text { fill:var(--muted); font-size:14px; font-family:inherit; }
     .validator-evidence-grid { stroke:var(--rule); stroke-width:1; }
@@ -18988,7 +19000,7 @@ REPORT_COVERAGE_REQUIREMENTS = (
     ('R05', 'Active and delinquent validators', ('active_count', 'delinquent_validator_count'), 'validators', 'Vote accounts, not unique operators.'),
     ('R06', 'Stake distribution and top validators', ('active_stake_sol', 'nakamoto_coefficient'), 'validators', 'Active stake and ranked vote-account concentration.'),
     ('R07', 'Commission tracking', ('validator_mean_commission_pct',), 'history', 'Vote-account commission changes across the selected snapshot pair.'),
-    ('R08', 'Delinquency alerts', ('delinquent_pct',), 'overview', 'Stake-weighted delinquency; alerts need a compatible recorded baseline.'),
+    ('R08', 'Delinquency alerts', ('delinquent_pct',), 'overview', 'Vote-account delinquency; alerts need a compatible recorded baseline.'),
     ('R09', 'Ecosystem and community news', (), 'project', 'Recorded first-party releases, announcements and incidents; archives remain labeled.'),
     ('R10', 'SOL price movements', ('price_usd', 'price_change_24h_pct'), 'overview', 'Provider price and its recorded 24-hour percentage change.'),
     ('R11', 'Stablecoin supply', ('usd_pegged_circulating_usd', 'selected_stablecoin_total_supply'), 'markets', 'Ecosystem circulating supply and selected four-mint total supply are different scopes.'),
@@ -19050,10 +19062,15 @@ def render_report_coverage(snapshot, analysis, comparison, context, observation_
         elif identifier == 'R09':
             news = snapshot.get('news', {})
             state = news_evidence_status(news)
-            when = snapshot_at if state != 'Unavailable' else ''
+            when = ''
             window = 'Publication times remain attached to each recorded story.'
             evidence_ids.extend(record['observation_id'] for key, record in indexes['subject'].items()
                                 if key[0] == 'news_source_available' and key[-1] == snapshot_at)
+        elif identifier in ('R11', 'R16'):
+            # These aggregate summary facts are evaluated at the report clock;
+            # that is not the observation time of their constituent sources.
+            when = ''
+            window = 'Source observation times vary; inspect the dated evidence. ' + window
         elif identifier == 'R12':
             dune = snapshot.get('dune', {})
             aggregates = dune.get('aggregates', {})
@@ -19563,23 +19580,35 @@ COLLECTION_LABELS = {
 }
 
 
-def collection_schedule_rows(snapshot: dict[str, Any]) -> list[tuple[str, str, str, str]]:
+def collection_schedule_rows(snapshot: dict[str, Any]) -> list[tuple[str, str, str, str, str]]:
     schedule = snapshot.get("collection_schedule")
     if not isinstance(schedule, dict):
         return []
     rows = []
     for key in cadence.INTERVALS:
         entry = schedule.get(key, {})
-        interval = {3600: "Hourly", 21600: "Every six hours", 86400: "Daily"}[cadence.INTERVALS[key]]
-        state = {"fresh": "Refreshed", "reused": "Reused", "failed": "Refresh unavailable"}.get(entry.get("state"), "Unavailable")
+        interval = {3600: "Hourly", 21600: "Every six hours", 86400: "Daily"}[entry.get("interval_seconds", cadence.INTERVALS[key])]
+        state = {"fresh": "Refreshed", "reused": "Scheduled reuse", "failed": "Refresh unavailable"}.get(entry.get("state"), "Unavailable")
         stamp = entry.get("last_success_at")
-        if not stamp:
-            state = "Unavailable"
+        if not stamp and entry.get("state") != "failed":
+            state = "Not collected"
         when = timestamp_label(stamp) if stamp else "No successful collection recorded"
         if stamp:
             age = snapshot_age_label({"collected_at": stamp}, snapshot)
-            when += " · " + ("at this publication" if age == "selected B" else age)
-        rows.append((COLLECTION_LABELS[key], interval, state, when))
+            when += " · " + ("at this snapshot" if age == "selected B" else age + " at snapshot")
+        anchor = parse_timestamp(entry.get("last_attempt_at") or stamp)
+        reference = parse_timestamp(snapshot.get("collected_at"))
+        next_refresh = "Next eligible run; source access required"
+        if anchor is not None:
+            due_at = anchor + timedelta(seconds=entry.get("interval_seconds", cadence.INTERVALS[key]))
+            next_refresh = "Eligible after " + timestamp_label(due_at.isoformat())
+            if reference is not None and due_at <= reference:
+                next_refresh = "Due at snapshot; awaiting an eligible run"
+                if entry.get("state") == "reused" and stamp:
+                    state = "Refresh due"
+        if entry.get("state") == "failed" and entry.get("last_attempt_at"):
+            next_refresh = "Last attempt " + timestamp_label(entry["last_attempt_at"]) + "; " + next_refresh
+        rows.append((COLLECTION_LABELS[key], interval, state, when, next_refresh))
     return rows
 
 
@@ -19588,18 +19617,22 @@ def render_collection_schedule(snapshot: dict[str, Any], *, mobile: bool = False
     if not rows:
         return ""
     items = "".join(
-        f"<div><dt>{html.escape(label)} · {html.escape(interval)}</dt>"
-        f"<dd>{html.escape(state)}<br>{html.escape(when)}</dd></div>"
-        for label, interval, state, when in rows
+        f"<div class='collection-source'><dt>{html.escape(label)} <span>{html.escape(interval)}</span></dt>"
+        f"<dd><strong>{html.escape(state)}</strong><span>Last success: {html.escape(when)}</span>"
+        f"<span>{html.escape(next_refresh)}</span></dd></div>"
+        for label, interval, state, when, next_refresh in rows
     )
     classes = "mobile-method-card" if mobile else "method-card panel"
     return (f"<details class='{classes} chart-disclosure' data-collection-schedule>"
             "<summary>Refresh schedule and source age</summary>"
             "<p>Public updates are scheduled every fifteen minutes. Network RPC and price refresh each run; "
             "slower sources retain their original collection times. Scheduler delays can extend the actual interval.</p>"
-            "<p>Reused means the next source refresh is not due. Refresh unavailable means the last attempt failed; "
-            "retained evidence is not a new observation. Paid sources still require their separate allowance.</p>"
-            f"<dl>{items}</dl></details>")
+            "<p>Scheduled reuse means a previous successful collection is carried forward until its next refresh. "
+            "Refresh unavailable means the last attempt failed. Paid sources still require their separate allowance; "
+            "eligibility is not a guaranteed completion time.</p>"
+            f"<p class='collection-as-of'>Status and ages at snapshot: {html.escape(timestamp_label(snapshot.get('collected_at')))}. "
+            "These recorded statuses do not update while this page is open.</p>"
+            f"<dl class='collection-sources'>{items}</dl></details>")
 
 
 def render_methodology_content(
