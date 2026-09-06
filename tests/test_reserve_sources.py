@@ -13,9 +13,13 @@ class ReservationWorkflowTests(unittest.TestCase):
     def one_off_fixture(self, root, now):
         (root / '.github').mkdir()
         (root / 'snapshots').mkdir()
-        policy = json.loads((Path(__file__).resolve().parents[1] / reserve_sources.LEDGERS[1]).read_text())
-        # Only the temporary fixture starts unused; real durable receipts remain intact.
-        policy['reservations'] = {}
+        # Fixed historical trial fixture; subsequent live allowance approvals
+        # must not change the expiry and replay cases this test exercises.
+        policy = {
+            'version': 1, 'starts_on': '2026-09-06', 'expires_on': '2026-09-07',
+            'query_id': '8590950', 'total_read_limit': 2, 'daily_read_limit': 2,
+            'max_rows_per_read': 500, 'reservations': {},
+        }
         (root / reserve_sources.LEDGERS[1]).write_text(json.dumps(policy))
         (root / reserve_sources.LEDGERS[0]).write_text('{"version":1,"attempts":{}}')
         schedule = reserve_sources.cadence.initial_schedule()
