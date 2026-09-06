@@ -2863,7 +2863,8 @@ class TestMobileFirstContracts(unittest.TestCase):
             ".theme-menu__orb, .theme-menu__chevron, .theme-menu__option, .theme-menu__option-mark { transition: none; }",
             render.CSS,
         )
-        self.assertIn(".report-footer__brand { min-height: 44px; font-size: 12px; }", render.CSS)
+        self.assertIn(".report-footer__brand { flex-shrink: 0; min-height: 44px; font-size: 12px; }", render.CSS)
+        self.assertIn(".report-footer { flex-wrap: wrap; gap: 0 12px;", render.CSS)
         self.assertIn(".report-footer__nav { display: none; }", page)
         self.assertIn("min-height: 60px; padding: 12px 16px 14px", render.CSS)
         self.assertIn(

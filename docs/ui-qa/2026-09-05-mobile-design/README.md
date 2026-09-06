@@ -8,7 +8,7 @@ Inline chart gestures have distinct purposes: swipe navigates the carousel, tap 
 
 ## Verification
 
-- Offline suite: 1,108 tests passed before the final CSS-only footer correction.
+- Offline suite: 1,108 tests passed, including the updated responsive footer contract.
 - Existing interaction regression script: nine groups passed.
 - `scripts/verify_mobile_design.cjs`: six interaction groups, native Chromium touch-event dispatch, 30 full-page captures, and page overflow/footer overlap checks.
 - Independent read-only review found no concrete release blockers; five metric-inspector tests passed independently.
