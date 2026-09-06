@@ -979,6 +979,15 @@ class TestPublishGate(unittest.TestCase):
             invalid = copy.deepcopy(section)
             del invalid["aggregates"][field]
             self.assertTrue(pipeline._dune_semantic_failures(invalid, NOW))
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(nonfinite_median=value, odd_population=3):
+                invalid = copy.deepcopy(section)
+                invalid["aggregates"].update(
+                    non_vote_median_fee_latest_lamports=value,
+                    non_vote_median_fee_transaction_count=3,
+                )
+                errors = pipeline._dune_semantic_failures(invalid, NOW)
+                self.assertTrue(any("precision bound" in error for error in errors), errors)
 
     def test_dune_xstock_counts_only_passes_the_full_publish_gate(self):
         rows = [
