@@ -251,3 +251,31 @@ post-deadline judging eligibility, or an award.
   retained an earlier page. A fresh browser load verified the current release
   and corrected labels. The next daily Dune execution and future judging
   outcome remain separate, unverified events.
+
+### Exact daily median and complete reader access
+
+- **PR #65** (`429a3f2` merge): add a separate exact completed-day non-vote
+  median fee, including failed transactions, with its own date and population.
+  Preserve half-lamport precision and keep the block-sample median separate.
+  The saved Dune query matches the reviewed SQL, but its new median family has
+  not yet completed a live execution. Validation remains assigned to the next
+  already-approved ordinary daily refresh; missing values remain unavailable.
+- **PR #66** (`72641c9` merge): share five daily Dune headlines and seven fact
+  bindings across desktop HTML, mobile HTML and Markdown. Add the exact daily
+  fee-payer count to desktop; retain dated/stale labels, xStock pricing
+  coverage and USD withholding, expandable DEX details and separate sampled
+  measurements. Mobile checks at 320px and 393px found no horizontal overflow.
+- All 1,135 offline tests, PR CI and main CI passed. Independent offline and
+  production reviews passed. The [publication run 34020575842](https://github.com/ashtonships/solana-ecosystem-report/actions/runs/34020575842)
+  succeeded. Source `113f619ee390a44ba0fc8e24fb4fe2208f9bfcdc` generated release
+  `4c67b4a07e5f8266f04ca477cdfb33652eeb8a4d9514e5cb72ef8afb8f421334`
+  at 2026-09-06T08:02:13Z. At 08:06 UTC, HTML, Markdown and JSON matched the
+  exact Pages artifact at the public site, port 3000 and phone URL.
+- This publication reused the original Dune result and changed neither spending
+  ledger. No extra refresh was requested. The separate earlier save shortcut
+  accidentally queued an execution; it was cancelled, and Dune Usage recorded
+  zero credits and zero extra spending.
+- These are post-deadline improvements, not changes to the preserved submission
+  tag. Acceptance of later changes and an award remain unverified. Full daily
+  REV, complete scoped xStock USD pricing and network-wide daily active
+  addresses are still not established; the report retains their limits.
