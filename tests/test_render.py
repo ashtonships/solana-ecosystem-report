@@ -7269,6 +7269,17 @@ class TestReleaseMetadata(unittest.TestCase):
 
         self.assertEqual(projected, raw["activity"])
 
+    def test_public_projection_retains_supply_evaluation_contract(self):
+        evaluation = {
+            "supply_evaluated_at": "2026-09-06T06:00:00+00:00",
+            "supply_reused_this_run": True,
+        }
+        projected = render.project_public_envelope({
+            "schema_version": 9,
+            "growth": {"tokenized_equities": evaluation},
+        })
+        self.assertEqual(projected["growth"]["tokenized_equities"], evaluation)
+
     def test_recursive_envelope_projection_preserves_known_records_without_mutating_input(self):
         sentinel = "PRIVATE-ENVELOPE-SENTINEL"
         raw = {

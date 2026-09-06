@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import cadence  # noqa: E402
 import collect  # noqa: E402
 import growth  # noqa: E402
+from tests.test_growth_cadence import retained_supply_growth  # noqa: E402
 
 
 NOW = datetime(2026, 9, 4, 20, 0, tzinfo=timezone.utc)
@@ -123,6 +124,53 @@ class CollectCadenceTests(unittest.TestCase):
                          return_value={"available": True, "marker": "price"}),
             patch.object(collect, "source_code_state", return_value={}),
         )
+
+    def test_supply_is_evaluated_at_final_report_time_for_each_growth_cadence_path(self):
+        started = datetime(2026, 9, 5, 17, 59, 59, tzinfo=timezone.utc)
+        finished = started + timedelta(seconds=2)
+
+        class FinishedClock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return finished
+
+        for mode in ("reused", "failed-reuse", "provider-only", "fresh"):
+            with self.subTest(mode=mode):
+                prior = previous()
+                prior["growth"].update(retained_supply_growth())
+                for key, entry in prior["collection_schedule"].items():
+                    age = timedelta(minutes=10)
+                    if mode == "provider-only" and key == "growth_providers":
+                        age = timedelta(hours=6)
+                    if mode == "fresh" and key == "growth_tokens":
+                        age = timedelta(days=1)
+                    stamp = (started - age).isoformat()
+                    entry.update(last_attempt_at=stamp, last_success_at=stamp)
+                if mode == "failed-reuse":
+                    prior["collection_schedule"]["growth_tokens"]["state"] = "failed"
+                original = deepcopy(prior)
+                patches = self._base_patches()
+                with patches[0], patches[1], patches[2], patches[3], patches[4], \
+                     patch.object(collect, "datetime", FinishedClock), \
+                     patch.object(collect.growth_module, "collect_growth", return_value=(deepcopy(prior["growth"]), {"cursor": "new"})) as tokens, \
+                     patch.object(collect.growth_module, "refresh_growth_providers", return_value=deepcopy(prior["growth"])) as providers:
+                    raw = collect.sources(ENDPOINT, previous_snapshot=prior, now=started)
+                equities = raw["growth"]["tokenized_equities"]
+                self.assertEqual(raw["collected_at"], finished.isoformat(timespec="seconds"))
+                self.assertEqual(equities["supply_evaluated_at"], raw["collected_at"])
+                self.assertEqual(equities["observed_at_unix"], int(finished.timestamp()))
+                self.assertEqual(equities["fresh_supply_asset_count"], 0)
+                self.assertEqual(equities["all_assets"][0]["supply_age_seconds"], 21601)
+                self.assertEqual(equities["supply_reused_this_run"], mode != "fresh")
+                self.assertEqual(equities["supply_queried_this_run_asset_count"], 2 if mode == "fresh" else 0)
+                self.assertEqual(tokens.call_count, int(mode == "fresh"))
+                self.assertEqual(providers.call_count, int(mode == "provider-only"))
+                if mode != "fresh":
+                    self.assertIsNone(raw["_growth_supply_state"])
+                    self.assertEqual(raw["collection_schedule"]["growth_tokens"]["last_success_at"], original["collection_schedule"]["growth_tokens"]["last_success_at"])
+                if mode == "failed-reuse":
+                    self.assertEqual(raw["collection_schedule"]["growth_tokens"]["state"], "failed")
+                self.assertEqual(prior, original)
 
     def test_recent_slow_sources_are_reused_exactly_while_fast_sources_run(self):
         prior = previous()

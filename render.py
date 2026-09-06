@@ -267,7 +267,7 @@ PUBLIC_OBJECT_FIELDS = {
         "eligible_asset_count supply_queried_this_run_asset_count "
         "supply_successful_this_run_asset_count supply_failed_this_run_asset_count "
         "supply_deadline_exhausted supply_coverage displayed_asset_count display_asset_limit "
-        "proof_of_reserves".split()
+        "proof_of_reserves supply_evaluated_at supply_reused_this_run".split()
     ),
     "growth.tokenized_equities.assets[]": frozenset(
         "symbol name slug mint supply supply_raw_amount supply_decimals supply_rpc_ui_amount "

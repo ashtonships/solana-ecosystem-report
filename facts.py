@@ -1648,9 +1648,24 @@ def source_snapshot(snapshot: dict[str, Any], key: str | None) -> dict[str, Any]
     return {**snapshot, "collected_at": stamp}
 
 
+SUPPLY_EVALUATION_METRICS = frozenset({
+    "xstock_supply_coverage_numerator", "xstock_fresh_supply_asset_count",
+    "xstock_supply_queried_this_run", "xstock_supply_successful_this_run",
+    "xstock_supply_failed_this_run", "xstock_supply_run_success_pct",
+})
+
+
+def is_supply_evaluation(snapshot: dict[str, Any], metric_id: str) -> bool:
+    """Separate report-time coverage calculations from immutable RPC observations."""
+    return metric_id in SUPPLY_EVALUATION_METRICS and _timestamp(lookup(
+        snapshot, ("growth", "tokenized_equities", "supply_evaluated_at"),
+    )) is not None
+
+
 def fact_from_snapshot(snapshot: dict[str, Any], metric_id: str) -> dict[str, Any]:
     spec = PUBLIC_METRICS[metric_id]
-    snapshot = source_snapshot(snapshot, collection_source_key(spec["path"]))
+    if not is_supply_evaluation(snapshot, metric_id):
+        snapshot = source_snapshot(snapshot, collection_source_key(spec["path"]))
     schema = snapshot.get("schema_version")
     compatible = (
         isinstance(schema, int) and not isinstance(schema, bool) and schema in spec["schemas"]
@@ -3047,7 +3062,8 @@ def public_observation_records(
         schedule = snapshot.get("collection_schedule")
         clock = schedule.get(source_key) if isinstance(schedule, dict) else None
         source_time = _timestamp(clock.get("last_success_at")) if isinstance(clock, dict) else None
-        if source_time is not None and fact.get("state") != "unavailable":
+        supply_evaluation = is_supply_evaluation(observation_snapshot, fact["metric_id"])
+        if source_time is not None and fact.get("state") != "unavailable" and not supply_evaluation:
             collected_at = source_time
         required = (
             "name", "population", "denominator", "window", "collection_method",
@@ -3072,7 +3088,12 @@ def public_observation_records(
                 unavailable_reason,
             ) if isinstance(value, str) and value
         ]
-        if isinstance(clock, dict) and clock.get("state") != "fresh":
+        if supply_evaluation:
+            caveats.append(
+                "Coverage and current-run counts evaluated at report collection time; "
+                "underlying supply observations retain their original timestamps."
+            )
+        elif isinstance(clock, dict) and clock.get("state") != "fresh":
             caveats.append(
                 "Scheduled reuse; original source collection time retained."
                 if clock.get("state") == "reused" else

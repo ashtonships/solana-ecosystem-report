@@ -841,6 +841,17 @@ def _validate_schema8_xstocks(
         fail(f"{path}.valued_asset_count", "must be zero while valuation is unavailable")
     sources = growth.get("sources")
     supply_source = sources.get("supply") if isinstance(sources, dict) else None
+    supply_reused = equities.get("supply_reused_this_run") is True
+    if "supply_evaluated_at" in equities or "supply_reused_this_run" in equities:
+        evaluated_at = _parse_aware_timestamp(equities.get("supply_evaluated_at"))
+        if evaluated_at is None or evaluated_at != collected_at:
+            fail(f"{path}.supply_evaluated_at", "must equal the report collection time")
+        if not isinstance(equities.get("supply_reused_this_run"), bool):
+            fail(f"{path}.supply_reused_this_run", "must be boolean")
+        if evaluated_at is not None and equities.get("observed_at_unix") != int(evaluated_at.timestamp()):
+            fail(f"{path}.observed_at_unix", "must equal the supply evaluation time")
+        if supply_reused and queried_count != 0:
+            fail(f"{path}.supply_queried_this_run_asset_count", "must be zero when supply is reused")
     deadline_exhausted = equities.get("supply_deadline_exhausted")
     if not isinstance(deadline_exhausted, bool):
         fail(f"{path}.supply_deadline_exhausted", "must be boolean")
@@ -857,7 +868,7 @@ def _validate_schema8_xstocks(
                 "must be a non-empty string when present",
             )
         expected_deadline = bool(
-            not has_state_error and queried_count < eligible_count
+            not supply_reused and not has_state_error and queried_count < eligible_count
         )
         if deadline_exhausted is not expected_deadline:
             fail(

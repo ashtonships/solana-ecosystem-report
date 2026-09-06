@@ -1519,6 +1519,32 @@ class TestPublishGate(unittest.TestCase):
             for failure in failures
         ), failures)
 
+    def test_reused_supply_evaluation_has_no_current_run_deadline(self):
+        candidate = semantic_candidate()
+        equities = candidate["growth"]["tokenized_equities"]
+        supply = candidate["growth"]["sources"]["supply"]
+        equities["supply_evaluated_at"] = candidate["collected_at"]
+        equities["supply_reused_this_run"] = True
+        for key in ("queried", "successful", "failed"):
+            field = f"{key}_this_run_asset_count"
+            equities[f"supply_{field}"] = 0
+            equities["supply_coverage"][field] = 0
+            supply[field] = 0
+        equities["supply_deadline_exhausted"] = False
+        supply["deadline_exhausted"] = False
+        self.assertEqual(pipeline.semantic_failures(candidate), [])
+        for field, value in (
+            ("supply_evaluated_at", "2020-01-01T00:00:00+00:00"),
+            ("supply_reused_this_run", "true"),
+            ("supply_reused_this_run", False),
+            ("supply_queried_this_run_asset_count", 1),
+            ("observed_at_unix", equities["observed_at_unix"] - 1),
+        ):
+            with self.subTest(field=field, value=value):
+                invalid = copy.deepcopy(candidate)
+                invalid["growth"]["tokenized_equities"][field] = value
+                self.assertTrue(pipeline.semantic_failures(invalid))
+
     def test_schema8_accepts_only_sanitized_custom_rpc_provenance(self):
         candidate = semantic_candidate()
         endpoint = "https://user:password@rpc.example/v2/secret?api-key=SUPERSECRET"
