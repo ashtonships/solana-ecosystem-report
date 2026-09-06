@@ -1,0 +1,56 @@
+{
+  "base": "http://127.0.0.1:8897/",
+  "checks": [
+    {
+      "width": 320,
+      "chartActionsContained": 6
+    },
+    {
+      "width": 393,
+      "chartActionsContained": 6
+    },
+    {
+      "width": 701,
+      "chartActionsContained": 6
+    },
+    {
+      "width": 768,
+      "chartActionsContained": 6
+    },
+    {
+      "width": 1024,
+      "chartActionsContained": 6
+    },
+    {
+      "width": 1280,
+      "chartActionsContained": 6
+    },
+    {
+      "width": 1440,
+      "chartActionsContained": 6
+    },
+    {
+      "width": 1920,
+      "chartActionsContained": 6
+    },
+    {
+      "width": 701,
+      "selectedPairLedger": true,
+      "responsiveContinuity": true
+    },
+    {
+      "width": 1024,
+      "selectedPairLedger": true,
+      "responsiveContinuity": true
+    },
+    {
+      "width": 1440,
+      "selectedPairLedger": true,
+      "responsiveContinuity": true
+    },
+    {
+      "darkModeCaptures": true
+    }
+  ],
+  "pageErrors": []
+}
