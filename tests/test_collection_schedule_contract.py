@@ -79,6 +79,16 @@ class CollectionScheduleContractTests(unittest.TestCase):
         snapshot['collection_schedule']['news']['private_token'] = 'never-publish'
         self.assertNotIn('never-publish', json.dumps(render.project_public_envelope(snapshot)))
 
+    def test_historical_daily_token_schedule_remains_valid_and_unchanged(self):
+        snapshot = self.snapshot()
+        snapshot['collection_schedule']['growth_tokens']['interval_seconds'] = 86_400
+        original = copy.deepcopy(snapshot)
+        self.assertFalse([e for e in pipeline.semantic_failures(snapshot)
+                          if e['detail'].startswith('collection_schedule')])
+        projected = render.project_public_envelope(snapshot)
+        self.assertEqual(projected['collection_schedule'], snapshot['collection_schedule'])
+        self.assertEqual(snapshot, original)
+
     def test_methods_show_same_schedule_on_mobile_and_desktop(self):
         snapshot = self.snapshot()
         for mobile in (False, True):
@@ -88,6 +98,53 @@ class CollectionScheduleContractTests(unittest.TestCase):
             self.assertIn('Every six hours', content)
             self.assertIn('Paid sources', content)
             self.assertEqual(content.count('<dt>'), len(cadence.INTERVALS))
+
+    def test_schedule_explains_reuse_and_next_eligible_time(self):
+        snapshot = self.snapshot()
+        snapshot['collected_at'] = '2026-09-06T08:02:03+00:00'
+        snapshot['collection_schedule']['activity'].update(
+            state='reused', last_attempt_at='2026-09-06T07:31:46+00:00',
+            last_success_at='2026-09-06T07:31:46+00:00')
+        row = render.collection_schedule_rows(snapshot)[0]
+        self.assertEqual(row[2], 'Scheduled reuse')
+        self.assertIn('at snapshot', row[3])
+        self.assertIn('08:31 UTC', row[4])
+        snapshot['collected_at'] = '2026-09-06T08:32:00+00:00'
+        row = render.collection_schedule_rows(snapshot)[0]
+        self.assertEqual(row[2], 'Refresh due')
+        self.assertIn('awaiting an eligible run', row[4])
+
+    def test_first_failure_is_not_hidden_by_missing_success(self):
+        snapshot = self.snapshot()
+        snapshot['collection_schedule']['activity'].update(
+            state='failed', last_success_at=None)
+        row = render.collection_schedule_rows(snapshot)[0]
+        self.assertEqual(row[2], 'Refresh unavailable')
+        self.assertIn('No successful collection', row[3])
+        self.assertIn('Last attempt', row[4])
+        content = render.render_collection_schedule(snapshot)
+        self.assertIn('These recorded statuses do not update', content)
+
+    def test_legacy_token_schedule_displays_its_recorded_interval(self):
+        snapshot = self.snapshot()
+        snapshot['collection_schedule']['growth_tokens']['interval_seconds'] = 86400
+        row = next(row for row in render.collection_schedule_rows(snapshot)
+                   if row[0] == 'Selected token supplies')
+        self.assertEqual(row[1], 'Daily')
+
+    def test_validator_coverage_declares_count_denominator(self):
+        row = next(row for row in render.REPORT_COVERAGE_REQUIREMENTS if row[0] == 'R08')
+        self.assertNotIn('Stake-weighted', str(row))
+        self.assertIn('Vote-account delinquency', str(row))
+
+    def test_coverage_does_not_retimestamp_aggregate_sources(self):
+        snapshot = self.snapshot()
+        indexes = render.public_observation_indexes(facts.public_observation_records(snapshot))
+        content = render.render_report_coverage(snapshot, None, None, 'desktop', indexes)
+        for key in ('R11', 'R16'):
+            row = content.split("data-requirement='" + key + "'", 1)[1].split('</tr>', 1)[0]
+            self.assertNotIn('Observed ', row)
+            self.assertIn('Source observation times vary', row)
 
 
 if __name__ == '__main__':

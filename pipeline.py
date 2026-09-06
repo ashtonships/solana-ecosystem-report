@@ -1494,7 +1494,7 @@ def semantic_failures(snapshot: dict[str, Any]) -> list[dict[str, str]]:
                 if not isinstance(entry, dict) or set(entry) != fields:
                     fail(path, "must contain exactly the source clock fields")
                     continue
-                if type(entry["interval_seconds"]) is not int or entry["interval_seconds"] != interval:
+                if not cadence.valid_interval(key, entry["interval_seconds"]):
                     fail(path, "interval must match the registered tier")
                 if not isinstance(entry["state"], str) or entry["state"] not in ("fresh", "reused", "failed"):
                     fail(path, "unknown collection state")

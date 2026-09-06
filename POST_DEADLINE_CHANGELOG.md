@@ -279,3 +279,13 @@ post-deadline judging eligibility, or an award.
   tag. Acceptance of later changes and an award remain unverified. Full daily
   REV, complete scoped xStock USD pricing and network-wide daily active
   addresses are still not established; the report retains their limits.
+
+
+## 2026-09-06 — Source freshness and reuse explanation
+
+- Align selected token collection with its six-hour freshness window. The old daily tier systematically left supplies stale between refreshes. Preserve archived daily schedules, source timestamps, paid-source tiers and request bounds.
+- Show scheduled reuse, next refresh eligibility, last failed attempt and explicit snapshot-relative ages on Methods and in Markdown. Keep first-attempt failures visible even without a prior success.
+- Give source rows consistent mobile spacing and remove the browser's default definition-list indentation.
+- Correct validator coverage copy: the delinquency percentage counts vote accounts; it is not stake-weighted.
+
+These changes affect current main; the preserved submission tag is unchanged.

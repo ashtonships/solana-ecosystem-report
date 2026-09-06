@@ -125,6 +125,33 @@ class CollectCadenceTests(unittest.TestCase):
             patch.object(collect, "source_code_state", return_value={}),
         )
 
+    def test_legacy_daily_supply_refreshes_after_six_hours_without_paid_refresh(self):
+        prior = previous({"growth_tokens": timedelta(hours=10)})
+        prior["collection_schedule"]["growth_tokens"]["interval_seconds"] = 86_400
+        original = deepcopy(prior)
+        patches = self._base_patches()
+        with patches[0], patches[1], patches[2], patches[3], patches[4], \
+             patch.object(collect.growth_module, "collect_growth",
+                          return_value=(deepcopy(prior["growth"]), {"cursor": "next"})) as tokens, \
+             patch.object(collect.growth_module, "refresh_growth_providers") as providers, \
+             patch.object(collect.dune_module, "has_reserved_one_off_refresh", return_value=False), \
+             patch.object(collect.dune_module, "collect_dune") as dune, \
+             patch.object(collect.news_module, "collect_news") as news:
+            raw = collect.sources(ENDPOINT, previous_snapshot=prior, now=NOW,
+                                  with_dune=True)
+
+        tokens.assert_called_once_with(
+            ENDPOINT, supply_state=None, with_providers=False,
+            previous_growth=prior["growth"],
+        )
+        providers.assert_not_called()
+        news.assert_not_called()
+        dune.assert_not_called()
+        self.assertEqual(raw["collection_schedule"]["growth_tokens"]["state"], "fresh")
+        self.assertEqual(raw["collection_schedule"]["growth_tokens"]["interval_seconds"], 21_600)
+        self.assertEqual(raw["collection_schedule"]["dune"]["interval_seconds"], 86_400)
+        self.assertEqual(prior, original)
+
     def test_supply_is_evaluated_at_final_report_time_for_each_growth_cadence_path(self):
         started = datetime(2026, 9, 5, 17, 59, 59, tzinfo=timezone.utc)
         finished = started + timedelta(seconds=2)

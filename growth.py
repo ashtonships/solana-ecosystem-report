@@ -1580,7 +1580,7 @@ def collect_growth(
             "redistribution rights remain unresolved."
         ),
     }
-    # Provider rows have their own six-hour tier. A daily token refresh can
+    # Provider rows have their own six-hour tier. A token refresh can
     # retain the exact prior provider slice when that tier is not due.
     provider = (
         _provider_benchmarks(timeout)
