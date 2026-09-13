@@ -47,7 +47,7 @@ import transport
 
 DEFAULT_ENDPOINT = "https://api.mainnet.solana.com"
 SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
-HISTORY_FACTS_PATH = Path(__file__).parent / "history" / "facts.jsonl"
+HISTORY_FACTS_PATH = Path(__file__).parent / "history" / "facts.jsonl.gz"
 LAMPORTS_PER_SOL = 1_000_000_000
 PUBLICATION_FRESHNESS_SECONDS = 25_200
 # 2 added `activity`; 3 added `news`; 4 adds non-vote performance and richer

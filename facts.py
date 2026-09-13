@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import gzip
+import io
 import hashlib
 import json
 import math
 import os
 import re
 import tempfile
+import zlib
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -3649,11 +3652,50 @@ def cadence_eligible(
     return selected
 
 
+MAX_LEDGER_FILE_BYTES = 95 * 1024 * 1024
+
+
+def decode_jsonl(raw: bytes, path: Path) -> bytes:
+    """Decode the physical ledger without changing any logical JSONL bytes."""
+    try:
+        return gzip.decompress(raw) if path.suffix == ".gz" else raw
+    except (OSError, EOFError, zlib.error) as error:
+        raise FactConflictError(f"invalid compressed fact ledger: {path}") from error
+
+
+def encode_jsonl(raw: bytes, path: Path) -> bytes:
+    """Use reproducible gzip headers across supported Python versions and OSes."""
+    if path.suffix != ".gz":
+        return raw
+    output = io.BytesIO()
+    with gzip.GzipFile(filename="", mode="wb", fileobj=output, mtime=0) as handle:
+        handle.write(raw)
+    encoded = output.getvalue()
+    if len(encoded) > MAX_LEDGER_FILE_BYTES:
+        raise FactConflictError("compressed fact ledger exceeds 95 MiB; partition history before publishing")
+    return encoded
+
+
+def existing_jsonl_path(path: Path) -> Path:
+    """Allow the first gzip write to migrate a sole uncompressed baseline."""
+    legacy = path.with_suffix("") if path.suffix == ".gz" else path
+    if legacy != path and legacy.exists():
+        if path.exists():
+            raise FactConflictError("both compressed and uncompressed fact ledgers exist")
+        return legacy
+    return path
+
+
+def read_jsonl_bytes(path: Path) -> bytes:
+    selected = existing_jsonl_path(path)
+    return decode_jsonl(selected.read_bytes(), selected)
+
+
 def _read_facts_lines(path: Path) -> list[dict[str, Any]]:
     existing: list[dict[str, Any]] = []
-    if not path.exists():
+    if not existing_jsonl_path(path).exists():
         return existing
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    for line_number, line in enumerate(read_jsonl_bytes(path).decode("utf-8").splitlines(), start=1):
         try:
             item = json.loads(line)
         except json.JSONDecodeError as error:
@@ -3690,6 +3732,8 @@ def append_jsonl(path: Path, new_facts: Iterable[dict[str, Any]]) -> int:
         json.dumps(fact, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
         for fact in combined
     ).encode("utf-8")
+    serialized = encode_jsonl(serialized, path)
+    baseline = existing_jsonl_path(path)
     temporary_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -3701,6 +3745,8 @@ def append_jsonl(path: Path, new_facts: Iterable[dict[str, Any]]) -> int:
             os.fsync(handle.fileno())
             temporary_path = Path(handle.name)
         temporary_path.replace(path)
+        if baseline != path:
+            baseline.unlink()
     finally:
         if temporary_path is not None and temporary_path.exists():
             temporary_path.unlink()

@@ -24,7 +24,7 @@ The report is generated from append-only snapshots and preserves evidence limits
 
 - `collect.py` records the keyless Solana RPC core into append-only `snapshots/`; optional source adapters remain subject to the canonical terms decisions.
 - `pipeline.py` gates schema, semantic relationships, freshness, source state, coverage, and collection provenance before accepted writes or publication.
-- `facts.py` maintains the versioned per-metric compatibility contract used by `detect.py`, `delta.py`, and `charts.py`; compact facts live in `history/facts.jsonl`.
+- `facts.py` maintains the versioned per-metric compatibility contract used by `detect.py`, `delta.py`, and `charts.py`; compact facts live in `history/facts.jsonl.gz` (legacy `facts.jsonl` is read until the next successful collection migrates it losslessly).
 - `state/xstocks-supply.json` is an optional resumable cursor, not source-of-truth history, and is written only when the gated growth path is enabled.
 - `render.py` produces `index.html`, `report.md`, and `report.json` from one selected snapshot and compatible history, with shared release provenance.
 - The five report views are Overview, Data, Methods, History, and Project.

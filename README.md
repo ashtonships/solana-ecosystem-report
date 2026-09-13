@@ -270,7 +270,7 @@ collect.py ──► pipeline.py pre-write publication gate
               │
               ├──► snapshots/snapshot-<UTC>.json  append-only evidence
               ├──► snapshots/latest.json          selected copy, not a symlink
-              ├──► history/facts.jsonl             compact compatible metric facts
+              ├──► history/facts.jsonl.gz          compressed compatible metric facts
               └──► state/xstocks-supply.json       optional resumable supply cursor
                                │
                  facts.py compatibility contract

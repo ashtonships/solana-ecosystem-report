@@ -179,6 +179,24 @@ class TestReleaseVerifier(unittest.TestCase):
         self.assertEqual(result["manifest"]["source_revision"], "a" * 40)
         self.assertEqual(result["manifest"]["data_revision"], "b" * 40)
 
+    def test_compressed_public_ledger_preserves_bytes_and_rejects_hidden_metadata(self):
+        legacy = self.root / "history" / "facts.jsonl"
+        compressed = legacy.with_suffix(".jsonl.gz")
+        logical = legacy.read_bytes()
+        encoded = facts.encode_jsonl(logical, compressed)
+        compressed.write_bytes(encoded)
+        legacy.unlink()
+        data = verify_release.verify_public_data(root=self.root, now=VERIFY_NOW)
+        self.assertEqual(data["facts_raw"], logical)
+        self.assertEqual(verify_release.release_data_records(self.root, data)[2]["path"],
+                         "history/facts.jsonl.gz")
+        # Gzip permits trailing zero padding; require the single canonical encoding
+        # so data hidden outside the decompressed public facts cannot pass review.
+        compressed.write_bytes(encoded + b"\0")
+        with self.assertRaisesRegex(verify_release.ReleaseVerificationError,
+                                    "canonical deterministic gzip"):
+            verify_release.verify_public_data(root=self.root, now=VERIFY_NOW)
+
     def test_every_immutable_history_snapshot_is_strictly_verified(self):
         selected_path = self.root / "snapshots" / "latest.json"
         selected_raw, selected, immutable = verify_release.verify_snapshot(
@@ -898,7 +916,7 @@ class TestCleanInitialGitHistory(unittest.TestCase):
         data = {
             "immutable": immutable,
             "snapshot": snapshot,
-            "facts_raw": facts_path.read_bytes(),
+            "facts_raw": facts.read_jsonl_bytes(facts_path),
             "state_raw": None,
         }
         report = {"release": {
@@ -990,6 +1008,10 @@ class TestCleanInitialGitHistory(unittest.TestCase):
 class TestGitReleaseTransitions(unittest.TestCase):
     def test_only_data_then_package_paths_may_change(self):
         cases = (
+            (None, None, "compressed", "2026-08-31T10:00:00+00:00", False, False, None),
+            (None, None, "migrate", "2026-08-31T10:00:00+00:00", False, False, None),
+            (None, None, "migrate-rewrite", "2026-08-31T10:00:00+00:00", False, False,
+             "committed facts are not the exact append"),
             (None, None, "exact", "2026-08-31T10:00:00+00:00", False, False, None),
             ("unrelated-data.txt", None, "exact", "2026-08-31T10:00:00+00:00", False, False,
              "source-to-data path set"),
@@ -1020,9 +1042,11 @@ class TestGitReleaseTransitions(unittest.TestCase):
                 previous["performance"]["samples"][0]["slot"] = 400
                 write_snapshot(root, previous)
                 facts_path = root / "history" / "facts.jsonl"
+                if history_mode == "compressed":
+                    facts_path = facts_path.with_suffix(".jsonl.gz")
                 facts.append_jsonl(facts_path, facts.snapshot_facts(previous))
                 verify_release._git(
-                    root, "add", "--", "source.txt", "snapshots", "history/facts.jsonl",
+                    root, "add", "--", "source.txt", "snapshots", facts_path.relative_to(root).as_posix(),
                 )
                 verify_release._git(root, "commit", "-q", "-m", "source")
                 source_revision = verify_release._git(
@@ -1050,7 +1074,14 @@ class TestGitReleaseTransitions(unittest.TestCase):
                 write_snapshot(root, snapshot)
                 immutable = root / "snapshots" / collect.snapshot_filename(collected_at)
                 latest = root / "snapshots" / "latest.json"
-                if history_mode == "rewrite":
+                if history_mode.startswith("migrate"):
+                    facts_path = facts_path.with_suffix(".jsonl.gz")
+                    facts.append_jsonl(facts_path, facts.snapshot_facts(snapshot))
+                    if history_mode == "migrate-rewrite":
+                        facts_path.write_bytes(facts.encode_jsonl(
+                            verify_release.expected_pending_facts(b"", snapshot), facts_path,
+                        ))
+                elif history_mode == "rewrite":
                     facts_path.write_bytes(verify_release.expected_pending_facts(b"", snapshot))
                 else:
                     facts.append_jsonl(facts_path, facts.snapshot_facts(snapshot))
@@ -1059,6 +1090,8 @@ class TestGitReleaseTransitions(unittest.TestCase):
                     latest.relative_to(root).as_posix(),
                     facts_path.relative_to(root).as_posix(),
                 ]
+                if history_mode.startswith("migrate"):
+                    data_paths.append("history/facts.jsonl")
                 if extra_data:
                     (root / extra_data).write_text("unexpected\n", encoding="utf-8")
                     data_paths.append(extra_data)
@@ -1109,7 +1142,7 @@ class TestGitReleaseTransitions(unittest.TestCase):
                 data = {
                     "immutable": immutable,
                     "snapshot": snapshot,
-                    "facts_raw": facts_path.read_bytes(),
+                    "facts_raw": facts.read_jsonl_bytes(facts_path),
                     "state_raw": None,
                 }
                 report = {"release": {
@@ -1198,7 +1231,7 @@ class TestGitReleaseTransitions(unittest.TestCase):
             data = {
                 "immutable": immutable,
                 "snapshot": snapshot,
-                "facts_raw": facts_path.read_bytes(),
+                "facts_raw": facts.read_jsonl_bytes(facts_path),
                 "state_raw": None,
             }
             # Trust base B, the bot's own snapshot commit: base sits ABOVE

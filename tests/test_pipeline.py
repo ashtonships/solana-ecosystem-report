@@ -2654,5 +2654,5 @@ class TestWorkflowGateCoverage(unittest.TestCase):
         # Dedupe: search for an existing open issue before creating one.
         # The job runs without a checkout, so every gh call passes -R explicitly.
         self.assertIn("gh issue list -R \"$GITHUB_REPOSITORY\"", text)
-        self.assertIn("gh issue comment -R \"$GITHUB_REPOSITORY\"", text)
+        self.assertIn("gh issue edit -R \"$GITHUB_REPOSITORY\"", text)
         self.assertIn("gh issue create -R \"$GITHUB_REPOSITORY\"", text)
