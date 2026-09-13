@@ -32,7 +32,7 @@ import render
 
 ROOT = Path(__file__).resolve().parent
 SNAPSHOT_PATH = ROOT / "snapshots" / "latest.json"
-FACTS_PATH = ROOT / "history" / "facts.jsonl"
+FACTS_PATH = ROOT / "history" / "facts.jsonl.gz"
 STATE_PATH = ROOT / "state" / "xstocks-supply.json"
 MANIFEST_SCHEMA_VERSION = 1
 DERIVED_ROOTS = frozenset((
@@ -453,7 +453,15 @@ def verify_facts_bytes(raw: bytes, label: str) -> list[dict[str, Any]]:
 
 def verify_facts(path: Path) -> tuple[bytes, list[dict[str, Any]]]:
     require(path.is_file() and not path.is_symlink(), f"missing regular facts file: {path}")
-    raw = path.read_bytes()
+    require(path.stat().st_size <= facts.MAX_LEDGER_FILE_BYTES or path.suffix != ".gz",
+            "compressed fact ledger exceeds safe GitHub file size")
+    try:
+        raw = facts.read_jsonl_bytes(path)
+        if path.suffix == ".gz":
+            require(path.read_bytes() == facts.encode_jsonl(raw, path),
+                    "compressed facts must use canonical deterministic gzip encoding")
+    except facts.FactConflictError as error:
+        raise ReleaseVerificationError(str(error)) from error
     return raw, verify_facts_bytes(raw, str(path))
 
 
@@ -638,6 +646,26 @@ def require_protected_inventory(
             f"{label} protected path inventory is not exact: {sorted(actual)}")
 
 
+def public_facts_path(root: Path) -> Path:
+    try:
+        return facts.existing_jsonl_path(root / "history" / "facts.jsonl.gz")
+    except facts.FactConflictError as error:
+        raise ReleaseVerificationError(str(error)) from error
+
+
+def committed_facts_bytes(root: Path, revision: str) -> bytes:
+    compressed = git_blob(root, revision, "history/facts.jsonl.gz")
+    legacy = git_blob(root, revision, "history/facts.jsonl")
+    require(compressed is None or legacy is None,
+            "committed revision contains two fact ledgers")
+    if compressed is not None:
+        try:
+            return facts.decode_jsonl(compressed, Path("facts.jsonl.gz"))
+        except facts.FactConflictError as error:
+            raise ReleaseVerificationError(str(error)) from error
+    return legacy or b""
+
+
 def expected_pending_facts(previous: bytes, snapshot: dict[str, Any]) -> bytes:
     if previous:
         verify_facts_bytes(previous, "committed fact baseline")
@@ -669,7 +697,7 @@ def verify_pending_update(
     relative_immutable = immutable.relative_to(root).as_posix()
     require(git_blob(root, "HEAD", relative_immutable) is None,
             "pending immutable snapshot already exists in HEAD")
-    previous_facts = git_blob(root, "HEAD", FACTS_PATH.relative_to(ROOT).as_posix()) or b""
+    previous_facts = committed_facts_bytes(root, "HEAD")
     require(facts_raw == expected_pending_facts(previous_facts, snapshot),
             "pending facts are not the exact append over the committed ledger")
     previous_latest = git_blob(root, "HEAD", SNAPSHOT_PATH.relative_to(ROOT).as_posix())
@@ -689,12 +717,12 @@ def verify_public_data(
     require(reference.tzinfo is not None and reference.utcoffset() is not None,
             "verification time must include a UTC offset")
     snapshot_path = (snapshot_path or root / "snapshots" / "latest.json").resolve()
-    facts_path = (facts_path or root / "history" / "facts.jsonl").resolve()
+    facts_path = (facts_path or public_facts_path(root)).resolve()
     state_path = (state_path or root / "state" / "xstocks-supply.json").resolve()
     require(snapshot_path == root / "snapshots" / "latest.json",
             "public snapshot path must be snapshots/latest.json")
-    require(facts_path == root / "history" / "facts.jsonl",
-            "public facts path must be history/facts.jsonl")
+    require(facts_path == public_facts_path(root),
+            "public facts path must be the sole canonical history ledger")
     require(state_path == root / "state" / "xstocks-supply.json",
             "public state path must be state/xstocks-supply.json")
     snapshot_raw, snapshot, immutable = verify_snapshot(snapshot_path, now=reference)
@@ -1173,7 +1201,7 @@ def build_manifest(
         "public_projection_version": release["public_projection_version"],
         "immutable_snapshot": file_record(root, data["immutable"]),
         "latest_snapshot": file_record(root, root / "snapshots" / "latest.json"),
-        "facts": file_record(root, root / "history" / "facts.jsonl"),
+        "facts": file_record(root, public_facts_path(root)),
         "state": state_record,
         "artifacts": {
             f"{artifacts.resolve().relative_to(root.resolve()).as_posix()}/{name}": {
@@ -1188,7 +1216,7 @@ def release_data_records(root: Path, data: dict[str, Any]) -> list[dict[str, Any
     return [
         file_record(root, data["immutable"]),
         file_record(root, root / "snapshots" / "latest.json"),
-        file_record(root, root / "history" / "facts.jsonl"),
+        file_record(root, public_facts_path(root)),
         file_record(root, root / "state" / "xstocks-supply.json")
         if data["state_raw"] is not None else None,
     ]
@@ -1207,6 +1235,15 @@ def verify_data_revision(
     allowed_data_paths = {
         record["path"] for record in records if record is not None
     }
+    legacy_path = "history/facts.jsonl"
+    migrating_facts = (records[2]["path"] == "history/facts.jsonl.gz"
+                       and git_blob(root, source_revision, legacy_path) is not None)
+    if migrating_facts:
+        required_data_paths.add(legacy_path)
+        allowed_data_paths.add(legacy_path)
+        require(git_blob(root, data_revision, legacy_path) is None
+                and git_blob(root, "HEAD", legacy_path) is None,
+                "fact migration must remove the legacy ledger")
     transition = changed_paths(root, source_revision, data_revision)
     require(required_data_paths.issubset(transition) and transition <= allowed_data_paths,
             f"source-to-data path set is invalid: {sorted(transition)}")
@@ -1215,7 +1252,7 @@ def verify_data_revision(
             "immutable snapshot already exists in the source revision")
     previous_latest = git_blob(root, source_revision, "snapshots/latest.json")
     require_newer_snapshot(previous_latest, data["snapshot"])
-    previous_facts = git_blob(root, source_revision, "history/facts.jsonl") or b""
+    previous_facts = committed_facts_bytes(root, source_revision)
     require(data["facts_raw"] == expected_pending_facts(previous_facts, data["snapshot"]),
             "committed facts are not the exact append over the source ledger")
     for record in records:

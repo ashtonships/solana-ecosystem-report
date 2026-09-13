@@ -1527,6 +1527,59 @@ class TestFactContract(unittest.TestCase):
             self.assertEqual(path.read_bytes(), before)
             self.assertEqual(json.loads(path.read_text()), item)
 
+    def test_gzip_migration_preserves_every_fact_and_is_reproducible(self):
+        first = facts.fact_from_snapshot(snapshot(), "latest_tps")
+        second = facts.fact_from_snapshot(
+            snapshot(at="2026-08-25T02:00:00+00:00", tps=102.0, slot=125), "latest_tps",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            legacy = Path(directory) / "facts.jsonl"
+            compressed = Path(directory) / "facts.jsonl.gz"
+            expected = Path(directory) / "expected.jsonl"
+            facts.append_jsonl(legacy, [first])
+            original = legacy.read_bytes()
+            expected.write_bytes(original)
+            facts.append_jsonl(expected, [second])
+            self.assertEqual(facts.jsonl_additions(compressed, [second]), [second])
+            self.assertEqual(legacy.read_bytes(), original)
+            self.assertFalse(compressed.exists())
+            self.assertEqual(facts.append_jsonl(compressed, [second]), 1)
+            self.assertFalse(legacy.exists())
+            self.assertEqual(facts.read_jsonl_bytes(compressed), expected.read_bytes())
+            before = compressed.read_bytes()
+            self.assertEqual(facts.append_jsonl(compressed, [second]), 0)
+            self.assertEqual(compressed.read_bytes(), before)
+            self.assertEqual(before, facts.encode_jsonl(expected.read_bytes(), compressed))
+            with self.assertRaises(facts.FactConflictError):
+                facts.append_jsonl(compressed, [dict(first, value=999.0)])
+            self.assertEqual(compressed.read_bytes(), before)
+            legacy.write_bytes(original)
+            with self.assertRaisesRegex(facts.FactConflictError, "both compressed"):
+                facts.jsonl_additions(compressed, [second])
+
+    def test_gzip_size_guard_preserves_legacy_baseline(self):
+        first = facts.fact_from_snapshot(snapshot(), "latest_tps")
+        second = facts.fact_from_snapshot(
+            snapshot(at="2026-08-25T02:00:00+00:00", tps=102.0, slot=125), "latest_tps",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            legacy = Path(directory) / "facts.jsonl"
+            compressed = Path(directory) / "facts.jsonl.gz"
+            facts.append_jsonl(legacy, [first])
+            original = legacy.read_bytes()
+            with patch.object(facts, "MAX_LEDGER_FILE_BYTES", 1):
+                with self.assertRaisesRegex(facts.FactConflictError, "95 MiB"):
+                    facts.append_jsonl(compressed, [second])
+            self.assertEqual(legacy.read_bytes(), original)
+            self.assertFalse(compressed.exists())
+
+    def test_corrupt_gzip_ledger_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "facts.jsonl.gz"
+            path.write_bytes(b"not gzip")
+            with self.assertRaisesRegex(facts.FactConflictError, "invalid compressed"):
+                facts.jsonl_additions(path, [])
+
     def test_jsonl_append_rewrites_back_dated_rows_into_canonical_order(self):
         newer = facts.fact_from_snapshot(
             snapshot(at="2026-08-25T02:00:00+00:00", tps=102.0, slot=125), "latest_tps",
