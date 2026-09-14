@@ -2,14 +2,14 @@
   "cursor_mint": "XsqML71RLbyUM3CmY4EYN88zE6BJkpvJACnUKBdGD3x",
   "observations": {
     "Xs151QeqTCiuKtinzfRATnUESM2xTU6V9Wy8Vy538ci": {
-      "collected_at": "2026-09-14T10:36:53+00:00",
+      "collected_at": "2026-09-14T20:31:19+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955380,
+        "rpc_context_slot": 447068196,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -18,21 +18,21 @@
           "newMultiplierEffectiveTimestamp": 1787272200
         }
       },
-      "raw_amount": "13294800301294",
+      "raw_amount": "13294795267947",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955381,
-      "ui_amount": 133903.17605362,
-      "ui_amount_string": "133903.17605362"
+      "rpc_context_slot": 447068196,
+      "ui_amount": 133903.12535853,
+      "ui_amount_string": "133903.12535853"
     },
     "Xs1CqRVt2mGVfMSHf7M6cDhkjpw8HDF14XbQNzDnGg4": {
-      "collected_at": "2026-09-14T10:36:54+00:00",
+      "collected_at": "2026-09-14T20:31:19+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955383,
+        "rpc_context_slot": 447068198,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -43,19 +43,19 @@
       },
       "raw_amount": "7853606905584",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955384,
+      "rpc_context_slot": 447068198,
       "ui_amount": 78536.06905584,
       "ui_amount_string": "78536.06905584"
     },
     "Xs2yquAgsHByNzx68WJC55WHjHBvG9JsMB7CWjTLyPy": {
-      "collected_at": "2026-09-14T10:36:55+00:00",
+      "collected_at": "2026-09-14T20:31:20+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955386,
+        "rpc_context_slot": 447068200,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -64,21 +64,21 @@
           "newMultiplierEffectiveTimestamp": 1762559700
         }
       },
-      "raw_amount": "198318234264337",
+      "raw_amount": "198318234264335",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955387,
-      "ui_amount": 2012392.5385492,
-      "ui_amount_string": "2012392.5385492"
+      "rpc_context_slot": 447068200,
+      "ui_amount": 2012392.53854918,
+      "ui_amount_string": "2012392.53854918"
     },
     "Xs31mE5EiqjSHEaiX9QDKCN6NvSGCqpJ6f1FNq2wri5": {
-      "collected_at": "2026-09-14T10:36:55+00:00",
+      "collected_at": "2026-09-14T20:31:20+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955387,
+        "rpc_context_slot": 447068202,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -89,19 +89,19 @@
       },
       "raw_amount": "93999998780539",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955389,
+      "rpc_context_slot": 447068202,
       "ui_amount": 939999.98780539,
       "ui_amount_string": "939999.98780539"
     },
     "Xs3ZFkPYT2BN7qBMqf1j1bfTeTm1rFzEFSsQ1z3wAKU": {
-      "collected_at": "2026-09-14T10:36:56+00:00",
+      "collected_at": "2026-09-14T20:31:21+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955390,
+        "rpc_context_slot": 447068204,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -110,21 +110,21 @@
           "newMultiplierEffectiveTimestamp": 1786062600
         }
       },
-      "raw_amount": "16652544218617",
+      "raw_amount": "16652543592370",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955391,
-      "ui_amount": 85117.19050079,
-      "ui_amount_string": "85117.19050079"
+      "rpc_context_slot": 447068204,
+      "ui_amount": 85117.18729981,
+      "ui_amount_string": "85117.18729981"
     },
     "Xs3c2aZenyRQwXjki5MDxJEJ2km27ef2rWQMFWx7QKJ": {
-      "collected_at": "2026-09-14T10:36:57+00:00",
+      "collected_at": "2026-09-14T20:31:22+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955392,
+        "rpc_context_slot": 447068206,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -135,19 +135,19 @@
       },
       "raw_amount": "57999999877329",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955394,
+      "rpc_context_slot": 447068206,
       "ui_amount": 579999.99877329,
       "ui_amount_string": "579999.99877329"
     },
     "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg": {
-      "collected_at": "2026-09-14T10:36:58+00:00",
+      "collected_at": "2026-09-14T20:31:22+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955395,
+        "rpc_context_slot": 447068207,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -156,21 +156,21 @@
           "newMultiplierEffectiveTimestamp": 0
         }
       },
-      "raw_amount": "17229533084184",
+      "raw_amount": "17229532075391",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955397,
-      "ui_amount": 172295.33084184,
-      "ui_amount_string": "172295.33084184"
+      "rpc_context_slot": 447068208,
+      "ui_amount": 172295.32075391,
+      "ui_amount_string": "172295.32075391"
     },
     "Xs4uNhvBDAcp2mz3g9XR5q3vzLgmF1ANWxJgWk2d5u3": {
-      "collected_at": "2026-09-14T10:36:59+00:00",
+      "collected_at": "2026-09-14T20:31:23+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955398,
+        "rpc_context_slot": 447068209,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -181,19 +181,19 @@
       },
       "raw_amount": "188259385665529",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955399,
+      "rpc_context_slot": 447068210,
       "ui_amount": 1893707.96496598,
       "ui_amount_string": "1893707.96496598"
     },
     "Xs5UJzmCRQ8DWZjskExdSQDnbE6iLkRu2jjrRAB1JSU": {
-      "collected_at": "2026-09-14T10:36:59+00:00",
+      "collected_at": "2026-09-14T20:31:23+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955401,
+        "rpc_context_slot": 447068211,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -204,19 +204,19 @@
       },
       "raw_amount": "3709999999701",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955402,
+      "rpc_context_slot": 447068212,
       "ui_amount": 38147.07806585,
       "ui_amount_string": "38147.07806585"
     },
     "Xs5ywCCaayf3TFdxFxuJCr25XMoqY6vdfJKkSHE4D6r": {
-      "collected_at": "2026-09-14T10:37:00+00:00",
+      "collected_at": "2026-09-14T20:31:24+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955403,
+        "rpc_context_slot": 447068214,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -227,19 +227,19 @@
       },
       "raw_amount": "900000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955405,
+      "rpc_context_slot": 447068214,
       "ui_amount": 9032.16548307,
       "ui_amount_string": "9032.16548307"
     },
     "Xs6B6zawENwAbWVi7w92rjazLuAr5Az59qgWKcNb45x": {
-      "collected_at": "2026-09-14T10:37:01+00:00",
+      "collected_at": "2026-09-14T20:31:25+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955406,
+        "rpc_context_slot": 447068215,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -248,21 +248,21 @@
           "newMultiplierEffectiveTimestamp": 0
         }
       },
-      "raw_amount": "3223582882889",
+      "raw_amount": "3223582882848",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955407,
-      "ui_amount": 32235.82882889,
-      "ui_amount_string": "32235.82882889"
+      "rpc_context_slot": 447068216,
+      "ui_amount": 32235.82882848,
+      "ui_amount_string": "32235.82882848"
     },
     "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu": {
-      "collected_at": "2026-09-14T10:37:02+00:00",
+      "collected_at": "2026-09-14T20:31:25+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955408,
+        "rpc_context_slot": 447068217,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -271,21 +271,21 @@
           "newMultiplierEffectiveTimestamp": 0
         }
       },
-      "raw_amount": "13617873089403",
+      "raw_amount": "13617872961817",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955409,
-      "ui_amount": 136178.73089403,
-      "ui_amount_string": "136178.73089403"
+      "rpc_context_slot": 447068218,
+      "ui_amount": 136178.72961817,
+      "ui_amount_string": "136178.72961817"
     },
     "Xs7xXqkcK7K8urEqGg52SECi79dRp2cEKKuYjUePYDw": {
-      "collected_at": "2026-09-14T10:37:03+00:00",
+      "collected_at": "2026-09-14T20:31:26+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955411,
+        "rpc_context_slot": 447068219,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -296,42 +296,42 @@
       },
       "raw_amount": "3448699857368",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955412,
+      "rpc_context_slot": 447068219,
       "ui_amount": 137947.99429472,
       "ui_amount_string": "137947.99429472"
     },
     "Xs8drBWy3Sd5QY3aifG9kt9KFs2K3PGZmx7jWrsrk57": {
-      "collected_at": "2026-09-14T10:37:04+00:00",
+      "collected_at": "2026-09-14T20:31:26+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955414,
+        "rpc_context_slot": 447068221,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
-          "multiplier": "1.0017500071092285",
-          "newMultiplier": "1.0024522181978437",
-          "newMultiplierEffectiveTimestamp": 1781481300
+          "multiplier": "1.0024522181978437",
+          "newMultiplier": "1.0029896954311508",
+          "newMultiplierEffectiveTimestamp": 1789432200
         }
       },
       "raw_amount": "3023898045369",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955415,
+      "rpc_context_slot": 447068221,
       "ui_amount": 30313.13303184,
       "ui_amount_string": "30313.13303184"
     },
     "Xs936JPaWKEXmpu54DZ149GETV7PmsnTqnMWxgcPNAj": {
-      "collected_at": "2026-09-14T10:37:04+00:00",
+      "collected_at": "2026-09-14T20:31:27+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955416,
+        "rpc_context_slot": 447068222,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -342,19 +342,19 @@
       },
       "raw_amount": "6180000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955418,
+      "rpc_context_slot": 447068223,
       "ui_amount": 61800.0,
       "ui_amount_string": "61800"
     },
     "XsApJFV9MAktqnAc6jqzsHVujxkGm9xcSUffaBoYLKC": {
-      "collected_at": "2026-09-14T10:37:05+00:00",
+      "collected_at": "2026-09-14T20:31:28+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955418,
+        "rpc_context_slot": 447068224,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -365,19 +365,19 @@
       },
       "raw_amount": "2814445354836",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955420,
+      "rpc_context_slot": 447068225,
       "ui_amount": 28277.3616865,
       "ui_amount_string": "28277.3616865"
     },
     "XsAsZLF4MmsvS1sDxRMrUz7REjHfwbC9UAMXSRBqgEB": {
-      "collected_at": "2026-09-14T10:37:06+00:00",
+      "collected_at": "2026-09-14T20:31:28+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955421,
+        "rpc_context_slot": 447068226,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -388,19 +388,19 @@
       },
       "raw_amount": "19399999545907",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955422,
+      "rpc_context_slot": 447068227,
       "ui_amount": 193999.99545907,
       "ui_amount_string": "193999.99545907"
     },
     "XsAtbqkAP1HJxy7hFDeq7ok6yM43DQ9mQ1Rh861X8rw": {
-      "collected_at": "2026-09-14T10:37:07+00:00",
+      "collected_at": "2026-09-14T20:31:29+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955424,
+        "rpc_context_slot": 447068228,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -411,19 +411,19 @@
       },
       "raw_amount": "60970389512173",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955425,
+      "rpc_context_slot": 447068229,
       "ui_amount": 642452.90270435,
       "ui_amount_string": "642452.90270435"
     },
     "XsBGEXxbBcuu8Nrokj14G8v4ezT3JYWWLneTzXK8t6Z": {
-      "collected_at": "2026-09-14T10:37:08+00:00",
+      "collected_at": "2026-09-14T20:31:29+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955427,
+        "rpc_context_slot": 447068230,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -434,19 +434,19 @@
       },
       "raw_amount": "64499999999998",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955427,
+      "rpc_context_slot": 447068231,
       "ui_amount": 644999.99999998,
       "ui_amount_string": "644999.99999998"
     },
     "XsBgbNRDujfznQq8P4NLKEkRTbPxUVt4v1xwkDzMMtQ": {
-      "collected_at": "2026-09-14T10:37:08+00:00",
+      "collected_at": "2026-09-14T20:31:30+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955428,
+        "rpc_context_slot": 447068232,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -457,19 +457,19 @@
       },
       "raw_amount": "17414480170771",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955429,
+      "rpc_context_slot": 447068233,
       "ui_amount": 174144.80170771,
       "ui_amount_string": "174144.80170771"
     },
     "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN": {
-      "collected_at": "2026-09-14T10:37:09+00:00",
+      "collected_at": "2026-09-14T20:31:31+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955431,
+        "rpc_context_slot": 447068234,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -478,21 +478,21 @@
           "newMultiplierEffectiveTimestamp": 1788481800
         }
       },
-      "raw_amount": "16040728260170",
+      "raw_amount": "16040684710410",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955433,
-      "ui_amount": 160788.61082394,
-      "ui_amount_string": "160788.61082394"
+      "rpc_context_slot": 447068234,
+      "ui_amount": 160788.17429105,
+      "ui_amount_string": "160788.17429105"
     },
     "XsDYSbgLh3T7oh59UmRX1F5WjDgJD3nmzACaG5LR1MB": {
-      "collected_at": "2026-09-14T10:37:10+00:00",
+      "collected_at": "2026-09-14T20:31:31+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955434,
+        "rpc_context_slot": 447068236,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -503,19 +503,19 @@
       },
       "raw_amount": "12000000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955435,
+      "rpc_context_slot": 447068236,
       "ui_amount": 120254.6201232,
       "ui_amount_string": "120254.6201232"
     },
     "XsDZMGEU8zadWFCkTtPBoPWYcUX3JHVmghnwf2Mve2q": {
-      "collected_at": "2026-09-14T10:37:11+00:00",
+      "collected_at": "2026-09-14T20:31:32+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955436,
+        "rpc_context_slot": 447068238,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -526,19 +526,19 @@
       },
       "raw_amount": "5000000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955437,
+      "rpc_context_slot": 447068239,
       "ui_amount": 50000.0,
       "ui_amount_string": "50000"
     },
     "XsDgw22qRLTv5Uwuzn6T63cW69exG41T6gwQhEK22u2": {
-      "collected_at": "2026-09-14T10:37:12+00:00",
+      "collected_at": "2026-09-14T20:31:33+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955439,
+        "rpc_context_slot": 447068240,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -549,19 +549,19 @@
       },
       "raw_amount": "10412700000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955440,
+      "rpc_context_slot": 447068240,
       "ui_amount": 107192.50047488,
       "ui_amount_string": "107192.50047488"
     },
     "XsDmtC5EpfzJoCzDN2SJP98xpCsSR2CqdZauJSvHNXT": {
-      "collected_at": "2026-09-14T10:37:12+00:00",
+      "collected_at": "2026-09-14T20:31:33+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955441,
+        "rpc_context_slot": 447068242,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -572,19 +572,19 @@
       },
       "raw_amount": "10013339214821",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955443,
+      "rpc_context_slot": 447068242,
       "ui_amount": 100133.39214821,
       "ui_amount_string": "100133.39214821"
     },
     "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB": {
-      "collected_at": "2026-09-14T10:37:13+00:00",
+      "collected_at": "2026-09-14T20:31:34+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955444,
+        "rpc_context_slot": 447068243,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -593,21 +593,21 @@
           "newMultiplierEffectiveTimestamp": 0
         }
       },
-      "raw_amount": "22963708443379",
+      "raw_amount": "22963706710972",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955445,
-      "ui_amount": 229637.08443379,
-      "ui_amount_string": "229637.08443379"
+      "rpc_context_slot": 447068244,
+      "ui_amount": 229637.06710972,
+      "ui_amount_string": "229637.06710972"
     },
     "XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL": {
-      "collected_at": "2026-09-14T10:37:14+00:00",
+      "collected_at": "2026-09-14T20:31:34+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955446,
+        "rpc_context_slot": 447068246,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -616,21 +616,21 @@
           "newMultiplierEffectiveTimestamp": 1763337300
         }
       },
-      "raw_amount": "15505686986897",
+      "raw_amount": "15505686902541",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955448,
-      "ui_amount": 1550568.6986897,
-      "ui_amount_string": "1550568.6986897"
+      "rpc_context_slot": 447068246,
+      "ui_amount": 1550568.6902541,
+      "ui_amount_string": "1550568.6902541"
     },
     "XsEoih2x6nZuUjFwzGoba6MFmtzCkzW2c4YAm6baQbq": {
-      "collected_at": "2026-09-14T10:37:15+00:00",
+      "collected_at": "2026-09-14T20:31:35+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955449,
+        "rpc_context_slot": 447068247,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -641,19 +641,19 @@
       },
       "raw_amount": "188799997707428",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955450,
+      "rpc_context_slot": 447068248,
       "ui_amount": 1887999.97707428,
       "ui_amount_string": "1887999.97707428"
     },
     "XsFj75v4Tw8TWSDaDoVTHF8RAjEEkmUeKgoRjB9DHsf": {
-      "collected_at": "2026-09-14T10:37:16+00:00",
+      "collected_at": "2026-09-14T20:31:35+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955451,
+        "rpc_context_slot": 447068248,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -664,19 +664,19 @@
       },
       "raw_amount": "3500000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955453,
+      "rpc_context_slot": 447068248,
       "ui_amount": 35035.268714,
       "ui_amount_string": "35035.268714"
     },
     "XsG5QyZTQnVSpsXRpD92K5ZGoxXjsmfTyx7fW7r18DV": {
-      "collected_at": "2026-09-14T10:37:16+00:00",
+      "collected_at": "2026-09-14T20:31:36+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955454,
+        "rpc_context_slot": 447068250,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -687,19 +687,19 @@
       },
       "raw_amount": "18900000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955455,
+      "rpc_context_slot": 447068250,
       "ui_amount": 189000.0,
       "ui_amount_string": "189000"
     },
     "XsGVi5eo1Dh2zUpic4qACcjuWGjNv8GCt3dm5XcX6Dn": {
-      "collected_at": "2026-09-14T10:37:17+00:00",
+      "collected_at": "2026-09-14T20:31:37+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955456,
+        "rpc_context_slot": 447068253,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -710,19 +710,19 @@
       },
       "raw_amount": "7160318735490",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955456,
+      "rpc_context_slot": 447068253,
       "ui_amount": 73005.78783734,
       "ui_amount_string": "73005.78783734"
     },
     "XsGtpmjhmC8kyjVSWL4VicGu36ceq9u55PTgF8bhGv6": {
-      "collected_at": "2026-09-14T10:37:18+00:00",
+      "collected_at": "2026-09-14T20:31:37+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955457,
+        "rpc_context_slot": 447068255,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -733,19 +733,19 @@
       },
       "raw_amount": "166099999690990",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955458,
+      "rpc_context_slot": 447068255,
       "ui_amount": 1695574.74010423,
       "ui_amount_string": "1695574.74010423"
     },
     "XsHt1AVPshZpfFWGGpooJ8tdeGknUQVJ9CwhvKrnZrw": {
-      "collected_at": "2026-09-14T10:37:19+00:00",
+      "collected_at": "2026-09-14T20:31:38+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955458,
+        "rpc_context_slot": 447068256,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -756,19 +756,19 @@
       },
       "raw_amount": "682339222211279",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955460,
+      "rpc_context_slot": 447068257,
       "ui_amount": 6823392.22211279,
       "ui_amount_string": "6823392.22211279"
     },
     "XsHtf5RpxsQ7jeJ9ivNewouZKJHbPxhPoEy6yYvULr7": {
-      "collected_at": "2026-09-14T10:37:20+00:00",
+      "collected_at": "2026-09-14T20:31:39+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955461,
+        "rpc_context_slot": 447068258,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -779,19 +779,19 @@
       },
       "raw_amount": "13944910059009",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955462,
+      "rpc_context_slot": 447068260,
       "ui_amount": 141885.52441132,
       "ui_amount_string": "141885.52441132"
     },
     "XsJb1p4Ks6VFggq68JyMz7S3kdRfkqh4wA6EMyxi4DD": {
-      "collected_at": "2026-09-14T10:37:21+00:00",
+      "collected_at": "2026-09-14T20:31:39+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955463,
+        "rpc_context_slot": 447068260,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -802,19 +802,19 @@
       },
       "raw_amount": "12200000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955465,
+      "rpc_context_slot": 447068261,
       "ui_amount": 122000.0,
       "ui_amount_string": "122000"
     },
     "XsKSh3QDynp6oms9yHjZXbZo3pKzUBoqUFKPHS2g9Bh": {
-      "collected_at": "2026-09-14T10:37:21+00:00",
+      "collected_at": "2026-09-14T20:31:40+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955466,
+        "rpc_context_slot": 447068262,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -825,19 +825,19 @@
       },
       "raw_amount": "14286436269044",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955467,
+      "rpc_context_slot": 447068262,
       "ui_amount": 142864.36269044,
       "ui_amount_string": "142864.36269044"
     },
     "XsMAqkcKsUewDrzVkait4e5u4y8REgtyS7jWgCpLV2C": {
-      "collected_at": "2026-09-14T10:37:22+00:00",
+      "collected_at": "2026-09-14T20:31:40+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955468,
+        "rpc_context_slot": 447068264,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -846,21 +846,21 @@
           "newMultiplierEffectiveTimestamp": 1783295700
         }
       },
-      "raw_amount": "4897724344025",
+      "raw_amount": "4897724048980",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955470,
-      "ui_amount": 49658.88282456,
-      "ui_amount_string": "49658.88282456"
+      "rpc_context_slot": 447068264,
+      "ui_amount": 49658.87983304,
+      "ui_amount_string": "49658.87983304"
     },
     "XsMJtFbb8BwzQtck3oRXyAfs7SAPRuTXnSEDNd7BAVz": {
-      "collected_at": "2026-09-14T10:37:23+00:00",
+      "collected_at": "2026-09-14T20:31:41+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955471,
+        "rpc_context_slot": 447068266,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -871,19 +871,19 @@
       },
       "raw_amount": "49050000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955472,
+      "rpc_context_slot": 447068266,
       "ui_amount": 490500.0,
       "ui_amount_string": "490500"
     },
     "XsNNMt7WTNA2sV3jrb1NNfNgapxRF5i4i6GcnTRRHts": {
-      "collected_at": "2026-09-14T10:37:24+00:00",
+      "collected_at": "2026-09-14T20:31:41+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955474,
+        "rpc_context_slot": 447068268,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -894,19 +894,19 @@
       },
       "raw_amount": "9478398477299",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955474,
+      "rpc_context_slot": 447068268,
       "ui_amount": 97585.24802236,
       "ui_amount_string": "97585.24802236"
     },
     "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ": {
-      "collected_at": "2026-09-14T10:37:25+00:00",
+      "collected_at": "2026-09-14T20:31:42+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955476,
+        "rpc_context_slot": 447068269,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -915,21 +915,21 @@
           "newMultiplierEffectiveTimestamp": 0
         }
       },
-      "raw_amount": "47899399428577",
+      "raw_amount": "47899397507810",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955478,
-      "ui_amount": 478993.99428577,
-      "ui_amount_string": "478993.99428577"
+      "rpc_context_slot": 447068270,
+      "ui_amount": 478993.9750781,
+      "ui_amount_string": "478993.9750781"
     },
     "XsPLBFy59Q3hY59KLAJur8QyvziMF4xUxGTxXqXE7cT": {
-      "collected_at": "2026-09-14T10:37:25+00:00",
+      "collected_at": "2026-09-14T20:31:43+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955479,
+        "rpc_context_slot": 447068271,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -940,19 +940,19 @@
       },
       "raw_amount": "460621581670362",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955479,
+      "rpc_context_slot": 447068271,
       "ui_amount": 4606215.81670362,
       "ui_amount_string": "4606215.81670362"
     },
     "XsPdAVBi8Zc1xvv53k4JcMrQaEDTgkGqKYeh7AYgPHV": {
-      "collected_at": "2026-09-14T10:37:26+00:00",
+      "collected_at": "2026-09-14T20:31:43+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955480,
+        "rpc_context_slot": 447068273,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -963,19 +963,19 @@
       },
       "raw_amount": "2649200000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955482,
+      "rpc_context_slot": 447068273,
       "ui_amount": 26492.0,
       "ui_amount_string": "26492"
     },
     "XsQ6NfzzLH8nspjrB9X8R2K64Zz7Tnxqu12juDiMPMW": {
-      "collected_at": "2026-09-14T10:37:27+00:00",
+      "collected_at": "2026-09-14T20:31:44+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955484,
+        "rpc_context_slot": 447068275,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -986,19 +986,19 @@
       },
       "raw_amount": "5350000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955485,
+      "rpc_context_slot": 447068275,
       "ui_amount": 53500.0,
       "ui_amount_string": "53500"
     },
     "XsQLZycSZ7QnBBdBXQaTbQdiUcbRqjNJgyBGAMzhHav": {
-      "collected_at": "2026-09-14T10:37:28+00:00",
+      "collected_at": "2026-09-14T20:31:44+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955486,
+        "rpc_context_slot": 447068277,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1009,19 +1009,19 @@
       },
       "raw_amount": "4219794164435",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955487,
+      "rpc_context_slot": 447068277,
       "ui_amount": 42214.88828013,
       "ui_amount_string": "42214.88828013"
     },
     "XsR4LAtaBgTKTRUhiijY1ba13nx4bepeEcag2Pr4dZ1": {
-      "collected_at": "2026-09-14T10:37:29+00:00",
+      "collected_at": "2026-09-14T20:31:45+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955489,
+        "rpc_context_slot": 447068279,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1032,19 +1032,19 @@
       },
       "raw_amount": "12500000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955490,
+      "rpc_context_slot": 447068279,
       "ui_amount": 125000.0,
       "ui_amount_string": "125000"
     },
     "XsRbLZthfABAPAfumWNEJhPyiKDW6TvDVeAeW7oKqA2": {
-      "collected_at": "2026-09-14T10:37:29+00:00",
+      "collected_at": "2026-09-14T20:31:46+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955491,
+        "rpc_context_slot": 447068280,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1055,19 +1055,19 @@
       },
       "raw_amount": "7431920551512",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955492,
+      "rpc_context_slot": 447068281,
       "ui_amount": 74405.24161862,
       "ui_amount_string": "74405.24161862"
     },
     "XsRiRZg9NGkL3WEZZmqnxvxEoyeHG8LhgzMQF2HRE6F": {
-      "collected_at": "2026-09-14T10:37:30+00:00",
+      "collected_at": "2026-09-14T20:31:46+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955494,
+        "rpc_context_slot": 447068282,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1078,19 +1078,19 @@
       },
       "raw_amount": "49966696074106",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955495,
+      "rpc_context_slot": 447068283,
       "ui_amount": 499666.96074106,
       "ui_amount_string": "499666.96074106"
     },
     "XsRrH4fDA27xfyDjpcwefvcBdHCXs34krUuaXGEXzqz": {
-      "collected_at": "2026-09-14T10:37:31+00:00",
+      "collected_at": "2026-09-14T20:31:47+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955497,
+        "rpc_context_slot": 447068284,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1101,19 +1101,19 @@
       },
       "raw_amount": "690500000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955498,
+      "rpc_context_slot": 447068285,
       "ui_amount": 6905000.0,
       "ui_amount_string": "6905000"
     },
     "XsSr8anD1hkvNMu8XQiVcmiaTP7XGvYu7Q58LdmtE8Z": {
-      "collected_at": "2026-09-14T10:37:32+00:00",
+      "collected_at": "2026-09-14T20:31:47+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955499,
+        "rpc_context_slot": 447068286,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1124,19 +1124,19 @@
       },
       "raw_amount": "3431499997224",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955500,
+      "rpc_context_slot": 447068287,
       "ui_amount": 34825.36732478,
       "ui_amount_string": "34825.36732478"
     },
     "XsTuW2zaiPbzgrnQ7b4Z99zeULMM7gPxppE61CtpyDj": {
-      "collected_at": "2026-09-14T10:37:33+00:00",
+      "collected_at": "2026-09-14T20:31:48+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955502,
+        "rpc_context_slot": 447068288,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1147,19 +1147,19 @@
       },
       "raw_amount": "2385244388717",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955503,
+      "rpc_context_slot": 447068288,
       "ui_amount": 23889.84846788,
       "ui_amount_string": "23889.84846788"
     },
     "XsXcJ6GZ9kVnjqGsjBnktRcuwMBmvKWh8S93RefZ1rF": {
-      "collected_at": "2026-09-14T10:37:34+00:00",
+      "collected_at": "2026-09-14T20:31:49+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955504,
+        "rpc_context_slot": 447068290,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1168,21 +1168,21 @@
           "newMultiplierEffectiveTimestamp": 0
         }
       },
-      "raw_amount": "7148086954063",
+      "raw_amount": "7148085285422",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955505,
-      "ui_amount": 71480.86954063,
-      "ui_amount_string": "71480.86954063"
+      "rpc_context_slot": 447068290,
+      "ui_amount": 71480.85285422,
+      "ui_amount_string": "71480.85285422"
     },
     "XsYMHtwJcWon5GkPHzdDbCCztKtKzEurJnbydxgjsqS": {
-      "collected_at": "2026-09-14T10:37:34+00:00",
+      "collected_at": "2026-09-14T20:31:49+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955507,
+        "rpc_context_slot": 447068292,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1193,19 +1193,19 @@
       },
       "raw_amount": "49999999999967",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955507,
+      "rpc_context_slot": 447068292,
       "ui_amount": 499999.99999967,
       "ui_amount_string": "499999.99999967"
     },
     "XsYdjDjNUygZ7yGKfQaB6TxLh2gC6RRjzLtLAGJrhzV": {
-      "collected_at": "2026-09-14T10:37:35+00:00",
+      "collected_at": "2026-09-14T20:31:50+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955508,
+        "rpc_context_slot": 447068294,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1216,19 +1216,19 @@
       },
       "raw_amount": "10658388263688",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955509,
+      "rpc_context_slot": 447068294,
       "ui_amount": 108881.71490344,
       "ui_amount_string": "108881.71490344"
     },
     "XsZUSqxAXKJkEimvD4CoVvEb4WUC92TFgj5zRtBxFeL": {
-      "collected_at": "2026-09-14T10:37:36+00:00",
+      "collected_at": "2026-09-14T20:31:50+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955511,
+        "rpc_context_slot": 447068295,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1239,19 +1239,19 @@
       },
       "raw_amount": "34150000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955513,
+      "rpc_context_slot": 447068296,
       "ui_amount": 341500.0,
       "ui_amount_string": "341500"
     },
     "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu": {
-      "collected_at": "2026-09-14T10:37:37+00:00",
+      "collected_at": "2026-09-14T20:31:51+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955513,
+        "rpc_context_slot": 447068296,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1260,44 +1260,44 @@
           "newMultiplierEffectiveTimestamp": 1781481300
         }
       },
-      "raw_amount": "7237787427046",
+      "raw_amount": "7237785366790",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955515,
-      "ui_amount": 72544.21785285,
-      "ui_amount_string": "72544.21785285"
+      "rpc_context_slot": 447068297,
+      "ui_amount": 72544.19720294,
+      "ui_amount_string": "72544.19720294"
     },
     "XsaBXg8dU5cPM6ehmVctMkVqoiRG2ZjMo1cyBJ3AykQ": {
-      "collected_at": "2026-09-14T10:37:38+00:00",
+      "collected_at": "2026-09-14T20:31:52+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955516,
+        "rpc_context_slot": 447068298,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
-          "multiplier": "1.013779482672994",
-          "newMultiplier": "1.0183317967386898",
-          "newMultiplierEffectiveTimestamp": 1781481300
+          "multiplier": "1.0183317967386898",
+          "newMultiplier": "1.0225601246249238",
+          "newMultiplierEffectiveTimestamp": 1789432200
         }
       },
-      "raw_amount": "21122371468403",
+      "raw_amount": "21122364943533",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955517,
-      "ui_amount": 215095.824888,
-      "ui_amount_string": "215095.824888"
+      "rpc_context_slot": 447068298,
+      "ui_amount": 215095.75844318,
+      "ui_amount_string": "215095.75844318"
     },
     "XsaHND8sHyfMfsWPj6kSdd5VwvCayZvjYgKmmcNL5qh": {
-      "collected_at": "2026-09-14T10:37:38+00:00",
+      "collected_at": "2026-09-14T20:31:52+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955519,
+        "rpc_context_slot": 447068301,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1306,21 +1306,21 @@
           "newMultiplierEffectiveTimestamp": 1786753800
         }
       },
-      "raw_amount": "11974817629873",
+      "raw_amount": "11974815477186",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955519,
-      "ui_amount": 121861.60833386,
-      "ui_amount_string": "121861.60833386"
+      "rpc_context_slot": 447068302,
+      "ui_amount": 121861.58642707,
+      "ui_amount_string": "121861.58642707"
     },
     "XsaQTCgebC2KPbf27KUhdv5JFvHhQ4GDAPURwrEhAzb": {
-      "collected_at": "2026-09-14T10:37:39+00:00",
+      "collected_at": "2026-09-14T20:31:53+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955521,
+        "rpc_context_slot": 447068303,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1331,19 +1331,19 @@
       },
       "raw_amount": "906932634080292",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955522,
+      "rpc_context_slot": 447068303,
       "ui_amount": 9069326.34080292,
       "ui_amount_string": "9069326.34080292"
     },
     "XsafvsGtzFqqHgTnA3aPC83EAMkacU5mcGtcSayhpVV": {
-      "collected_at": "2026-09-14T10:37:40+00:00",
+      "collected_at": "2026-09-14T20:31:54+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955524,
+        "rpc_context_slot": 447068305,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1354,19 +1354,19 @@
       },
       "raw_amount": "4647121423480",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955524,
+      "rpc_context_slot": 447068305,
       "ui_amount": 46660.12135097,
       "ui_amount_string": "46660.12135097"
     },
     "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp": {
-      "collected_at": "2026-09-14T10:37:41+00:00",
+      "collected_at": "2026-09-14T20:31:54+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955526,
+        "rpc_context_slot": 447068307,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1375,21 +1375,21 @@
           "newMultiplierEffectiveTimestamp": 1786149000
         }
       },
-      "raw_amount": "15376357108367",
+      "raw_amount": "15376355083125",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955528,
-      "ui_amount": 154266.2261257,
-      "ui_amount_string": "154266.2261257"
+      "rpc_context_slot": 447068307,
+      "ui_amount": 154266.20580708,
+      "ui_amount_string": "154266.20580708"
     },
     "Xsba6tUnSjDae2VcopDB6FGGDaxRrewFCDa5hKn5vT3": {
-      "collected_at": "2026-09-14T10:37:42+00:00",
+      "collected_at": "2026-09-14T20:31:55+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955529,
+        "rpc_context_slot": 447068309,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1400,19 +1400,19 @@
       },
       "raw_amount": "9026299944229",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955530,
+      "rpc_context_slot": 447068309,
       "ui_amount": 93179.55543659,
       "ui_amount_string": "93179.55543659"
     },
     "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh": {
-      "collected_at": "2026-09-14T10:37:42+00:00",
+      "collected_at": "2026-09-14T20:31:55+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955532,
+        "rpc_context_slot": 447068310,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1421,21 +1421,21 @@
           "newMultiplierEffectiveTimestamp": 1789000200
         }
       },
-      "raw_amount": "32127952091921",
+      "raw_amount": "32127927463183",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955532,
-      "ui_amount": 321826.08061244,
-      "ui_amount_string": "321826.08061244"
+      "rpc_context_slot": 447068311,
+      "ui_amount": 321825.83390608,
+      "ui_amount_string": "321825.83390608"
     },
     "XscE4GUcsYhcyZu5ATiGUMmhxYa1D5fwbpJw4K6K4dp": {
-      "collected_at": "2026-09-14T10:37:43+00:00",
+      "collected_at": "2026-09-14T20:31:56+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955534,
+        "rpc_context_slot": 447068312,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1446,19 +1446,19 @@
       },
       "raw_amount": "437300000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955535,
+      "rpc_context_slot": 447068312,
       "ui_amount": 4373000.0,
       "ui_amount_string": "4373000"
     },
     "XsczbcQ3zfcgAEt9qHQES8pxKAVG5rujPSHQEXi4kaN": {
-      "collected_at": "2026-09-14T10:37:44+00:00",
+      "collected_at": "2026-09-14T20:31:56+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955536,
+        "rpc_context_slot": 447068314,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1469,19 +1469,19 @@
       },
       "raw_amount": "6690035012682",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955538,
+      "rpc_context_slot": 447068314,
       "ui_amount": 67266.40735795,
       "ui_amount_string": "67266.40735795"
     },
     "XseQvfvuDT3KHKiwPNW1gcjfHbFjEMVTV5NJzDdNQmu": {
-      "collected_at": "2026-09-14T10:37:45+00:00",
+      "collected_at": "2026-09-14T20:31:57+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955539,
+        "rpc_context_slot": 447068316,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1492,19 +1492,19 @@
       },
       "raw_amount": "5354044529801",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955541,
+      "rpc_context_slot": 447068317,
       "ui_amount": 53630.73894177,
       "ui_amount_string": "53630.73894177"
     },
     "Xseo8tgCZfkHxWS9xbFYeKFyMSbWEvZGFV1Gh53GtCV": {
-      "collected_at": "2026-09-14T10:37:46+00:00",
+      "collected_at": "2026-09-14T20:31:58+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955542,
+        "rpc_context_slot": 447068318,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1515,19 +1515,19 @@
       },
       "raw_amount": "7403998267173",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955543,
+      "rpc_context_slot": 447068319,
       "ui_amount": 74470.19936898,
       "ui_amount_string": "74470.19936898"
     },
     "Xsf9mBktVB9BSU5kf4nHxPq5hCBJ2j2ui3ecFGxPRGc": {
-      "collected_at": "2026-09-14T10:37:46+00:00",
+      "collected_at": "2026-09-14T20:31:58+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955545,
+        "rpc_context_slot": 447068320,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1536,21 +1536,21 @@
           "newMultiplierEffectiveTimestamp": 1759967700
         }
       },
-      "raw_amount": "71988911664121",
+      "raw_amount": "71988896230995",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955546,
-      "ui_amount": 723711.12845937,
-      "ui_amount_string": "723711.12845937"
+      "rpc_context_slot": 447068321,
+      "ui_amount": 723710.97330874,
+      "ui_amount_string": "723710.97330874"
     },
     "XsfAzPzYrYjd4Dpa9BU3cusBsvWfVB9gBcyGC87S57n": {
-      "collected_at": "2026-09-14T10:37:47+00:00",
+      "collected_at": "2026-09-14T20:31:59+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955547,
+        "rpc_context_slot": 447068323,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1559,21 +1559,21 @@
           "newMultiplierEffectiveTimestamp": 1786753800
         }
       },
-      "raw_amount": "31615106903755",
+      "raw_amount": "31615101794635",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955548,
-      "ui_amount": 327866.04397437,
-      "ui_amount_string": "327866.04397437"
+      "rpc_context_slot": 447068323,
+      "ui_amount": 327865.99098999,
+      "ui_amount_string": "327865.99098999"
     },
     "XsgSaSvNSqLTtFuyWPBhK9196Xb9Bbdyjj4fH3cPJGo": {
-      "collected_at": "2026-09-14T10:37:48+00:00",
+      "collected_at": "2026-09-14T20:31:59+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955549,
+        "rpc_context_slot": 447068324,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1584,19 +1584,19 @@
       },
       "raw_amount": "4558099517385",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955551,
+      "rpc_context_slot": 447068325,
       "ui_amount": 45803.60220165,
       "ui_amount_string": "45803.60220165"
     },
     "XsgaUyp4jd1fNBCxgtTKkW64xnnhQcvgaxzsbAq5ZD1": {
-      "collected_at": "2026-09-14T10:37:49+00:00",
+      "collected_at": "2026-09-14T20:32:00+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955552,
+        "rpc_context_slot": 447068327,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1607,19 +1607,19 @@
       },
       "raw_amount": "1692199992690",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955553,
+      "rpc_context_slot": 447068327,
       "ui_amount": 17188.64535916,
       "ui_amount_string": "17188.64535916"
     },
     "Xsgrm4D6VBTfDx5bs7GNdjtmWDgZ8V79r3YpsYwf5py": {
-      "collected_at": "2026-09-14T10:37:50+00:00",
+      "collected_at": "2026-09-14T20:32:01+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955554,
+        "rpc_context_slot": 447068329,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1630,19 +1630,19 @@
       },
       "raw_amount": "303999999931963",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955556,
+      "rpc_context_slot": 447068329,
       "ui_amount": 3039999.99931963,
       "ui_amount_string": "3039999.99931963"
     },
     "XsguBZPkM9BDmxspmWe29EmrYZBv21ENcC27Pqh7grB": {
-      "collected_at": "2026-09-14T10:37:51+00:00",
+      "collected_at": "2026-09-14T20:32:01+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955557,
+        "rpc_context_slot": 447068330,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1653,19 +1653,19 @@
       },
       "raw_amount": "136819999934408",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955559,
+      "rpc_context_slot": 447068330,
       "ui_amount": 1368199.99934408,
       "ui_amount_string": "1368199.99934408"
     },
     "XshPgPdXFRWB8tP1j82rebb2Q9rPgGX37RuqzohmArM": {
-      "collected_at": "2026-09-14T10:37:51+00:00",
+      "collected_at": "2026-09-14T20:32:02+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955559,
+        "rpc_context_slot": 447068332,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1674,21 +1674,21 @@
           "newMultiplierEffectiveTimestamp": 0
         }
       },
-      "raw_amount": "41635199600503",
+      "raw_amount": "41635199186989",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955562,
-      "ui_amount": 416351.99600503,
-      "ui_amount_string": "416351.99600503"
+      "rpc_context_slot": 447068333,
+      "ui_amount": 416351.99186989,
+      "ui_amount_string": "416351.99186989"
     },
     "XshWQWYVp5ff8CrAEsGmLVKD47nBWi3Ygn5v8wXK27G": {
-      "collected_at": "2026-09-14T10:37:52+00:00",
+      "collected_at": "2026-09-14T20:32:02+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955563,
+        "rpc_context_slot": 447068334,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1699,19 +1699,19 @@
       },
       "raw_amount": "28399999993392",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955564,
+      "rpc_context_slot": 447068334,
       "ui_amount": 285144.13403264,
       "ui_amount_string": "285144.13403264"
     },
     "XshuHQ6o6SVpUNawvnnTMxsZ4tacZsNgVCLorv7TkFq": {
-      "collected_at": "2026-09-14T10:37:53+00:00",
+      "collected_at": "2026-09-14T20:32:03+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955565,
+        "rpc_context_slot": 447068336,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1722,19 +1722,19 @@
       },
       "raw_amount": "939999997812",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955567,
+      "rpc_context_slot": 447068336,
       "ui_amount": 9426.94352155,
       "ui_amount_string": "9426.94352155"
     },
     "XsiRaD8qZm1P3KViowDYFS8rZ8BYT2g7ZEeyztthRye": {
-      "collected_at": "2026-09-14T10:37:54+00:00",
+      "collected_at": "2026-09-14T20:32:04+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955568,
+        "rpc_context_slot": 447068338,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1745,19 +1745,19 @@
       },
       "raw_amount": "1170000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955569,
+      "rpc_context_slot": 447068338,
       "ui_amount": 11700.0,
       "ui_amount_string": "11700"
     },
     "XsicTFC7G68d74FaYDctWggkKDgkMx8LpNoFNr81TrF": {
-      "collected_at": "2026-09-14T10:37:55+00:00",
+      "collected_at": "2026-09-14T20:32:04+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955571,
+        "rpc_context_slot": 447068340,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1768,19 +1768,19 @@
       },
       "raw_amount": "766779661016949",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955572,
+      "rpc_context_slot": 447068340,
       "ui_amount": 7667796.61016949,
       "ui_amount_string": "7667796.61016949"
     },
     "XsjFwUPiLofddX5cWFHW35GCbXcSu1BCUGfxoQAQjeL": {
-      "collected_at": "2026-09-14T10:37:55+00:00",
+      "collected_at": "2026-09-14T20:32:05+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955573,
+        "rpc_context_slot": 447068342,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1789,21 +1789,21 @@
           "newMultiplierEffectiveTimestamp": 1783643400
         }
       },
-      "raw_amount": "9046594571991",
+      "raw_amount": "9046594571987",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955575,
-      "ui_amount": 91308.9677865,
-      "ui_amount_string": "91308.9677865"
+      "rpc_context_slot": 447068342,
+      "ui_amount": 91308.96778646,
+      "ui_amount_string": "91308.96778646"
     },
     "XsjXR5jf4d4GNpJXwLvEBTMwK3ZYro2qZGgvUCzyJrx": {
-      "collected_at": "2026-09-14T10:37:56+00:00",
+      "collected_at": "2026-09-14T20:32:05+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955576,
+        "rpc_context_slot": 447068344,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1814,19 +1814,19 @@
       },
       "raw_amount": "10500000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955578,
+      "rpc_context_slot": 447068344,
       "ui_amount": 105559.85291218,
       "ui_amount_string": "105559.85291218"
     },
     "Xsn3H7ACEpSF2ULxeiD6kW4jRZXpurh8ZPttyfoS56W": {
-      "collected_at": "2026-09-14T10:37:57+00:00",
+      "collected_at": "2026-09-14T20:32:06+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955579,
+        "rpc_context_slot": 447068346,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1837,42 +1837,42 @@
       },
       "raw_amount": "86999977800829",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955580,
+      "rpc_context_slot": 447068346,
       "ui_amount": 869999.77800829,
       "ui_amount_string": "869999.77800829"
     },
     "XsnQnU7AdbRZYe2akqqpibDdXjkieGFfSkbkjX1Sd1X": {
-      "collected_at": "2026-09-14T10:37:58+00:00",
+      "collected_at": "2026-09-14T20:32:07+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955581,
+        "rpc_context_slot": 447068348,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
-          "multiplier": "1.0165817315911818",
-          "newMultiplier": "1.0216625054701978",
-          "newMultiplierEffectiveTimestamp": 1781481300
+          "multiplier": "1.0216625054701978",
+          "newMultiplier": "1.0258591861103177",
+          "newMultiplierEffectiveTimestamp": 1789432200
         }
       },
       "raw_amount": "13839598982503",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955583,
+      "rpc_context_slot": 447068348,
       "ui_amount": 141393.99371166,
       "ui_amount_string": "141393.99371166"
     },
     "Xsnuv4omNoHozR6EEW5mXkw8Nrny5rB3jVfLqi6gKMH": {
-      "collected_at": "2026-09-14T10:37:59+00:00",
+      "collected_at": "2026-09-14T20:32:07+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955584,
+        "rpc_context_slot": 447068349,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1883,19 +1883,19 @@
       },
       "raw_amount": "1477996030478",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955586,
+      "rpc_context_slot": 447068350,
       "ui_amount": 14858.21390977,
       "ui_amount_string": "14858.21390977"
     },
     "XsoBhf2ufR8fTyNSjqfU71DYGaE6Z3SUGAidpzriAA4": {
-      "collected_at": "2026-09-14T10:38:00+00:00",
+      "collected_at": "2026-09-14T20:32:08+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955587,
+        "rpc_context_slot": 447068351,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1904,21 +1904,21 @@
           "newMultiplierEffectiveTimestamp": 0
         }
       },
-      "raw_amount": "14687022327932",
+      "raw_amount": "14687018089983",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955587,
-      "ui_amount": 146870.22327932,
-      "ui_amount_string": "146870.22327932"
+      "rpc_context_slot": 447068352,
+      "ui_amount": 146870.18089983,
+      "ui_amount_string": "146870.18089983"
     },
     "XspwhyYPdWVM8XBHZnpS9hgyag9MKjLRyE3tVfmCbSr": {
-      "collected_at": "2026-09-14T10:38:00+00:00",
+      "collected_at": "2026-09-14T20:32:08+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955589,
+        "rpc_context_slot": 447068353,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1927,21 +1927,21 @@
           "newMultiplierEffectiveTimestamp": 1786149000
         }
       },
-      "raw_amount": "5442788323509",
+      "raw_amount": "5442777486160",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955590,
-      "ui_amount": 55538.37091688,
-      "ui_amount_string": "55538.37091688"
+      "rpc_context_slot": 447068354,
+      "ui_amount": 55538.26033226,
+      "ui_amount_string": "55538.26033226"
     },
     "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX": {
-      "collected_at": "2026-09-14T10:38:01+00:00",
+      "collected_at": "2026-09-14T20:32:09+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955591,
+        "rpc_context_slot": 447068355,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1950,21 +1950,21 @@
           "newMultiplierEffectiveTimestamp": 1787185800
         }
       },
-      "raw_amount": "10497119658278",
+      "raw_amount": "10497117017070",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955592,
-      "ui_amount": 105590.88254522,
-      "ui_amount_string": "105590.88254522"
+      "rpc_context_slot": 447068356,
+      "ui_amount": 105590.85597722,
+      "ui_amount_string": "105590.85597722"
     },
     "XsqE9cRRpzxcGKDXj1BJ7Xmg4GRhZoyY1KpmGSxAWT2": {
-      "collected_at": "2026-09-14T10:38:02+00:00",
+      "collected_at": "2026-09-14T20:32:10+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955594,
+        "rpc_context_slot": 447068357,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1973,21 +1973,21 @@
           "newMultiplierEffectiveTimestamp": 1788222600
         }
       },
-      "raw_amount": "5464035696330",
+      "raw_amount": "5464033354842",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955595,
-      "ui_amount": 55797.67799871,
-      "ui_amount_string": "55797.67799871"
+      "rpc_context_slot": 447068358,
+      "ui_amount": 55797.65408788,
+      "ui_amount_string": "55797.65408788"
     },
     "XsqML71RLbyUM3CmY4EYN88zE6BJkpvJACnUKBdGD3x": {
-      "collected_at": "2026-09-14T10:38:03+00:00",
+      "collected_at": "2026-09-14T20:32:10+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955596,
+        "rpc_context_slot": 447068359,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -1998,19 +1998,19 @@
       },
       "raw_amount": "40600000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955598,
+      "rpc_context_slot": 447068360,
       "ui_amount": 406000.0,
       "ui_amount_string": "406000"
     },
     "XsqgsbXwWogGJsNcVZ3TyVouy2MbTkfCFhCGGGcQZ2p": {
-      "collected_at": "2026-09-14T00:20:31+00:00",
+      "collected_at": "2026-09-14T20:31:07+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838149,
+        "rpc_context_slot": 447068156,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2021,19 +2021,19 @@
       },
       "raw_amount": "4599150920851",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838150,
+      "rpc_context_slot": 447068156,
       "ui_amount": 46298.26884704,
       "ui_amount_string": "46298.26884704"
     },
     "Xsr3pdLQyXvDJBFgpR5nexCEZwXvigb8wbPYp4YoNFf": {
-      "collected_at": "2026-09-14T00:20:32+00:00",
+      "collected_at": "2026-09-14T20:31:07+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838151,
+        "rpc_context_slot": 447068158,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2044,19 +2044,19 @@
       },
       "raw_amount": "22969443157279",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838152,
+      "rpc_context_slot": 447068158,
       "ui_amount": 233848.78884048,
       "ui_amount_string": "233848.78884048"
     },
     "XsrBCwaH8c46xiqXBChzobgufRKxQxAWUWbndgBNzFn": {
-      "collected_at": "2026-09-14T00:20:33+00:00",
+      "collected_at": "2026-09-14T20:31:08+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838153,
+        "rpc_context_slot": 447068160,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2067,19 +2067,19 @@
       },
       "raw_amount": "60100000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838155,
+      "rpc_context_slot": 447068161,
       "ui_amount": 601000.0,
       "ui_amount_string": "601000"
     },
     "Xss5RAku5EH6UViFdvW7ss9xQjwQLsrs2opPMhb3k43": {
-      "collected_at": "2026-09-14T00:20:33+00:00",
+      "collected_at": "2026-09-14T20:31:08+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838155,
+        "rpc_context_slot": 447068162,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2090,19 +2090,19 @@
       },
       "raw_amount": "22619999462413",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838157,
+      "rpc_context_slot": 447068163,
       "ui_amount": 226199.99462413,
       "ui_amount_string": "226199.99462413"
     },
     "XssfYT48PeXG2EmNdEaVtQcveNhxYnM42KTqdjmiBS9": {
-      "collected_at": "2026-09-14T00:20:34+00:00",
+      "collected_at": "2026-09-14T20:31:09+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838157,
+        "rpc_context_slot": 447068164,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2113,19 +2113,19 @@
       },
       "raw_amount": "25900000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838158,
+      "rpc_context_slot": 447068164,
       "ui_amount": 259000.0,
       "ui_amount_string": "259000"
     },
     "XstYR6KGqZFchAuhHoEe4mL8W2kL9aqGW1EDBKRrmGB": {
-      "collected_at": "2026-09-14T00:20:35+00:00",
+      "collected_at": "2026-09-14T20:31:10+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838159,
+        "rpc_context_slot": 447068165,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2136,19 +2136,19 @@
       },
       "raw_amount": "2904308081699",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838161,
+      "rpc_context_slot": 447068165,
       "ui_amount": 29043.08081699,
       "ui_amount_string": "29043.08081699"
     },
     "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1": {
-      "collected_at": "2026-09-14T00:20:35+00:00",
+      "collected_at": "2026-09-14T20:31:10+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838162,
+        "rpc_context_slot": 447068168,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2157,21 +2157,21 @@
           "newMultiplierEffectiveTimestamp": 0
         }
       },
-      "raw_amount": "82107914577813",
+      "raw_amount": "82107914564115",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838163,
-      "ui_amount": 821079.14577813,
-      "ui_amount_string": "821079.14577813"
+      "rpc_context_slot": 447068168,
+      "ui_amount": 821079.14564115,
+      "ui_amount_string": "821079.14564115"
     },
     "XsuwUbQSzCJN2wZabD1Gxf1MER2Ypa7hMzVMYB2WawJ": {
-      "collected_at": "2026-09-14T00:20:36+00:00",
+      "collected_at": "2026-09-14T20:31:11+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838164,
+        "rpc_context_slot": 447068170,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2182,19 +2182,19 @@
       },
       "raw_amount": "80500000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838165,
+      "rpc_context_slot": 447068170,
       "ui_amount": 805000.0,
       "ui_amount_string": "805000"
     },
     "XsuxRGDzbLjnJ72v74b7p9VY6N66uYgTCyfwwRjVCJA": {
-      "collected_at": "2026-09-14T00:20:37+00:00",
+      "collected_at": "2026-09-14T20:31:11+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838166,
+        "rpc_context_slot": 447068172,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2205,19 +2205,19 @@
       },
       "raw_amount": "18006898540423",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838168,
+      "rpc_context_slot": 447068172,
       "ui_amount": 180368.80765223,
       "ui_amount_string": "180368.80765223"
     },
     "Xsv99frTRUeornyvCfvhnDesQDWuvns1M852Pez91vF": {
-      "collected_at": "2026-09-14T00:20:38+00:00",
+      "collected_at": "2026-09-14T20:31:12+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838169,
+        "rpc_context_slot": 447068174,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2228,19 +2228,19 @@
       },
       "raw_amount": "10425697836318",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838170,
+      "rpc_context_slot": 447068174,
       "ui_amount": 107843.42823606,
       "ui_amount_string": "107843.42823606"
     },
     "XsvKCaNsxg2GN8jjUmq71qukMJr7Q1c5R2Mk9P8kcS8": {
-      "collected_at": "2026-09-14T00:20:38+00:00",
+      "collected_at": "2026-09-14T20:31:13+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838171,
+        "rpc_context_slot": 447068176,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2251,19 +2251,19 @@
       },
       "raw_amount": "52899805620294",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838172,
+      "rpc_context_slot": 447068176,
       "ui_amount": 575380.46873947,
       "ui_amount_string": "575380.46873947"
     },
     "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg": {
-      "collected_at": "2026-09-14T00:20:39+00:00",
+      "collected_at": "2026-09-14T20:31:13+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838174,
+        "rpc_context_slot": 447068178,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2272,21 +2272,21 @@
           "newMultiplierEffectiveTimestamp": 0
         }
       },
-      "raw_amount": "59738922668514",
+      "raw_amount": "59738917410275",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838175,
-      "ui_amount": 597389.22668514,
-      "ui_amount_string": "597389.22668514"
+      "rpc_context_slot": 447068179,
+      "ui_amount": 597389.17410275,
+      "ui_amount_string": "597389.17410275"
     },
     "XswCi2U1G6Ppbw1QhG45yKb8UKuR1FKLJrquv2FZSD4": {
-      "collected_at": "2026-09-14T00:20:40+00:00",
+      "collected_at": "2026-09-14T20:31:14+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838175,
+        "rpc_context_slot": 447068180,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2297,19 +2297,19 @@
       },
       "raw_amount": "7750000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838177,
+      "rpc_context_slot": 447068180,
       "ui_amount": 78105.24629486,
       "ui_amount_string": "78105.24629486"
     },
     "XswbinNKyPmzTa5CskMbCPvMW6G5CMnZXZEeQSSQoie": {
-      "collected_at": "2026-09-14T00:20:40+00:00",
+      "collected_at": "2026-09-14T20:31:14+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446838178,
+        "rpc_context_slot": 447068182,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2320,19 +2320,19 @@
       },
       "raw_amount": "6862457424327",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446838179,
+      "rpc_context_slot": 447068182,
       "ui_amount": 70115.7852092,
       "ui_amount_string": "70115.7852092"
     },
     "Xswbpc8UqU6e1j9QZEWCjBMjyvz4twqD7PCy6j2e7jj": {
-      "collected_at": "2026-09-13T17:47:46+00:00",
+      "collected_at": "2026-09-14T20:31:15+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446763552,
+        "rpc_context_slot": 447068184,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2343,19 +2343,19 @@
       },
       "raw_amount": "1489364489008",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446763552,
+      "rpc_context_slot": 447068184,
       "ui_amount": 14893.64489008,
       "ui_amount_string": "14893.64489008"
     },
     "XswsQk4duEQmCbGzfqUUWYmi7pV7xpJ9eEmLHXCaEQP": {
-      "collected_at": "2026-09-14T10:36:49+00:00",
+      "collected_at": "2026-09-14T20:31:16+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955366,
+        "rpc_context_slot": 447068186,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2366,19 +2366,19 @@
       },
       "raw_amount": "27992187710064",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955367,
+      "rpc_context_slot": 447068186,
       "ui_amount": 284942.35064073,
       "ui_amount_string": "284942.35064073"
     },
     "XsyusqQvb8RDULsY9szwvUv2CxrDKa642w7kecZPdRM": {
-      "collected_at": "2026-09-14T10:36:50+00:00",
+      "collected_at": "2026-09-14T20:31:16+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955369,
+        "rpc_context_slot": 447068188,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2389,19 +2389,19 @@
       },
       "raw_amount": "12950000000000",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955370,
+      "rpc_context_slot": 447068188,
       "ui_amount": 259000.0,
       "ui_amount_string": "259000"
     },
     "XszjVtyhowGjSC5odCqBpW1CtXXwXjYokymrk7fGKD3": {
-      "collected_at": "2026-09-14T10:36:50+00:00",
+      "collected_at": "2026-09-14T20:31:17+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955371,
+        "rpc_context_slot": 447068190,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2412,19 +2412,19 @@
       },
       "raw_amount": "4529766500377",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955374,
+      "rpc_context_slot": 447068190,
       "ui_amount": 46353.07096017,
       "ui_amount_string": "46353.07096017"
     },
     "XszvaiXGPwvk2nwb3o9C1CX4K6zH8sez11E6uyup6fe": {
-      "collected_at": "2026-09-14T10:36:51+00:00",
+      "collected_at": "2026-09-14T20:31:18+00:00",
       "decimals": 8,
       "multiplier_provenance": {
         "extension": "scaledUiAmountConfig",
         "program": "spl-token-2022",
         "program_id": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955375,
+        "rpc_context_slot": 447068192,
         "source_method": "getAccountInfo(finalized,jsonParsed)",
         "state": {
           "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
@@ -2433,30 +2433,30 @@
           "newMultiplierEffectiveTimestamp": 1789173000
         }
       },
-      "raw_amount": "4939095487002",
+      "raw_amount": "4939095424902",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955376,
-      "ui_amount": 50741.69221071,
-      "ui_amount_string": "50741.69221071"
+      "rpc_context_slot": 447068192,
+      "ui_amount": 50741.69157272,
+      "ui_amount_string": "50741.69157272"
     },
     "suifhC9gU1VbJAPYPTBkHJyyyStKGLLYPVDTmPoqbvA": {
       "account_provenance": {
         "program": "spl-token",
         "program_id": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
         "rpc_api_version": "4.3.0-rc.0",
-        "rpc_context_slot": 446955377,
+        "rpc_context_slot": 447068194,
         "source_method": "getAccountInfo(finalized,jsonParsed)"
       },
-      "collected_at": "2026-09-14T10:36:52+00:00",
+      "collected_at": "2026-09-14T20:31:18+00:00",
       "decimals": 8,
-      "raw_amount": "73164775251488",
+      "raw_amount": "73964774575754",
       "rpc_api_version": "4.3.0-rc.0",
-      "rpc_context_slot": 446955379,
-      "ui_amount": 731647.75251488,
-      "ui_amount_string": "731647.75251488"
+      "rpc_context_slot": 447068194,
+      "ui_amount": 739647.74575754,
+      "ui_amount_string": "739647.74575754"
     }
   },
   "rpc_endpoint_identity": "sha256:d6092b5f25eb26ad08e1c49bf16ff3df02faccaa5a717900ab9bf901abbab202",
-  "updated_at": "2026-09-14T10:38:03+00:00",
+  "updated_at": "2026-09-14T20:32:10+00:00",
   "version": 2
 }
