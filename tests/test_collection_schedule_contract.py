@@ -19,6 +19,16 @@ class CollectionScheduleContractTests(unittest.TestCase):
         snapshot['collection_schedule'] = cadence.initial_schedule()
         for entry in snapshot['collection_schedule'].values():
             entry.update(last_attempt_at=stamp, last_success_at=stamp, state='fresh')
+        # The reuse tests need a collectable activity.fees payload, but production
+        # snapshots may legitimately record activity.fees=null after a failed
+        # collection (this froze CI 2026-09-15..2026-09-20: the committed fixture
+        # failed these tests before any new collection could run). Restore the
+        # last recorded value so the fixture is independent of production state.
+        activity = snapshot.setdefault('activity', {})
+        activity.pop('reason', None)
+        activity['available'] = True
+        if not isinstance(activity.get('fees'), dict) or activity['fees'].get('median_lamports') is None:
+            activity['fees'] = {'median_lamports': 5410}
         return snapshot
 
     def test_reused_sample_keeps_fact_identity_and_baseline_size(self):
