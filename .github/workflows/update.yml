@@ -75,7 +75,9 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # update routinely runs 14.5+ min of its former 15-min cap (verify-package
+    # alone ~5.5 min); 30 min avoids marginal cancellations. Other jobs unchanged.
+    timeout-minutes: 30
     outputs:
       run_timestamp: ${{ steps.publication_timestamp.outputs.run_timestamp }}
       release_id: ${{ steps.release_id.outputs.release_id }}
