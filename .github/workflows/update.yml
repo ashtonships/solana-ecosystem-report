@@ -75,7 +75,10 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Raised 2026-10-01: job runtime has grown to ~13-14m (public-RPC retries),
+    # tripping the previous 15m timeout at the verify-package step and killing
+    # publication runs as "cancelled". 25m restores headroom; gates unchanged.
+    timeout-minutes: 25
     outputs:
       run_timestamp: ${{ steps.publication_timestamp.outputs.run_timestamp }}
       release_id: ${{ steps.release_id.outputs.release_id }}
