@@ -75,7 +75,7 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     outputs:
       run_timestamp: ${{ steps.publication_timestamp.outputs.run_timestamp }}
       release_id: ${{ steps.release_id.outputs.release_id }}
