@@ -36,7 +36,7 @@ jobs:
   verify:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -75,7 +75,7 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     outputs:
       run_timestamp: ${{ steps.publication_timestamp.outputs.run_timestamp }}
       release_id: ${{ steps.release_id.outputs.release_id }}
@@ -324,7 +324,7 @@ jobs:
       github.event_name == 'workflow_dispatch' &&
       inputs.mode == 'bootstrap'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     outputs:
       run_timestamp: ${{ steps.release_metadata.outputs.run_timestamp }}
       release_id: ${{ steps.release_metadata.outputs.release_id }}
